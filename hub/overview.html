@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hub overview</title>
+<style>
+:root {
+  color-scheme: light dark;
+  --bg: #ffffff; --fg: #1f2328; --muted: #59636e; --line: #d1d9e0; --panel: #f6f8fa;
+  --frame: #eef4ff; --frame-line: #9ec1f5; --cluster: #f3f0ff; --cluster-line: #b9a6f2;
+  --accent: #0969da; --warm: #bf5b00; --ok: #1a7f37;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0d1117; --fg: #e6edf3; --muted: #9198a1; --line: #3d444d; --panel: #151b23;
+    --frame: #0f1d33; --frame-line: #2f5a94; --cluster: #1b1633; --cluster-line: #5b4a9e;
+    --accent: #4493f8; --warm: #f0883e; --ok: #3fb950;
+  }
+}
+* { box-sizing: border-box; }
+html { background: var(--bg); }
+body { margin: 0; color: var(--fg); background: var(--bg); font: 16px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif; }
+main { max-width: 76rem; margin: 0 auto; padding: 2rem 1rem 4rem; }
+h1 { font-size: 2rem; margin: 0 0 .25rem; }
+.lede { color: var(--muted); margin: 0 0 1.5rem; max-width: 60rem; }
+h2 { font-size: 1.3rem; margin: 2.5rem 0 .75rem; }
+a { color: var(--accent); }
+figure { margin: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); padding: .5rem; }
+svg { display: block; width: 100%; min-width: 900px; height: auto; font-family: inherit; }
+svg .box { fill: var(--panel); stroke: var(--line); }
+svg .gcp { fill: var(--frame); stroke: var(--frame-line); }
+svg .gke { fill: var(--cluster); stroke: var(--cluster-line); }
+svg .t { fill: var(--fg); font-size: 15px; font-weight: 600; }
+svg .s { fill: var(--muted); font-size: 12.5px; }
+svg .l { fill: var(--muted); font-size: 11.5px; font-style: italic; }
+svg .frame-t { fill: var(--muted); font-size: 13px; font-weight: 600; letter-spacing: .02em; }
+svg .arrow { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+svg .arrow.warm { stroke: var(--warm); }
+svg .arrow.ok { stroke: var(--ok); }
+svg .arrow.dash { stroke-dasharray: 5 4; }
+.flows { display: grid; gap: 1rem; }
+.flow { border: 1px solid var(--line); border-radius: 10px; padding: .9rem 1rem .9rem 1.8rem; background: var(--panel); }
+.flow h3 { margin-left: -.8rem; }
+.flow h3 { margin: 0 0 .6rem; font-size: 1rem; }
+.steps { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem; margin: 0; padding: 0; list-style: none; }
+.steps li { background: var(--bg); border: 1px solid var(--line); border-radius: 999px; padding: .2rem .7rem; font-size: .9rem; }
+.steps { gap: .4rem 1.6rem; }
+.steps li { position: relative; }
+.steps li + li::before { content: "→"; color: var(--muted); position: absolute; left: -1.25rem; top: .15rem; }
+table { border-collapse: collapse; width: 100%; font-size: .95rem; }
+th, td { border: 1px solid var(--line); padding: .45rem .7rem; text-align: left; vertical-align: top; }
+th { background: var(--panel); }
+code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .85em; background: var(--panel); padding: .1em .35em; border-radius: 5px; }
+.table-wrap { overflow-x: auto; }
+</style>
+</head>
+<body>
+<main>
+<h1>arikkfir-org hub</h1>
+<p class="lede">A personal development hub on one private GKE cluster in <code>me-west1</code>. Terraform provisions it,
+Argo CD runs it from Git, Switchboard turns GitHub events into Tekton pipelines, and everything internal sits behind a
+single sign-in. Facts and names: <a href="reference.html">reference</a>. Bring-up: <a href="runbooks/bootstrap.html">runbook</a>.</p>
+
+<figure>
+<svg viewBox="0 0 1200 700" role="img" aria-labelledby="map-title">
+  <title id="map-title">Platform map</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="context-stroke"/>
+    </marker>
+  </defs>
+
+  <!-- outside GCP -->
+  <rect class="box" x="20" y="20" width="340" height="100" rx="10"/>
+  <text class="t" x="36" y="46">GitHub · arikkfir-org</text>
+  <text class="s" x="36" y="70">infra · delivery · switchboard · tooling · docs · .github</text>
+  <text class="s" x="36" y="92">App: webhooks in, check runs out</text>
+
+  <rect class="box" x="390" y="20" width="230" height="100" rx="10"/>
+  <text class="t" x="406" y="46">People and agents</text>
+  <text class="s" x="406" y="70">browsers</text>
+  <text class="s" x="406" y="92">Claude Code on the web</text>
+
+  <rect class="box" x="650" y="20" width="230" height="100" rx="10"/>
+  <text class="t" x="666" y="46">Descope</text>
+  <text class="s" x="666" y="70">OIDC provider, Google sign-in</text>
+  <text class="s" x="666" y="92">pre-created users only</text>
+
+  <rect class="box" x="910" y="20" width="270" height="100" rx="10"/>
+  <text class="t" x="926" y="46">Terraform · infra</text>
+  <text class="s" x="926" y="70">gcp → argocd → github</text>
+  <text class="s" x="926" y="92">cloud, cluster, repos, rulesets</text>
+
+  <!-- GCP frame -->
+  <rect class="gcp" x="20" y="150" width="1160" height="530" rx="14"/>
+  <text class="frame-t" x="1164" y="174" text-anchor="end">GCP PROJECT arikkfir · me-west1</text>
+
+  <rect class="box" x="40" y="200" width="170" height="60" rx="8"/>
+  <text class="t" x="56" y="225">L4 load balancer</text>
+  <text class="s" x="56" y="246">ingress-public</text>
+
+  <rect class="box" x="40" y="290" width="170" height="60" rx="8"/>
+  <text class="t" x="56" y="315">L4 load balancer</text>
+  <text class="s" x="56" y="336">ingress-protected</text>
+
+  <!-- GKE frame -->
+  <rect class="gke" x="230" y="190" width="700" height="470" rx="12"/>
+  <text class="frame-t" x="914" y="210" text-anchor="end">GKE hub · private nodes · me-west1-a</text>
+
+  <rect class="box" x="250" y="230" width="190" height="120" rx="8"/>
+  <text class="t" x="266" y="255">Traefik</text>
+  <text class="s" x="266" y="279">public entry point</text>
+  <text class="s" x="266" y="301">protected entry point</text>
+  <text class="s" x="266" y="323">+ OIDC interceptor</text>
+
+  <rect class="box" x="250" y="370" width="190" height="56" rx="8"/>
+  <text class="t" x="266" y="394">oauth2-proxy</text>
+  <text class="s" x="266" y="414">auth.kfirs.com</text>
+
+  <rect class="box" x="460" y="230" width="220" height="196" rx="8"/>
+  <text class="t" x="476" y="255">Behind the interceptor</text>
+  <text class="s" x="476" y="281">Argo CD</text>
+  <text class="s" x="476" y="304">Tekton Dashboard</text>
+  <text class="s" x="476" y="327">Grafana</text>
+  <text class="s" x="476" y="350">NUI (NATS)</text>
+  <text class="s" x="476" y="373">Traefik dashboard</text>
+  <text class="l" x="476" y="404">*.kfirs.com, allowlisted users</text>
+
+  <rect class="box" x="700" y="230" width="210" height="80" rx="8"/>
+  <text class="t" x="716" y="255">Switchboard</text>
+  <text class="s" x="716" y="277">reads .switchboard.yaml</text>
+  <text class="s" x="716" y="297">reports GitHub check runs</text>
+
+  <rect class="box" x="700" y="330" width="210" height="96" rx="8"/>
+  <text class="t" x="716" y="355">Tekton Pipelines</text>
+  <text class="s" x="716" y="378">ci-&lt;repo&gt; namespaces</text>
+  <text class="s" x="716" y="400">one identity per repository</text>
+
+  <rect class="box" x="250" y="446" width="660" height="80" rx="8"/>
+  <text class="t" x="266" y="471">Platform services</text>
+  <text class="s" x="266" y="497">External Secrets · cert-manager · Gateway API · KEDA · NATS + NACK · Reloader</text>
+
+  <rect class="box" x="250" y="546" width="320" height="94" rx="8"/>
+  <text class="t" x="266" y="571">system node pool</text>
+  <text class="s" x="266" y="594">e2-standard-4 · 1–3 nodes · on-demand</text>
+  <text class="s" x="266" y="616">everything but CI</text>
+
+  <rect class="box" x="590" y="546" width="320" height="94" rx="8"/>
+  <text class="t" x="606" y="571">ci node pool</text>
+  <text class="s" x="606" y="594">e2-standard-4 · 0–4 nodes · Spot</text>
+  <text class="s" x="606" y="616">Tekton runs only (tainted)</text>
+
+  <!-- GCP services -->
+  <rect class="box" x="950" y="200" width="210" height="52" rx="8"/>
+  <text class="t" x="966" y="222">Secret Manager</text>
+  <text class="s" x="966" y="242">values synced by ESO</text>
+  <rect class="box" x="950" y="264" width="210" height="52" rx="8"/>
+  <text class="t" x="966" y="286">Artifact Registry</text>
+  <text class="s" x="966" y="306">images</text>
+  <rect class="box" x="950" y="328" width="210" height="52" rx="8"/>
+  <text class="t" x="966" y="350">arikkfir-docs</text>
+  <text class="s" x="966" y="370">public docs site</text>
+  <rect class="box" x="950" y="392" width="210" height="52" rx="8"/>
+  <text class="t" x="966" y="414">arikkfir-claude</text>
+  <text class="s" x="966" y="434">Claude Code bundle</text>
+  <rect class="box" x="950" y="456" width="210" height="52" rx="8"/>
+  <text class="t" x="966" y="478">Cloud DNS</text>
+  <text class="s" x="966" y="498">kfirs.com</text>
+  <rect class="box" x="950" y="520" width="210" height="52" rx="8"/>
+  <text class="t" x="966" y="542">Cloud Monitoring</text>
+  <text class="s" x="966" y="562">metrics, managed Prometheus</text>
+  <rect class="box" x="950" y="584" width="210" height="52" rx="8"/>
+  <text class="t" x="966" y="606">Cloud NAT</text>
+  <text class="s" x="966" y="626">egress for private nodes</text>
+
+  <!-- arrows -->
+  <path class="arrow warm" d="M110,120 V198" marker-end="url(#arrow)"/>
+  <text class="l" x="118" y="140">webhooks</text>
+
+  <path class="arrow" d="M400,120 V136 H222 V320 H212" marker-end="url(#arrow)"/>
+  <text class="l" x="236" y="132">https://*.kfirs.com</text>
+
+  <path class="arrow warm" d="M210,230 H250" marker-end="url(#arrow)"/>
+  <path class="arrow" d="M210,320 H248" marker-end="url(#arrow)"/>
+
+  <path class="arrow" d="M345,350 V368" marker-end="url(#arrow)"/>
+  <text class="l" x="352" y="364">ForwardAuth</text>
+
+  <path class="arrow dash" d="M765,120 V142 H450 V398 H442" marker-end="url(#arrow)"/>
+  <text class="l" x="560" y="137">OIDC</text>
+
+  <path class="arrow" d="M440,290 H458" marker-end="url(#arrow)"/>
+
+  <path class="arrow warm" d="M420,230 V222 H805 V228" marker-end="url(#arrow)"/>
+
+  <path class="arrow warm" d="M805,310 V328" marker-end="url(#arrow)"/>
+  <text class="l" x="812" y="324">PipelineRuns</text>
+
+  <path class="arrow ok" d="M910,378 H930 V290 M930,378 V418 H948" marker-end="url(#arrow)"/>
+  <text class="l" x="872" y="444">publish</text>
+  <path class="arrow ok" d="M930,290 H948" marker-end="url(#arrow)"/>
+  <path class="arrow ok" d="M930,354 H948" marker-end="url(#arrow)"/>
+
+  <path class="arrow dash" d="M910,466 H940 V226 H948" marker-end="url(#arrow)"/>
+  <path class="arrow dash" d="M910,486 H948" marker-end="url(#arrow)"/>
+
+  <path class="arrow ok" d="M360,100 H376 V180 H600 V228" marker-end="url(#arrow)"/>
+  <text class="l" x="528" y="196">GitOps sync</text>
+
+  <path class="arrow" d="M1045,120 V148" marker-end="url(#arrow)"/>
+  <text class="l" x="1052" y="140">provisions</text>
+</svg>
+</figure>
+
+<h2>Flows</h2>
+<div class="flows">
+  <section class="flow">
+    <h3>Change code</h3>
+    <ol class="steps">
+      <li>Linear issue</li><li>branch</li><li>pull request</li><li>Switchboard runs <code>ci</code></li>
+      <li>1 approval</li><li>merge queue runs <code>ci</code> again</li><li>squash into main</li>
+    </ol>
+  </section>
+  <section class="flow">
+    <h3>Release and deploy</h3>
+    <ol class="steps">
+      <li>tag <code>vX.Y.Z</code></li><li>Switchboard <code>release</code></li><li>image in Artifact Registry</li>
+      <li>pull request to delivery</li><li>Argo CD syncs</li>
+    </ol>
+  </section>
+  <section class="flow">
+    <h3>Sign in</h3>
+    <ol class="steps">
+      <li>open argocd.kfirs.com</li><li>Traefik ForwardAuth</li><li>oauth2-proxy</li><li>Descope + Google</li>
+      <li>callback on auth.kfirs.com</li><li>email allowlisted?</li><li>cookie for .kfirs.com</li>
+    </ol>
+  </section>
+  <section class="flow">
+    <h3>Publish docs</h3>
+    <ol class="steps">
+      <li>push to docs/main</li><li>Switchboard <code>publish</code></li><li>render changed Markdown</li>
+      <li>rsync to arikkfir-docs</li><li>direct links</li>
+    </ol>
+  </section>
+  <section class="flow">
+    <h3>Claude Code session</h3>
+    <ol class="steps">
+      <li>environment setup script</li><li>setup.sh from arikkfir-claude</li><li>verify bundle</li>
+      <li>~/.claude: CLAUDE.md, hooks</li>
+    </ol>
+  </section>
+</div>
+
+<h2>Repositories</h2>
+<div class="table-wrap">
+<table>
+  <thead><tr><th>Repository</th><th>Holds</th><th>Design</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://github.com/arikkfir-org/infra">infra</a></td><td>Terraform: GCP, GitHub repositories and rulesets, Argo CD bootstrap</td><td><a href="designs/phase-1-foundations.html">phase 1</a></td></tr>
+    <tr><td><a href="https://github.com/arikkfir-org/delivery">delivery</a></td><td>Argo CD applications: platform services, Traefik, auth, Switchboard, CI tenants</td><td><a href="designs/phase-1-foundations.html">phase 1</a>, <a href="designs/phase-3-ingress-and-auth.html">phase 3</a></td></tr>
+    <tr><td><a href="https://github.com/arikkfir-org/switchboard">switchboard</a></td><td>The CI orchestrator (Go)</td><td><a href="designs/phase-2-switchboard.html">phase 2</a></td></tr>
+    <tr><td><a href="https://github.com/arikkfir-org/docs">docs</a></td><td>This knowledge base and its publishing pipeline</td><td><a href="designs/phase-0-documentation.html">phase 0</a>, <a href="designs/phase-4-docs-site.html">phase 4</a></td></tr>
+    <tr><td><a href="https://github.com/arikkfir-org/tooling">tooling</a></td><td>Claude Code web bundle and its publishing pipeline</td><td><a href="designs/phase-5-tooling.html">phase 5</a></td></tr>
+    <tr><td><a href="https://github.com/arikkfir-org/.github">.github</a></td><td>Organization profile and defaults</td><td><a href="designs/phase-0-documentation.html">phase 0</a></td></tr>
+  </tbody>
+</table>
+</div>
+</main>
+</body>
+</html>

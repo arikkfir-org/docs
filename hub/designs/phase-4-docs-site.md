@@ -1,0 +1,86 @@
+# Phase 4: Docs site
+
+**Goal**: every push to `docs/main` publishes the repository to the public bucket `arikkfir-docs`: Markdown changed
+since the last publication is rendered to HTML, and the bucket is synchronized with the tree (differences only,
+removed files pruned). No navigation, no listings; pages are reached by direct links.
+
+## Pipeline
+
+Switchboard runs [`.tekton/publish.yaml`](https://github.com/arikkfir-org/docs/blob/main/.tekton/publish.yaml) on
+pushes to `main` (see [`.switchboard.yaml`](https://github.com/arikkfir-org/docs/blob/main/.switchboard.yaml)), in
+namespace `ci-docs` as service account `pipeline`.
+
+```mermaid
+flowchart LR
+  S1["last-published<br/>(gcloud)<br/>read gs://arikkfir-docs/.published-revision"] --> S2["checkout<br/>(git)<br/>blobless clone at the pushed revision;<br/>plan.sh: render and keep lists"]
+  S2 --> S3["render<br/>(pandoc)<br/>render.sh: changed .md to .html"]
+  S3 --> S4["sync<br/>(gcloud)<br/>sync.sh: two rsync passes,<br/>then record the revision"]
+```
+
+| Step | Image | Does |
+| --- | --- | --- |
+| `last-published` | `google-cloud-cli:586.0.0-slim` | Reads the revision recorded by the last successful publication (empty if none) |
+| `checkout` | `alpine/git:v2.54.0` | Clones without blobs, checks out the pushed commit, runs `.site/plan.sh` |
+| `render` | `pandoc/core:3.11.0` | Runs `.site/render.sh`: GitHub-flavoured Markdown to standalone HTML with `.site/template.html` and `.site/site.lua` |
+| `sync` | `google-cloud-cli:586.0.0-slim` | Runs `.site/sync.sh`: `gcloud storage rsync` twice, then writes `.published-revision` |
+
+## What gets rendered
+
+```mermaid
+flowchart TD
+  A{last published<br/>revision usable?} -- no --> ALL[render every .md]
+  A -- yes --> B{.site/ changed<br/>since then?}
+  B -- yes --> ALL
+  B -- no --> CH["render .md added or modified<br/>since the last publication"]
+```
+
+Rendering "changed since the last *successful* publication" rather than "changed in this push" means a failed or
+cancelled publication is repaired by the next one. For a normal push the two are identical.
+
+The renderer rewrites relative links to `.md` files so they point at the `.html` pages, turns Mermaid code blocks
+into client-rendered diagrams, and takes the page title from the first `#` heading. The page has no header, menu or
+table of contents.
+
+## Synchronization
+
+`gcloud storage rsync --recursive --checksums-only --delete-unmatched-destination-objects` compares content hashes,
+so only changed files upload, and objects without a local counterpart are deleted. Two passes:
+
+| Pass | Includes | Metadata |
+| --- | --- | --- |
+| 1 | `*.md` sources | `Content-Type: text/markdown; charset=utf-8`, `Cache-Control: public, max-age=300` |
+| 2 | everything else (rendered and hand-written HTML, images) | inferred type, `Cache-Control: public, max-age=300` |
+
+Both passes exclude hidden paths (`.git/`, `.site/`, `.tekton/`, dotfiles, and the `.published-revision` marker) and
+the HTML pages of Markdown files that were not re-rendered. gcloud applies exclusions to the destination listing too,
+so excluded objects are neither uploaded nor deleted: unchanged pages stay as they are, and pages of deleted
+Markdown files are pruned.
+
+## URLs
+
+| Repository file | URL |
+| --- | --- |
+| `hub/designs/x.md` | `https://storage.googleapis.com/arikkfir-docs/hub/designs/x.html` and `…/x.md` |
+| `hub/overview.html` | `https://storage.googleapis.com/arikkfir-docs/hub/overview.html` |
+
+## Access
+
+| Principal | Role | On |
+| --- | --- | --- |
+| `allUsers` | `roles/storage.legacyObjectReader` (read objects, no listing) | `arikkfir-docs` |
+| `ci-docs/pipeline` (Workload Identity) | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | `arikkfir-docs` |
+
+## Decisions
+
+| Decision | Why | Rejected |
+| --- | --- | --- |
+| pandoc with a small Lua filter | One static binary, faithful GitHub-flavoured Markdown, easy link rewriting | Static-site generators (navigation, themes and config we don't want yet) |
+| Render only changed Markdown | Required; keeps publications fast as the site grows | Re-render everything on every push |
+| Record the published revision in the bucket | Makes incremental rendering self-healing after failures | Trusting each push's `before` SHA |
+| `cancelInProgress` for publications | The newest publication wins and covers everything since the last success | Queueing every publication |
+| A committed `x.html` next to `x.md` fails the pipeline | The rendered page would silently overwrite the hand-written one | Last writer wins |
+
+## Operations
+
+- Force a full re-render: change anything under `.site/`, or delete `gs://arikkfir-docs/.published-revision`.
+- A failed publication leaves the previous content in place; the next push repairs it.

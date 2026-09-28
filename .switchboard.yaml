@@ -1,0 +1,13 @@
+apiVersion: switchboard.kfirs.com/v1
+pipelines:
+  - name: publish
+    pipelineRun: .tekton/publish.yaml
+    on:
+      push:
+        branches: [main]
+    params:
+      repo-url: "{{ .Repository.CloneURL }}"
+      revision: "{{ .Revision }}"
+    # A newer push supersedes an older publication; the newer run renders everything changed since the last
+    # successful one, so nothing is lost.
+    cancelInProgress: true

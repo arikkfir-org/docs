@@ -1,0 +1,89 @@
+# Publishes the repository to the public arikkfir-docs bucket: renders Markdown changed since the last publication to
+# HTML, then mirrors the tree to the bucket (differences only, deleting removed files). Triggered by Switchboard on
+# pushes to main; see .switchboard.yaml.
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: docs-publish-
+spec:
+  timeouts:
+    pipeline: 20m
+  taskRunTemplate:
+    serviceAccountName: pipeline
+  workspaces:
+    - name: work
+      emptyDir: {}
+  pipelineSpec:
+    params:
+      - name: repo-url
+        type: string
+      - name: revision
+        type: string
+      - name: bucket
+        type: string
+        default: arikkfir-docs
+    workspaces:
+      - name: work
+    tasks:
+      - name: publish
+        workspaces:
+          - name: work
+            workspace: work
+        params:
+          - name: repo-url
+            value: $(params.repo-url)
+          - name: revision
+            value: $(params.revision)
+          - name: bucket
+            value: $(params.bucket)
+        taskSpec:
+          params:
+            - name: repo-url
+              type: string
+            - name: revision
+              type: string
+            - name: bucket
+              type: string
+          workspaces:
+            - name: work
+          stepTemplate:
+            workingDir: $(workspaces.work.path)
+            env:
+              - name: REPO_URL
+                value: $(params.repo-url)
+              - name: REVISION
+                value: $(params.revision)
+              - name: BUCKET
+                value: $(params.bucket)
+          steps:
+            - name: last-published
+              image: gcr.io/google.com/cloudsdktool/google-cloud-cli:586.0.0-slim
+              script: |
+                #!/usr/bin/env bash
+                set -euo pipefail
+                mkdir -p state
+                gcloud storage cat "gs://${BUCKET}/.published-revision" > state/base 2> /dev/null || : > state/base
+                echo "Last published revision: $(cat state/base)"
+            - name: checkout
+              image: alpine/git:v2.54.0
+              script: |
+                #!/bin/sh
+                set -eu
+                git clone --quiet --filter=blob:none --no-checkout "$REPO_URL" repo
+                cd repo
+                git checkout --quiet "$REVISION"
+                BASE="$(tr -d '[:space:]' < ../state/base)" sh .site/plan.sh ../state
+            - name: render
+              image: pandoc/core:3.11.0
+              workingDir: $(workspaces.work.path)/repo
+              script: |
+                #!/bin/sh
+                set -eu
+                sh .site/render.sh ../state/render.txt
+            - name: sync
+              image: gcr.io/google.com/cloudsdktool/google-cloud-cli:586.0.0-slim
+              workingDir: $(workspaces.work.path)/repo
+              script: |
+                #!/usr/bin/env bash
+                set -euo pipefail
+                bash .site/sync.sh ../state
