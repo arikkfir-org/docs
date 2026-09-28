@@ -54,13 +54,10 @@ Then: generate a private key (download the `.pem`), note the App ID, and install
 
 ## 3. Descope
 
-In company `KFIRS`, project `development` (`P3JyPV2qsSrMLUpVPTGcBNRHlSkv`); see [phase 3](../designs/phase-3-ingress-and-auth.md#manual-setup):
-
-1. Enable Google social login.
-2. Import the "sign in, allow social login when sign-ups are not allowed" flow template and set it as the default OIDC
-   application's flow.
-3. Create a user for every allowed person (their Google email).
-4. Create an access key; keep it for step 5 (it is the OIDC client secret).
+Company `KFIRS`, project `development` (`P3JyPV2qsSrMLUpVPTGcBNRHlSkv`). The sign-in-only Google flow `hub-sign-in`,
+the default OIDC application's login page and the first user are already configured
+([phase 3](../designs/phase-3-ingress-and-auth.md#manual-setup)). Create an access key (Access keys → create) and keep
+it for step 5: it is the OIDC client secret.
 
 ## 4. GCP resources
 

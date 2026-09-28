@@ -106,13 +106,18 @@ traffic only from the `traefik` namespace, so the interceptor can't be bypassed 
 
 ## Manual setup
 
-Descope (company `KFIRS`, project `development`, `P3JyPV2qsSrMLUpVPTGcBNRHlSkv`; used only by the hub):
+Descope (company `KFIRS`, project `development`, `P3JyPV2qsSrMLUpVPTGcBNRHlSkv`; used only by the hub). Already
+configured:
 
-1. Authentication methods → Social login → Google (the Descope-provided Google app is fine to start).
-2. Flows → import the "sign in, allow social login when sign-ups are not allowed" template; set it as the default OIDC
-   application's flow (Applications → OIDC default application → Flow Hosting URL `…?flow=<flow id>`).
-3. Users → create each allowed user with their Google email.
-4. Access keys → create a key; store it as Secret Manager secret `oidc-client-secret`.
+- Flow `hub-sign-in` ("Hub sign in (Google, pre-created users)"): Google sign-in that only succeeds for existing
+  users. The first Google login of a pre-created user sends a one-time code to their email and links the Google identity
+  to that user.
+- The default OIDC application's login page uses `hub-sign-in` (was `sign-up-or-in`).
+- User `arikkfir@gmail.com` exists.
+
+Still manual: create an access key (Access keys → create); store it as Secret Manager secret `oidc-client-secret`. To
+admit someone else, create their user in Descope with their Google email as the login ID, and add the email to
+`hub-authorized-emails`.
 
 Secret Manager: `oauth2-proxy-cookie-secret` (`openssl rand -base64 32 | tr -- '+/' '-_'`) and
 `hub-authorized-emails` (one email per line).
