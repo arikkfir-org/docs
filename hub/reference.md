@@ -12,7 +12,7 @@ repository's CI configuration must agree with this page. Change it here first, t
 | GCP project | `arikkfir` (number `8909046976`, organization `468825984716`) |
 | Region / cluster zone | `me-west1` / `me-west1-a` |
 | DNS domain | `kfirs.com` (Cloud DNS zone `kfirs-com`). `kfirfamily.com` (zone `kfirfamily-com`) is imported but unused. |
-| Identity provider | Descope project `production` (`P37A0YKSnL6fA4BHF0BrUn94LUbL`), issuer `https://api.descope.com/P37A0YKSnL6fA4BHF0BrUn94LUbL` |
+| Identity provider | Descope company `KFIRS`, project `development` (`P3JyPV2qsSrMLUpVPTGcBNRHlSkv`), issuer `https://api.descope.com/P3JyPV2qsSrMLUpVPTGcBNRHlSkv` |
 | Label/annotation prefix | `kfirs.com/` for hub-wide labels, `switchboard.kfirs.com/` for Switchboard bookkeeping |
 | Terraform state | GCS bucket `arikkfir-tfstate` (created once by hand, versioned), prefixes `github`, `gcp`, `argocd` |
 

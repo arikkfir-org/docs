@@ -54,7 +54,7 @@ Then: generate a private key (download the `.pem`), note the App ID, and install
 
 ## 3. Descope
 
-In project `production` (see [phase 3](../designs/phase-3-ingress-and-auth.md#manual-setup)):
+In company `KFIRS`, project `development` (`P3JyPV2qsSrMLUpVPTGcBNRHlSkv`); see [phase 3](../designs/phase-3-ingress-and-auth.md#manual-setup):
 
 1. Enable Google social login.
 2. Import the "sign in, allow social login when sign-ups are not allowed" flow template and set it as the default OIDC

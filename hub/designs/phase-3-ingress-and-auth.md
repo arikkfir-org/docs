@@ -106,7 +106,7 @@ traffic only from the `traefik` namespace, so the interceptor can't be bypassed 
 
 ## Manual setup
 
-Descope (project `production`):
+Descope (company `KFIRS`, project `development`, `P3JyPV2qsSrMLUpVPTGcBNRHlSkv`; used only by the hub):
 
 1. Authentication methods → Social login → Google (the Descope-provided Google app is fine to start).
 2. Flows → import the "sign in, allow social login when sign-ups are not allowed" template; set it as the default OIDC
