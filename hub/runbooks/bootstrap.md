@@ -115,7 +115,11 @@ kubectl -n argocd get applications -w     # everything converges to Synced / Hea
 ## 9. Verify CI
 
 Open a pull request in any hub repository; a `ci` check run from `arikkfir-switchboard` appears and links to the
-Tekton Dashboard. Push to `docs/main` and check `https://storage.googleapis.com/arikkfir-docs/README.html`.
+Tekton Dashboard.
+
+Pushes made before Switchboard ran were never delivered, so nothing is published yet. Push a commit to `docs/main` and
+to `tooling/main` (directly: the rulesets of step 10 are not applied yet), then check
+`https://storage.googleapis.com/arikkfir-docs/README.html` and `https://storage.googleapis.com/arikkfir-claude/setup.sh`.
 
 ## 10. GitHub repositories and rulesets
 
