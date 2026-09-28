@@ -5,7 +5,7 @@ Knowledge base of the `arikkfir-org` hub, published to `https://storage.googleap
 ## Rules
 
 - Push directly to `main`; this repository takes no pull requests.
-- `hub/reference.md` is the contract between `infra`, `delivery`, `switchboard` and CI configs. When a name, address,
+- `hub/reference.md` is the contract between `infra`, `delivery`, `octomatron` and CI configs. When a name, address,
   identity or permission changes anywhere, update it here in the same unit of work.
 - Every meaningful unit of work gets a visual design doc under `<area>/designs/` (see `CONTRIBUTING.md`).
 - Markdown: one `#` heading per file (it becomes the page title), GitHub-flavoured Markdown, Mermaid code blocks for
@@ -18,7 +18,7 @@ Knowledge base of the `arikkfir-org` hub, published to `https://storage.googleap
 ## Site mechanics
 
 - `.site/template.html` + `.site/site.lua` (pandoc) render Markdown; `.site/plan.sh`, `.site/render.sh` and
-  `.site/sync.sh` are the publish steps run by `.tekton/publish.yaml`, triggered by Switchboard (`.switchboard.yaml`).
+  `.site/sync.sh` are the publish steps run by `.tekton/publish.yaml`, triggered by Octomatron (`.octomatron.yaml`).
 - Any change under `.site/` re-renders every page on the next publish.
 - Preview a page locally:
   `pandoc --from=gfm --standalone --template=.site/template.html --lua-filter=.site/site.lua --syntax-highlighting=none -o /tmp/page.html page.md`

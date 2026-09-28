@@ -10,7 +10,7 @@ flowchart LR
   L[Linear issue<br/>DEV-123] --> B[Branch<br/>dev-123-short-slug]
   B --> D[Design doc<br/>in docs, if meaningful]
   B --> P[Pull request<br/>Conventional title]
-  P --> C[Switchboard ci check]
+  P --> C[Octomatron ci check]
   P --> R[1 approval]
   C --> Q[Merge queue<br/>squash]
   R --> Q
@@ -68,7 +68,7 @@ The `docs` repository is the exception: push directly to `main`.
 ## Pull requests
 
 **Title**: the squash commit's subject, so it follows the commit rules above, e.g.
-`feat(switchboard): report skipped pipelines as skipped checks`.
+`feat(octomatron): report skipped pipelines as skipped checks`.
 
 **Description**: the squash commit's body. Use this structure:
 
@@ -99,8 +99,8 @@ Closes DEV-123
 
 ## Continuous integration
 
-- CI is [Switchboard](https://github.com/arikkfir-org/switchboard) running Tekton pipelines declared in each
-  repository's root `.switchboard.yaml`. There are no GitHub Actions workflows.
+- CI is [Octomatron](https://github.com/arikkfir-org/octomatron) running Tekton pipelines declared in each
+  repository's root `.octomatron.yaml`. There are no GitHub Actions workflows.
 - Protected repositories require a check named `ci` on pull requests and in the merge queue. Pipelines that run on
   both must list `pull_request` and `merge_group` in their triggers.
 - A red check is fixed, never bypassed: no skipped tests, no disabled checks, no empty commits to re-trigger. A flaky
@@ -113,7 +113,7 @@ Every meaningful unit of work (a new component, a change of architecture, a new 
 later ask "why is it like this?" about) gets a design document in `arikkfir-org/docs`, written before or alongside the
 change and updated when the implementation diverges.
 
-- **Where**: `<area>/designs/<slug>.md` (e.g. `hub/designs/phase-2-switchboard.md`). Rich visual pages may be HTML.
+- **Where**: `<area>/designs/<slug>.md` (e.g. `hub/designs/phase-2-octomatron.md`). Rich visual pages may be HTML.
 - **Visual first**: at least one diagram (Mermaid in Markdown, or SVG/HTML) showing the moving parts.
 - **Contents**: context and goal; the design; decisions with their rationale and rejected alternatives; security and
   failure modes; rollout and manual steps; open questions.

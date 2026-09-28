@@ -16,7 +16,7 @@ Designs:
 | --- | --- |
 | 0 | [Documentation](hub/designs/phase-0-documentation.md) |
 | 1 | [Foundations: Terraform, GKE, Argo CD](hub/designs/phase-1-foundations.md) |
-| 2 | [Switchboard](hub/designs/phase-2-switchboard.md) |
+| 2 | [Octomatron](hub/designs/phase-2-octomatron.md) |
 | 3 | [Ingress and authentication](hub/designs/phase-3-ingress-and-auth.md) |
 | 4 | [Docs site](hub/designs/phase-4-docs-site.md) |
 | 5 | [Claude Code tooling](hub/designs/phase-5-tooling.md) |

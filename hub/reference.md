@@ -1,7 +1,7 @@
 # Hub reference
 
 The authoritative list of every name, identifier, address and permission in the development hub. Terraform
-(`arikkfir-org/infra`), GitOps manifests (`arikkfir-org/delivery`), Switchboard (`arikkfir-org/switchboard`) and every
+(`arikkfir-org/infra`), GitOps manifests (`arikkfir-org/delivery`), Octomatron (`arikkfir-org/octomatron`) and every
 repository's CI configuration must agree with this page. Change it here first, then in code.
 
 ## Identity and placement
@@ -13,7 +13,7 @@ repository's CI configuration must agree with this page. Change it here first, t
 | Region / cluster zone | `me-west1` / `me-west1-a` |
 | DNS domain | `kfirs.com` (Cloud DNS zone `kfirs-com`). `kfirfamily.com` (zone `kfirfamily-com`) is imported but unused. |
 | Identity provider | Descope company `KFIRS`, project `development` (`P3JyPV2qsSrMLUpVPTGcBNRHlSkv`), issuer `https://api.descope.com/P3JyPV2qsSrMLUpVPTGcBNRHlSkv` |
-| Label/annotation prefix | `kfirs.com/` for hub-wide labels, `switchboard.kfirs.com/` for Switchboard bookkeeping |
+| Label/annotation prefix | `kfirs.com/` for hub-wide labels, `octomatron.kfirs.com/` for Octomatron bookkeeping |
 | Terraform state | GCS bucket `arikkfir-tfstate` (created once by hand, versioned), prefixes `github`, `gcp`, `argocd` |
 
 ## Repositories
@@ -24,12 +24,12 @@ repository's CI configuration must agree with this page. Change it here first, t
 | `docs` | Knowledge base, published to `arikkfir-docs` | Direct pushes to `main` allowed (no deletion, no force-push) | none |
 | `infra` | Terraform: GitHub, GCP, Argo CD bootstrap | PR + 1 approval + merge queue | `ci` |
 | `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `ci` |
-| `switchboard` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `ci` |
+| `octomatron` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `ci` |
 | `tooling` | Claude Code web bundle | PR + 1 approval + merge queue | `ci` |
 
 Merge method is squash only, via the merge queue. Organization admins may bypass rules on pull requests only
 (`bypass_mode = pull_request`) so a solo maintainer can merge without a second reviewer; nobody may push directly to a
-protected default branch. Required checks are pinned to the Switchboard GitHub App (`integration_id`).
+protected default branch. Required checks are pinned to the Octomatron GitHub App (`integration_id`).
 
 ## Network
 
@@ -62,7 +62,7 @@ Tekton runs land on the `ci` pool through Tekton's default pod template (node se
 
 | Resource | Name | Access |
 | --- | --- | --- |
-| Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-switchboard/pipeline` writes |
+| Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomatron/pipeline` writes |
 | Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access) | public object reads (`allUsers` → `roles/storage.legacyObjectReader`, no listing); `ci-docs/pipeline` writes |
 | Bucket | `arikkfir-claude` (`ME-WEST1`, uniform access) | public object reads (no listing); `ci-tooling/pipeline` writes |
 
@@ -75,9 +75,9 @@ Operator is the only reader.
 
 | Secret | Content | Consumed by |
 | --- | --- | --- |
-| `switchboard-github-app-id` | GitHub App ID (number) | `switchboard/switchboard-github` key `app-id` |
-| `switchboard-github-private-key` | GitHub App private key (PEM) | `switchboard/switchboard-github` key `private-key` |
-| `switchboard-github-webhook-secret` | GitHub App webhook secret | `switchboard/switchboard-github` key `webhook-secret` |
+| `octomatron-github-app-id` | GitHub App ID (number) | `octomatron/octomatron-github` key `app-id` |
+| `octomatron-github-private-key` | GitHub App private key (PEM) | `octomatron/octomatron-github` key `private-key` |
+| `octomatron-github-webhook-secret` | GitHub App webhook secret | `octomatron/octomatron-github` key `webhook-secret` |
 | `oidc-client-secret` | Descope access key (OIDC client secret) | `auth/oauth2-proxy` key `client-secret`; `argocd/argocd-oidc` key `clientSecret` |
 | `oauth2-proxy-cookie-secret` | 32 random bytes, base64 | `auth/oauth2-proxy` key `cookie-secret` |
 | `hub-authorized-emails` | Newline-separated emails allowed through the auth interceptor | `auth/oauth2-proxy-emails` key `emails` |
@@ -94,7 +94,7 @@ Kubernetes workloads use GKE Workload Identity Federation with direct principal 
 | `grafana/grafana` | `roles/monitoring.viewer` | project |
 | `ci-docs/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
 | `ci-tooling/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-claude` |
-| `ci-switchboard/pipeline` | `roles/artifactregistry.writer` | repository `images` |
+| `ci-octomatron/pipeline` | `roles/artifactregistry.writer` | repository `images` |
 | `gke-hub-nodes@` (GSA) | `roles/container.defaultNodeServiceAccount` | project |
 | `gke-hub-nodes@` (GSA) | `roles/artifactregistry.reader` | repository `images` |
 
@@ -121,7 +121,7 @@ role grants; it exists for exceptional external automation. The pre-existing `gi
 | `grafana` | Grafana | `https://grafana-community.github.io/helm-charts` `grafana` | `13.2.6` |
 | `tekton-operator` | Tekton Operator | `tektoncd/operator` release manifest | `v0.77.0` |
 | `tekton-pipelines` | Pipelines, Triggers, Dashboard (via `TektonConfig`) | operator-managed | operator default |
-| `switchboard` | Switchboard | `me-west1-docker.pkg.dev/arikkfir/images/switchboard` | `v0.1.0` |
+| `octomatron` | Octomatron | `me-west1-docker.pkg.dev/arikkfir/images/octomatron` | `v0.1.0` |
 | `ci-<repo>` | CI tenants (one per repository) | `delivery` | n/a |
 
 ## Ingress
@@ -147,7 +147,7 @@ stored in secret `traefik/wildcard-kfirs-com-tls`.
 | `traefik.kfirs.com` | protected | Traefik dashboard (`api@internal`, IngressRoute) |
 | `nui.kfirs.com` | protected | `nats/nui` |
 | `auth.kfirs.com` | public | `auth/oauth2-proxy:80`, path `/oauth2` |
-| `switchboard.kfirs.com` | public | `switchboard/switchboard:80`, path `/webhook` |
+| `octomatron.kfirs.com` | public | `octomatron/octomatron:80`, path `/webhook` |
 
 DNS A records (TTL 300) in zone `kfirs-com` point each host at its gateway's IP.
 
@@ -165,32 +165,32 @@ DNS A records (TTL 300) in zone `kfirs-com` point each host at its gateway's IP.
   client) and grants `role:admin` to every authenticated user; Tekton Dashboard, NUI and the Traefik dashboard rely on
   the interceptor alone.
 - Protected backends accept traffic only from the `traefik` namespace (NetworkPolicy); Argo CD's server also admits
-  its own namespace and Switchboard, which relays GitHub webhooks to `/api/webhook`.
+  its own namespace and Octomatron, which relays GitHub webhooks to `/api/webhook`.
 - oauth2-proxy sets `emailDomains: []`: any domain rule would be OR-ed with the allowlist and bypass it.
 
-## Switchboard
+## Octomatron
 
 | Item | Value |
 | --- | --- |
-| GitHub App | `arikkfir-switchboard` (created by hand), installed on all `arikkfir-org` repositories |
+| GitHub App | `octomatron` (created by hand), installed on all `arikkfir-org` repositories |
 | App permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
 | App events | `push`, `pull_request`, `issue_comment`, `check_suite`, `check_run`, `merge_group` |
-| Webhook URL | `https://switchboard.kfirs.com/webhook` |
-| Kubernetes | namespace `switchboard`, Deployment/ServiceAccount/Service `switchboard` (Service port 80 → container 8080) |
-| Config | ConfigMap `switchboard` key `config.yaml` mounted at `/etc/switchboard/config.yaml` |
-| GitHub secret | Secret `switchboard-github` (keys `app-id`, `private-key`, `webhook-secret`) mounted at `/etc/switchboard/github/` |
+| Webhook URL | `https://octomatron.kfirs.com/webhook` |
+| Kubernetes | namespace `octomatron`, Deployment/ServiceAccount/Service `octomatron` (Service port 80 → container 8080) |
+| Config | ConfigMap `octomatron` key `config.yaml` mounted at `/etc/octomatron/config.yaml` |
+| GitHub secret | Secret `octomatron-github` (keys `app-id`, `private-key`, `webhook-secret`) mounted at `/etc/octomatron/github/` |
 | Endpoints | `POST /webhook`, `GET /healthz`, `GET /readyz`, `GET /metrics` (all on 8080) |
 | Check links | `https://tekton.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
-| Tenant namespaces | `ci-<repository>` (`.github` → `ci-github`); each has ServiceAccount `pipeline` and RoleBinding `switchboard` → ClusterRole `switchboard-tenant` |
-| Tenant permissions | `switchboard-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete) |
+| Tenant namespaces | `ci-<repository>` (`.github` → `ci-github`); each has ServiceAccount `pipeline` and RoleBinding `octomatron` → ClusterRole `octomatron-tenant` |
+| Tenant permissions | `octomatron-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete) |
 
-### Server configuration (`/etc/switchboard/config.yaml`)
+### Server configuration (`/etc/octomatron/config.yaml`)
 
 ```yaml
 github:
-  appIDFile: /etc/switchboard/github/app-id
-  privateKeyFile: /etc/switchboard/github/private-key
-  webhookSecretFile: /etc/switchboard/github/webhook-secret
+  appIDFile: /etc/octomatron/github/app-id
+  privateKeyFile: /etc/octomatron/github/private-key
+  webhookSecretFile: /etc/octomatron/github/webhook-secret
   allowedOwners: [arikkfir-org]        # installations on other owners are ignored
 tekton:
   dashboardURL: https://tekton.kfirs.com
@@ -204,13 +204,13 @@ retention:
   freePVCsAfter: 1h                     # PVCs of finished runs are deleted after this; runs and pods stay
 ```
 
-### Repository configuration (`.switchboard.yaml`)
+### Repository configuration (`.octomatron.yaml`)
 
-The only file Switchboard reads from a repository, always at the root. Switchboard knows nothing else about the
+The only file Octomatron reads from a repository, always at the root. Octomatron knows nothing else about the
 repository. It is parsed as YAML 1.2, so the `on` key needs no quoting.
 
 ```yaml
-apiVersion: switchboard.kfirs.com/v1
+apiVersion: octomatron.kfirs.com/v1
 pipelines:
   - name: ci                           # check-run name; unique; [a-z0-9][a-z0-9-]*
     pipelineRun: .tekton/ci.yaml       # repository-relative file holding exactly one tekton.dev/v1 PipelineRun
@@ -255,7 +255,7 @@ Groups are scoped to the repository: pipelines naming the same group share it (i
 apart). Without `concurrency`, pull request runs of the same pipeline and pull request supersede each other; other runs
 are unconstrained.
 
-Where definitions are read: pull requests, merge groups and pushes read `.switchboard.yaml` and the PipelineRun file
+Where definitions are read: pull requests, merge groups and pushes read `.octomatron.yaml` and the PipelineRun file
 at the commit under test; comment commands and schedules read them from the default branch (and comment commands still
 run against the pull request's head commit).
 
@@ -267,4 +267,4 @@ Template context: `.Event` (`push`, `pull_request`, `merge_group`, `comment`, `s
 referencing a missing value fails the check with the rendering error.
 
 Reporting conventions: a pipeline or task result named `check-title` or `check-summary` replaces the check run's title
-or Markdown summary. Runs may mount no Secret other than the token Switchboard binds.
+or Markdown summary. Runs may mount no Secret other than the token Octomatron binds.

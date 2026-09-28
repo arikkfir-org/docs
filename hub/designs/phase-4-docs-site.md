@@ -6,8 +6,8 @@ removed files pruned). No navigation, no listings; pages are reached by direct l
 
 ## Pipeline
 
-Switchboard runs [`.tekton/publish.yaml`](https://github.com/arikkfir-org/docs/blob/main/.tekton/publish.yaml) on
-pushes to `main` (see [`.switchboard.yaml`](https://github.com/arikkfir-org/docs/blob/main/.switchboard.yaml)), in
+Octomatron runs [`.tekton/publish.yaml`](https://github.com/arikkfir-org/docs/blob/main/.tekton/publish.yaml) on
+pushes to `main` (see [`.octomatron.yaml`](https://github.com/arikkfir-org/docs/blob/main/.octomatron.yaml)), in
 namespace `ci-docs` as service account `pipeline`.
 
 ```mermaid

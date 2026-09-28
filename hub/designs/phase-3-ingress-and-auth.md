@@ -9,7 +9,7 @@ unauthenticated by forgetting a setting. Hosts, IPs and names: [reference](../re
 ```mermaid
 flowchart LR
   U((Browser)) -- "argocd, tekton, grafana,<br/>traefik, nui .kfirs.com" --> P[L4 LB<br/>ingress-protected]
-  G((GitHub)) -- switchboard.kfirs.com/webhook --> Q[L4 LB<br/>ingress-public]
+  G((GitHub)) -- octomatron.kfirs.com/webhook --> Q[L4 LB<br/>ingress-public]
   U -- auth.kfirs.com/oauth2 --> Q
   subgraph traefik[Traefik]
     WS[entry point websecure<br/>middlewares: strip-auth-headers, oidc]
@@ -20,7 +20,7 @@ flowchart LR
   WS -- ForwardAuth --> O[oauth2-proxy<br/>auth namespace]
   WS --> APPS[Argo CD, Tekton Dashboard,<br/>Grafana, Traefik dashboard, NUI]
   PW --> O
-  PW --> SB[Switchboard webhook]
+  PW --> SB[Octomatron webhook]
   O -- OIDC --> D[Descope]
   D -- social login --> GO[Google]
 ```
@@ -35,7 +35,7 @@ One Traefik deployment serves two Gateways, each on its own entry points and its
 The interceptor is attached to the **entry point**, not to routes: every route on the protected gateway is
 authenticated, including routes added later, and there is no per-route switch to forget. Going public requires two
 deliberate acts in `delivery`: labelling the namespace and attaching to the `public` gateway. Only `auth` (the login
-callback) and `switchboard` (HMAC-verified webhooks) are public.
+callback) and `octomatron` (HMAC-verified webhooks) are public.
 
 Both gateways terminate TLS with a wildcard certificate for `*.kfirs.com` (cert-manager, Let's Encrypt, DNS-01), and
 redirect HTTP to HTTPS.
@@ -89,7 +89,7 @@ Granting access means adding the user in Descope and their email to the allowlis
 
 Header safety: `strip-auth-headers` removes `X-Auth-Request-*` headers sent by clients before ForwardAuth runs, and
 ForwardAuth copies the verified values from oauth2-proxy's response. NetworkPolicies let protected backends accept
-traffic only from the `traefik` namespace (Argo CD's server also admits its own namespace and Switchboard's webhook
+traffic only from the `traefik` namespace (Argo CD's server also admits its own namespace and Octomatron's webhook
 relay), so the interceptor can't be bypassed from inside the cluster.
 
 ## Decisions

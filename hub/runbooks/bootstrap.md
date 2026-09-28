@@ -1,7 +1,7 @@
 # Bootstrap runbook
 
 Bringing the hub up from nothing, in order. Names and values: [reference](../reference.md). Designs:
-[phase 1](../designs/phase-1-foundations.md), [phase 2](../designs/phase-2-switchboard.md),
+[phase 1](../designs/phase-1-foundations.md), [phase 2](../designs/phase-2-octomatron.md),
 [phase 3](../designs/phase-3-ingress-and-auth.md).
 
 ```mermaid
@@ -12,7 +12,7 @@ flowchart TD
   APP --> GCP[4. terraform/gcp]
   DS --> GCP
   GCP --> SEC[5. Secret values]
-  SEC --> IMG[6. First Switchboard image]
+  SEC --> IMG[6. First Octomatron image]
   IMG --> ACD[7. terraform/argocd]
   ACD --> VER[8. Verify platform and login]
   VER --> CI[9. Verify CI checks]
@@ -42,8 +42,8 @@ In `arikkfir-org` → Settings → Developer settings → GitHub Apps → New Gi
 
 | Field | Value |
 | --- | --- |
-| Name | `arikkfir-switchboard` |
-| Webhook URL | `https://switchboard.kfirs.com/webhook` |
+| Name | `octomatron` |
+| Webhook URL | `https://octomatron.kfirs.com/webhook` |
 | Webhook secret | `openssl rand -hex 32` (keep it for step 5) |
 | Repository permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
 | Events | Push, Pull request, Issue comment, Check suite, Check run, Merge group |
@@ -75,23 +75,23 @@ records for every hub host.
 
 ```bash
 add() { gcloud secrets versions add "$1" --project=arikkfir --data-file=-; }
-printf '%s' "<app id>"                          | add switchboard-github-app-id
-add switchboard-github-private-key            < arikkfir-switchboard.private-key.pem
-printf '%s' "<webhook secret>"                  | add switchboard-github-webhook-secret
+printf '%s' "<app id>"                          | add octomatron-github-app-id
+add octomatron-github-private-key               < octomatron.YYYY-MM-DD.private-key.pem
+printf '%s' "<webhook secret>"                  | add octomatron-github-webhook-secret
 printf '%s' "<descope access key>"              | add oidc-client-secret
 openssl rand -base64 32 | tr -d '\n' | tr -- '+/' '-_' | add oauth2-proxy-cookie-secret
 printf '%s\n' "you@example.com" "friend@example.com" | add hub-authorized-emails
 ```
 
-## 6. First Switchboard image
+## 6. First Octomatron image
 
-Switchboard builds its own releases, but the first one has to come from a workstation:
+Octomatron builds its own releases, but the first one has to come from a workstation:
 
 ```bash
 gcloud auth configure-docker me-west1-docker.pkg.dev
-git clone https://github.com/arikkfir-org/switchboard && cd switchboard
+git clone https://github.com/arikkfir-org/octomatron && cd octomatron
 git tag v0.1.0 && git push origin v0.1.0
-KO_DOCKER_REPO=me-west1-docker.pkg.dev/arikkfir/images/switchboard ko build --bare --tags=v0.1.0 ./cmd/switchboard
+KO_DOCKER_REPO=me-west1-docker.pkg.dev/arikkfir/images/octomatron ko build --bare --tags=v0.1.0 ./cmd/octomatron
 ```
 
 ## 7. Argo CD
@@ -114,10 +114,10 @@ kubectl -n argocd get applications -w     # everything converges to Synced / Hea
 
 ## 9. Verify CI
 
-Open a pull request in any hub repository; a `ci` check run from `arikkfir-switchboard` appears and links to the
+Open a pull request in any hub repository; a `ci` check run from `octomatron` appears and links to the
 Tekton Dashboard.
 
-Pushes made before Switchboard ran were never delivered, so nothing is published yet. Push a commit to `docs/main` and
+Pushes made before Octomatron ran were never delivered, so nothing is published yet. Push a commit to `docs/main` and
 to `tooling/main` (directly: the rulesets of step 10 are not applied yet), then check
 `https://storage.googleapis.com/arikkfir-docs/README.html` and `https://storage.googleapis.com/arikkfir-claude/setup.sh`.
 
@@ -128,7 +128,7 @@ Only once `ci` checks work, since the rulesets require them:
 ```bash
 cd infra
 terraform -chdir=terraform/github init
-terraform -chdir=terraform/github apply -var switchboard_app_id=<app id>
+terraform -chdir=terraform/github apply -var octomatron_app_id=<app id>
 ```
 
 ## 11. Claude Code environment

@@ -1,6 +1,6 @@
 # Publishes the repository to the public arikkfir-docs bucket: renders Markdown changed since the last publication to
-# HTML, then mirrors the tree to the bucket (differences only, deleting removed files). Triggered by Switchboard on
-# pushes to main; see .switchboard.yaml.
+# HTML, then mirrors the tree to the bucket (differences only, deleting removed files). Triggered by Octomatron on
+# pushes to main; see .octomatron.yaml.
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:

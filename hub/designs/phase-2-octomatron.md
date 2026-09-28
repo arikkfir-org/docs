@@ -1,19 +1,19 @@
-# Phase 2: Switchboard
+# Phase 2: Octomatron
 
-**Goal**: replace GitHub Actions. A GitHub App delivers webhooks to Switchboard in GKE; Switchboard runs the Tekton
-`PipelineRun`s that the repository's root `.switchboard.yaml` maps to those events and reports each one as a GitHub
-check run. Code: [arikkfir-org/switchboard](https://github.com/arikkfir-org/switchboard). Names and wiring:
-[reference](../reference.md#switchboard).
+**Goal**: replace GitHub Actions. A GitHub App delivers webhooks to Octomatron in GKE; Octomatron runs the Tekton
+`PipelineRun`s that the repository's root `.octomatron.yaml` maps to those events and reports each one as a GitHub
+check run. Code: [arikkfir-org/octomatron](https://github.com/arikkfir-org/octomatron). Names and wiring:
+[reference](../reference.md#octomatron).
 
 ## Principles
 
-1. **Application-agnostic.** Switchboard knows nothing about what a repository builds, its language, layout, CI or CD.
-2. **One file.** The only repository file Switchboard reads is the root `.switchboard.yaml`, plus the `PipelineRun`
+1. **Application-agnostic.** Octomatron knows nothing about what a repository builds, its language, layout, CI or CD.
+2. **One file.** The only repository file Octomatron reads is the root `.octomatron.yaml`, plus the `PipelineRun`
    files it points to. There are no conventional directories and no configuration in Tekton labels or annotations.
-3. **Plain Tekton.** `PipelineRun` files are ordinary Tekton YAML. Switchboard injects event context only through
+3. **Plain Tekton.** `PipelineRun` files are ordinary Tekton YAML. Octomatron injects event context only through
    `params` (Go templates over a documented context) and an optional token workspace.
 
-Switchboard is derived from an earlier, application-aware implementation; these principles are what changed.
+Octomatron is derived from an earlier, application-aware implementation; these principles are what changed.
 
 ## Flow
 
@@ -21,11 +21,11 @@ Switchboard is derived from an earlier, application-aware implementation; these 
 sequenceDiagram
   autonumber
   participant GH as GitHub
-  participant SB as Switchboard
+  participant SB as Octomatron
   participant K8s as Kubernetes / Tekton
   GH->>SB: webhook (push, pull_request, merge_group, check_run, check_suite)
   SB->>SB: verify HMAC signature, dedupe delivery, 202
-  SB->>GH: read .switchboard.yaml at the commit under test
+  SB->>GH: read .octomatron.yaml at the commit under test
   SB->>SB: match events, branches, tags and paths, then apply trust rules
   alt paths don't match
     SB->>GH: check run "completed / skipped"
@@ -47,10 +47,10 @@ sequenceDiagram
 ## Configuration
 
 ```yaml
-apiVersion: switchboard.kfirs.com/v1
+apiVersion: octomatron.kfirs.com/v1
 pipelines:
   - name: ci                          # check-run name
-    pipelineRun: .tekton/ci.yaml      # any path; Switchboard assumes no layout
+    pipelineRun: .tekton/ci.yaml      # any path; Octomatron assumes no layout
     on:
       pull_request: {branches: [main]}
       merge_group: {}
@@ -63,15 +63,15 @@ pipelines:
     concurrency: {group: "pr-{{ .PullRequest.Number }}", policy: supersede}
 ```
 
-The full schema and template context are in the [reference](../reference.md#repository-configuration-switchboardyaml)
-and the Switchboard README.
+The full schema and template context are in the [reference](../reference.md#repository-configuration-octomatronyaml)
+and the Octomatron README.
 
 ## Behaviour
 
 | Situation | Behaviour |
 | --- | --- |
-| No `.switchboard.yaml` | Nothing happens |
-| Invalid `.switchboard.yaml` | One failed check run named `switchboard` explaining the error |
+| No `.octomatron.yaml` | Nothing happens |
+| Invalid `.octomatron.yaml` | One failed check run named `octomatron` explaining the error |
 | Event matches, paths don't | Check run reported as `skipped`, which satisfies required checks |
 | Changed files can't be determined | Treated as matching (runs rather than silently skipping) |
 | Pull request from outside the org (fork) | `action_required` check with an "Approve and run" button for users with write access |
@@ -80,7 +80,7 @@ and the Switchboard README.
 | `/command` comment on a pull request | Pipelines with a matching `on.comment.pattern` run (definitions from the default branch, code from the pull request); the commenter needs write access; 👀 when started, a reply with the result when done |
 | Cron schedule | Pipelines with `on.schedule` run at the default branch head, once per slot |
 | Long run | The installation token is refreshed while the run lives; a live task table and per-task checks (`taskChecks`) show progress |
-| Switchboard restarts mid-dispatch | Runs are created held (`PipelineRunPending`) and released only once their check and token exist; held runs are resumed |
+| Octomatron restarts mid-dispatch | Runs are created held (`PipelineRunPending`) and released only once their check and token exist; held runs are resumed |
 | Merge group destroyed | Its runs are cancelled |
 | "Re-run" in GitHub | The pipeline re-runs with the original context, stored in the check run itself, so it works after pruning |
 
@@ -88,8 +88,8 @@ and the Switchboard README.
 
 ```mermaid
 flowchart LR
-  SB[switchboard/switchboard] -- creates PipelineRuns, token Secrets --> NS1[ci-docs]
-  SB --> NS2[ci-switchboard]
+  SB[octomatron/octomatron] -- creates PipelineRuns, token Secrets --> NS1[ci-docs]
+  SB --> NS2[ci-octomatron]
   SB --> NS3[ci-...]
   NS1 -- KSA pipeline --> B1[(arikkfir-docs: object user)]
   NS2 -- KSA pipeline --> B2[(Artifact Registry images: writer)]
@@ -99,8 +99,8 @@ flowchart LR
   small change there, plus IAM in `infra` if it needs cloud access).
 - Runs use the namespace's `pipeline` service account. GCP permissions attach to that identity through Workload
   Identity, so one repository's pipelines can never use another's permissions.
-- Switchboard's own identity can create `PipelineRun`s and token Secrets only in tenant namespaces
-  (`ClusterRole switchboard-tenant`, bound per namespace), and watch runs cluster-wide.
+- Octomatron's own identity can create `PipelineRun`s and token Secrets only in tenant namespaces
+  (`ClusterRole octomatron-tenant`, bound per namespace), and watch runs cluster-wide.
 - Tekton's default pod template schedules runs onto the Spot `ci` node pool.
 
 ## Decisions
@@ -127,9 +127,9 @@ flowchart LR
 
 ## Rollout
 
-1. Create the GitHub App (permissions and events in the [reference](../reference.md#switchboard)); store its ID, key
+1. Create the GitHub App (permissions and events in the [reference](../reference.md#octomatron)); store its ID, key
    and webhook secret in Secret Manager.
 2. Build the first image locally with `ko` (see the [bootstrap runbook](../runbooks/bootstrap.md)); afterwards
-   Switchboard builds itself on tags `v*`.
+   Octomatron builds itself on tags `v*`.
 3. Argo CD deploys it from `delivery`.
 4. Apply the GitHub rulesets once `ci` checks appear on pull requests.

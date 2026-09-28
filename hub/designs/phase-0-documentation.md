@@ -18,7 +18,7 @@ flowchart LR
   end
   H -- push to main --> repo
   A -- push to main --> repo
-  repo -- push event --> SB[Switchboard]
+  repo -- push event --> SB[Octomatron]
   SB --> TK[Tekton: render changed Markdown,<br/>rsync to bucket]
   TK --> GCS[(gs://arikkfir-docs<br/>public objects, no listing)]
   GCS -- page.html --> B[Browsers]

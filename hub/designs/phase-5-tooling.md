@@ -12,7 +12,7 @@ flowchart LR
     C[claude/<br/>CLAUDE.md, settings.json,<br/>hooks/*.py]
     S[setup/setup.sh]
   end
-  repo -- push to main --> SB[Switchboard] --> TK[Tekton<br/>build, lint, test,<br/>gitleaks, publish]
+  repo -- push to main --> SB[Octomatron] --> TK[Tekton<br/>build, lint, test,<br/>gitleaks, publish]
   TK --> B[(gs://arikkfir-claude<br/>bundles/&lt;sha256&gt;.tar.gz<br/>setup.sh)]
   E[Claude Code on the web<br/>environment setup script] -- "curl …/setup.sh | bash" --> B
   E --> H["~/.claude<br/>CLAUDE.md, settings.json,<br/>hooks/arikkfir/"]
@@ -47,7 +47,7 @@ the session from starting; `ARIKKFIR_CLAUDE_STRICT=1` makes failures fatal.
 
 ## Publication
 
-| Pipeline (`.switchboard.yaml`) | Trigger | Steps (`.tekton/bundle.yaml`) |
+| Pipeline (`.octomatron.yaml`) | Trigger | Steps (`.tekton/bundle.yaml`) |
 | --- | --- | --- |
 | `ci` | pull requests, merge queue | build, shellcheck, unit and end-to-end tests, verify, gitleaks |
 | `publish` | push to `main` | the same, then upload |
