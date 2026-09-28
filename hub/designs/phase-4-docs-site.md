@@ -77,7 +77,7 @@ Markdown files are pruned.
 | pandoc with a small Lua filter | One static binary, faithful GitHub-flavoured Markdown, easy link rewriting | Static-site generators (navigation, themes and config we don't want yet) |
 | Render only changed Markdown | Required; keeps publications fast as the site grows | Re-render everything on every push |
 | Record the published revision in the bucket | Makes incremental rendering self-healing after failures | Trusting each push's `before` SHA |
-| `cancelInProgress` for publications | The newest publication wins and covers everything since the last success | Queueing every publication |
+| `latest` concurrency for publications | One publication at a time; the newest waiting one covers everything since the last success, older waiting ones are dropped | Parallel publications (an older one could finish last and roll back newer content) |
 | A committed `x.html` next to `x.md` fails the pipeline | The rendered page would silently overwrite the hand-written one | Last writer wins |
 
 ## Operations

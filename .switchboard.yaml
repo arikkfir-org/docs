@@ -8,6 +8,8 @@ pipelines:
     params:
       repo-url: "{{ .Repository.CloneURL }}"
       revision: "{{ .Revision }}"
-    # A newer push supersedes an older publication; the newer run renders everything changed since the last
-    # successful one, so nothing is lost.
-    cancelInProgress: true
+    # One publication at a time; a newer push replaces any waiting one and renders everything changed since the
+    # last successful publication, so nothing is lost.
+    concurrency:
+      group: publish
+      policy: latest

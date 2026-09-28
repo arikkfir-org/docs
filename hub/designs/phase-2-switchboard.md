@@ -33,9 +33,10 @@ sequenceDiagram
     SB->>GH: check run "action_required" + "Approve and run" button
   else run
     SB->>GH: read the PipelineRun file at the same commit
-    SB->>K8s: Secret with installation token (optional)
-    SB->>K8s: create PipelineRun in the repository's ci- namespace
+    SB->>K8s: create the PipelineRun held (PipelineRunPending) in the repository's ci- namespace
     SB->>GH: check run "queued" (links to Tekton Dashboard)
+    SB->>K8s: token Secret owned by the run (optional)
+    SB->>K8s: release the run per its concurrency policy
     loop reconciler (leader only)
       K8s-->>SB: PipelineRun status changes
       SB->>GH: check run in_progress / completed + TaskRun table + failed-step log tail
@@ -59,7 +60,7 @@ pipelines:
       revision: "{{ .Revision }}"
     githubToken: {workspace: github-token}
     timeout: 1h
-    cancelInProgress: true
+    concurrency: {group: "pr-{{ .PullRequest.Number }}", policy: supersede}
 ```
 
 The full schema and template context are in the [reference](../reference.md#repository-configuration-switchboardyaml)
@@ -75,7 +76,11 @@ and the Switchboard README.
 | Changed files can't be determined | Treated as matching (runs rather than silently skipping) |
 | Pull request from outside the org (fork) | `action_required` check with an "Approve and run" button for users with write access |
 | Repository namespace missing | Failed check: "repository not onboarded" |
-| Newer commit on the same pull request or branch | Older runs of the same pipeline are cancelled (`cancelInProgress`, default on for pull requests and the merge queue) |
+| Newer commit on the same pull request or branch | Concurrency groups decide: `supersede` cancels older runs (the default for pull requests), `queue` runs one at a time, `latest` keeps only the newest waiting run |
+| `/command` comment on a pull request | Pipelines with a matching `on.comment.pattern` run (definitions from the default branch, code from the pull request); the commenter needs write access; 👀 when started, a reply with the result when done |
+| Cron schedule | Pipelines with `on.schedule` run at the default branch head, once per slot |
+| Long run | The installation token is refreshed while the run lives; a live task table and per-task checks (`taskChecks`) show progress |
+| Switchboard restarts mid-dispatch | Runs are created held (`PipelineRunPending`) and released only once their check and token exist; held runs are resumed |
 | Merge group destroyed | Its runs are cancelled |
 | "Re-run" in GitHub | The pipeline re-runs with the original context, stored in the check run itself, so it works after pruning |
 
@@ -104,7 +109,8 @@ flowchart LR
 | --- | --- | --- |
 | Check runs (Checks API) rather than commit statuses | Rich output, re-run buttons, requested actions, required-check integration | Commit statuses |
 | Params and a token workspace instead of templating inside PipelineRun files | Files stay valid Tekton; no templating collisions with scripts | Pipelines-as-Code style `{{ }}` substitution in YAML |
-| Switchboard names runs itself | The token Secret can be created before the run, then owned by it for garbage collection | `generateName` plus pending runs |
+| Runs are created held, then released | The check run and token Secret exist before anything executes; a restart mid-dispatch is resumed; concurrency queues need held runs anyway | Creating Secrets first, `generateName` |
+| Deterministic run names with attempts (`<repo>-<pipeline>-<sha7>-<n>`) | Redeliveries and duplicate events find the existing run; re-runs are new attempts | Random names (duplicates on redelivery) |
 | Skipped checks for path-filtered pipelines | Required checks can't deadlock on unrelated changes | Not reporting (blocks merges) |
 | Namespace per repository | Isolation of credentials and permissions | Shared CI namespace |
 | Unstructured objects + dynamic client | Avoids the heavy Tekton Go module; only a few status fields are read | Tekton typed clients |

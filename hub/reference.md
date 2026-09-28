@@ -168,8 +168,8 @@ DNS A records (TTL 300) in zone `kfirs-com` point each host at its gateway's IP.
 | Item | Value |
 | --- | --- |
 | GitHub App | `arikkfir-switchboard` (created by hand), installed on all `arikkfir-org` repositories |
-| App permissions | Checks: read/write; Contents: read; Metadata: read; Pull requests: read; Merge queues: read |
-| App events | `push`, `pull_request`, `check_suite`, `check_run`, `merge_group` |
+| App permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
+| App events | `push`, `pull_request`, `issue_comment`, `check_suite`, `check_run`, `merge_group` |
 | Webhook URL | `https://switchboard.kfirs.com/webhook` |
 | Kubernetes | namespace `switchboard`, Deployment/ServiceAccount/Service `switchboard` (Service port 80 → container 8080) |
 | Config | ConfigMap `switchboard` key `config.yaml` mounted at `/etc/switchboard/config.yaml` |
@@ -177,6 +177,7 @@ DNS A records (TTL 300) in zone `kfirs-com` point each host at its gateway's IP.
 | Endpoints | `POST /webhook`, `GET /healthz`, `GET /readyz`, `GET /metrics` (all on 8080) |
 | Check links | `https://tekton.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
 | Tenant namespaces | `ci-<repository>` (`.github` → `ci-github`); each has ServiceAccount `pipeline` and RoleBinding `switchboard` → ClusterRole `switchboard-tenant` |
+| Tenant permissions | `switchboard-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete) |
 
 ### Server configuration (`/etc/switchboard/config.yaml`)
 
@@ -192,12 +193,16 @@ namespaces:
   template: "ci-{{ .Repository.Name }}" # rendered, then sanitized to a DNS label
   overrides:
     arikkfir-org/.github: ci-github
+relay:                                  # verified push and pull_request deliveries are forwarded here
+  urls: [http://argocd-server.argocd.svc.cluster.local/api/webhook]
+retention:
+  freePVCsAfter: 1h                     # PVCs of finished runs are deleted after this; runs and pods stay
 ```
 
 ### Repository configuration (`.switchboard.yaml`)
 
 The only file Switchboard reads from a repository, always at the root. Switchboard knows nothing else about the
-repository.
+repository. It is parsed as YAML 1.2, so the `on` key needs no quoting.
 
 ```yaml
 apiVersion: switchboard.kfirs.com/v1
@@ -207,25 +212,50 @@ pipelines:
     on:
       pull_request:
         branches: [main]               # base-branch globs; omitted = all
-        types: [opened, synchronize, reopened]  # default
+        types: [opened, reopened, synchronize, ready_for_review]  # default
+        drafts: true                   # default; false skips draft pull requests
         paths: ["**"]                  # optional globs; no match = check reported as skipped
         pathsIgnore: []                # optional
-      merge_group: {}                  # merge queue; optional `branches` (base)
+      merge_group:                     # merge queue; optional base-branch globs
+        branches: [main]
       push:
         branches: [main]               # branch globs
         tags: ["v*"]                   # tag globs
         paths: []                      # optional
+      comment:                         # pull request comment command, e.g. "/deploy staging"
+        pattern: "^/deploy\\b"         # regexp on the comment's first line; commenter needs write access
+        branches: [main]               # optional pull request base-branch globs
+      schedule:                        # cron, 5 fields, UTC; runs at the default branch head
+        - cron: "0 3 * * *"
     params:                            # set/override PipelineRun spec.params; values are Go templates
       repo-url: "{{ .Repository.CloneURL }}"
       revision: "{{ .Revision }}"
-    githubToken:                       # optional short-lived installation token
+    githubToken:                       # optional installation token for this repository, refreshed while the run lives
       workspace: github-token          # bound as a Secret workspace (key: token)
+      permissions: {contents: read}    # default
     timeout: 1h                        # optional, sets spec.timeouts.pipeline
-    cancelInProgress: true             # optional; default true for pull_request/merge_group, false for push
+    concurrency:                       # optional; default for pull_request: group "pr-<number>", policy supersede
+      group: "publish"                 # Go template, scoped to the repository
+      policy: latest                   # supersede | queue | latest
+    taskChecks: false                  # optional: also report each pipeline task as "<name> / <task>"
 ```
 
-Template context: `.Event` (`push`, `pull_request`, `merge_group`), `.Action`, `.Repository` (`Owner`, `Name`,
-`FullName`, `CloneURL`, `HTMLURL`, `DefaultBranch`, `Private`), `.Revision` (SHA under test), `.Ref`, `.Branch`, `.Tag`,
-`.Sender`, `.Pipeline`, `.Push` (`Before`, `After`), `.PullRequest` (`Number`, `HeadRef`, `HeadSHA`, `BaseRef`,
-`BaseSHA`), `.MergeGroup` (`HeadRef`, `HeadSHA`, `BaseRef`, `BaseSHA`). Event-specific objects are nil for other
-events; referencing a missing value fails the check with the rendering error.
+| Concurrency policy | Behaviour |
+| --- | --- |
+| `supersede` | The newest commit wins: older live runs in the group are cancelled and their checks concluded `skipped` |
+| `queue` | One run at a time, oldest first |
+| `latest` | One run at a time; only the newest waiting run survives, older waiting runs are cancelled |
+
+Where definitions are read: pull requests, merge groups and pushes read `.switchboard.yaml` and the PipelineRun file
+at the commit under test; comment commands and schedules read them from the default branch (and comment commands still
+run against the pull request's head commit).
+
+Template context: `.Event` (`push`, `pull_request`, `merge_group`, `comment`, `schedule`), `.Action`, `.Repository`
+(`Owner`, `Name`, `FullName`, `CloneURL`, `HTMLURL`, `DefaultBranch`, `Private`), `.Revision` (SHA under test), `.Ref`,
+`.Branch`, `.Tag`, `.Sender`, `.Pipeline`, `.Push` (`Before`, `After`), `.PullRequest` (`Number`, `HeadRef`,
+`HeadSHA`, `BaseRef`, `BaseSHA`), `.MergeGroup` (`HeadRef`, `HeadSHA`, `BaseRef`, `BaseSHA`), `.Comment` (`ID`,
+`Author`, `Command`, `Arguments`), `.Schedule` (`Cron`, `Slot`). Event-specific objects are nil for other events;
+referencing a missing value fails the check with the rendering error.
+
+Reporting conventions: a pipeline or task result named `check-title` or `check-summary` replaces the check run's title
+or Markdown summary. Runs may mount no Secret other than the token Switchboard binds.

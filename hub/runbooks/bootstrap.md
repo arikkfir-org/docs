@@ -45,8 +45,8 @@ In `arikkfir-org` → Settings → Developer settings → GitHub Apps → New Gi
 | Name | `arikkfir-switchboard` |
 | Webhook URL | `https://switchboard.kfirs.com/webhook` |
 | Webhook secret | `openssl rand -hex 32` (keep it for step 5) |
-| Repository permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read; Merge queues: read |
-| Events | Push, Pull request, Check suite, Check run, Merge group |
+| Repository permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
+| Events | Push, Pull request, Issue comment, Check suite, Check run, Merge group |
 | Where can it be installed | Only on this account |
 
 Then: generate a private key (download the `.pem`), note the App ID, and install the App on all repositories of
