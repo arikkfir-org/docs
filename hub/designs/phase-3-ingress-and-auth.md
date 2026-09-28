@@ -89,7 +89,8 @@ Granting access means adding the user in Descope and their email to the allowlis
 
 Header safety: `strip-auth-headers` removes `X-Auth-Request-*` headers sent by clients before ForwardAuth runs, and
 ForwardAuth copies the verified values from oauth2-proxy's response. NetworkPolicies let protected backends accept
-traffic only from the `traefik` namespace, so the interceptor can't be bypassed from inside the cluster.
+traffic only from the `traefik` namespace (Argo CD's server also admits its own namespace and Switchboard's webhook
+relay), so the interceptor can't be bypassed from inside the cluster.
 
 ## Decisions
 
@@ -115,7 +116,9 @@ configured:
 - The default OIDC application's login page uses `hub-sign-in` (was `sign-up-or-in`).
 - User `arikkfir@gmail.com` exists.
 
-Still manual: create an access key (Access keys → create); store it as Secret Manager secret `oidc-client-secret`. To
+Still manual: create an access key (Access keys → create); store it as Secret Manager secret `oidc-client-secret`.
+Recommended: restrict the OIDC application's approved redirect URLs to `https://auth.kfirs.com/oauth2/callback` and
+`https://argocd.kfirs.com/auth/callback`. To
 admit someone else, create their user in Descope with their Google email as the login ID, and add the email to
 `hub-authorized-emails`.
 

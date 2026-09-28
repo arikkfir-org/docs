@@ -126,7 +126,10 @@ role grants; it exists for exceptional external automation. The pre-existing `gi
 
 ## Ingress
 
-Traefik runs once with two entry-point pairs, each exposed by its own L4 (passthrough network) load balancer:
+Traefik runs once with two entry-point pairs, each exposed by its own L4 (passthrough network) load balancer: a
+`LoadBalancer` Service with `loadBalancerClass: networking.gke.io/l4-regional-external` that binds the reserved IP by
+name (annotation `networking.gke.io/load-balancer-ip-addresses`), which needs GKE 1.33.1+ and the HTTP load-balancing
+add-on:
 
 | Gateway | Entry points (container → exposed) | Load balancer IP | Interceptor | Who may attach routes |
 | --- | --- | --- | --- | --- |
@@ -161,7 +164,9 @@ DNS A records (TTL 300) in zone `kfirs-com` point each host at its gateway's IP.
 - Grafana trusts `X-Auth-Request-Email` (auth proxy mode). Argo CD also logs users in through Descope (OIDC, same
   client) and grants `role:admin` to every authenticated user; Tekton Dashboard, NUI and the Traefik dashboard rely on
   the interceptor alone.
-- Protected backends accept traffic only from the `traefik` namespace (NetworkPolicy).
+- Protected backends accept traffic only from the `traefik` namespace (NetworkPolicy); Argo CD's server also admits
+  its own namespace and Switchboard, which relays GitHub webhooks to `/api/webhook`.
+- oauth2-proxy sets `emailDomains: []`: any domain rule would be OR-ed with the allowlist and bypass it.
 
 ## Switchboard
 
