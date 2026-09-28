@@ -43,7 +43,7 @@ In `arikkfir-org` → Settings → Developer settings → GitHub Apps → New Gi
 | Field | Value |
 | --- | --- |
 | Name | `octomatron` |
-| Webhook URL | `https://octomatron.kfirs.com/webhook` |
+| Webhook URL | `https://octomatron.dev.kfirs.com/github/hooks` |
 | Webhook secret | `openssl rand -hex 32` (keep it for step 5) |
 | Repository permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
 | Events | Push, Pull request, Issue comment, Check suite, Check run, Merge group |

@@ -136,8 +136,8 @@ add-on:
 | `traefik/protected` | `web` 8000→80 (redirect), `websecure` 8443→443 | `ingress-protected` | Entry-point middlewares `strip-auth-headers` + `oidc` on `websecure`, applied to every route | any namespace |
 | `traefik/public` | `public-web` 9080→80 (redirect), `public-websecure` 9443→443 | `ingress-public` | `strip-auth-headers` only | namespaces labelled `kfirs.com/public-ingress=true` |
 
-Every listener serves the wildcard certificate `*.kfirs.com` (cert-manager, Let's Encrypt, DNS-01 through Cloud DNS),
-stored in secret `traefik/wildcard-kfirs-com-tls`.
+Every listener serves the wildcard certificate for `*.kfirs.com` and `*.dev.kfirs.com` (cert-manager, Let's Encrypt,
+DNS-01 through Cloud DNS), stored in secret `traefik/wildcard-kfirs-com-tls`.
 
 | Host | Gateway | Backend |
 | --- | --- | --- |
@@ -147,7 +147,7 @@ stored in secret `traefik/wildcard-kfirs-com-tls`.
 | `traefik.kfirs.com` | protected | Traefik dashboard (`api@internal`, IngressRoute) |
 | `nui.kfirs.com` | protected | `nats/nui` |
 | `auth.kfirs.com` | public | `auth/oauth2-proxy:80`, path `/oauth2` |
-| `octomatron.kfirs.com` | public | `octomatron/octomatron:80`, path `/webhook` |
+| `octomatron.dev.kfirs.com` | public | `octomatron/octomatron:80`, path `/github/hooks` |
 
 DNS A records (TTL 300) in zone `kfirs-com` point each host at its gateway's IP.
 
@@ -175,11 +175,11 @@ DNS A records (TTL 300) in zone `kfirs-com` point each host at its gateway's IP.
 | GitHub App | `octomatron` (created by hand), installed on all `arikkfir-org` repositories |
 | App permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
 | App events | `push`, `pull_request`, `issue_comment`, `check_suite`, `check_run`, `merge_group` |
-| Webhook URL | `https://octomatron.kfirs.com/webhook` |
+| Webhook URL | `https://octomatron.dev.kfirs.com/github/hooks` |
 | Kubernetes | namespace `octomatron`, Deployment/ServiceAccount/Service `octomatron` (Service port 80 → container 8080) |
 | Config | ConfigMap `octomatron` key `config.yaml` mounted at `/etc/octomatron/config.yaml` |
 | GitHub secret | Secret `octomatron-github` (keys `app-id`, `private-key`, `webhook-secret`) mounted at `/etc/octomatron/github/` |
-| Endpoints | `POST /webhook`, `GET /healthz`, `GET /readyz`, `GET /metrics` (all on 8080) |
+| Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz`, `GET /metrics` (all on 8080) |
 | Check links | `https://tekton.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
 | Tenant namespaces | `ci-<repository>` (`.github` → `ci-github`); each has ServiceAccount `pipeline` and RoleBinding `octomatron` → ClusterRole `octomatron-tenant` |
 | Tenant permissions | `octomatron-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete) |

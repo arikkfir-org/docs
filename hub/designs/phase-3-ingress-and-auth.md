@@ -9,7 +9,7 @@ unauthenticated by forgetting a setting. Hosts, IPs and names: [reference](../re
 ```mermaid
 flowchart LR
   U((Browser)) -- "argocd, tekton, grafana,<br/>traefik, nui .kfirs.com" --> P[L4 LB<br/>ingress-protected]
-  G((GitHub)) -- octomatron.kfirs.com/webhook --> Q[L4 LB<br/>ingress-public]
+  G((GitHub)) -- octomatron.dev.kfirs.com/github/hooks --> Q[L4 LB<br/>ingress-public]
   U -- auth.kfirs.com/oauth2 --> Q
   subgraph traefik[Traefik]
     WS[entry point websecure<br/>middlewares: strip-auth-headers, oidc]
@@ -37,8 +37,8 @@ authenticated, including routes added later, and there is no per-route switch to
 deliberate acts in `delivery`: labelling the namespace and attaching to the `public` gateway. Only `auth` (the login
 callback) and `octomatron` (HMAC-verified webhooks) are public.
 
-Both gateways terminate TLS with a wildcard certificate for `*.kfirs.com` (cert-manager, Let's Encrypt, DNS-01), and
-redirect HTTP to HTTPS.
+Both gateways terminate TLS with a wildcard certificate for `*.kfirs.com` and `*.dev.kfirs.com` (cert-manager, Let's
+Encrypt, DNS-01), and redirect HTTP to HTTPS.
 
 ## Login
 
