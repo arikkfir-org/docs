@@ -248,8 +248,12 @@ pipelines:
 | Concurrency policy | Behaviour |
 | --- | --- |
 | `supersede` | The newest commit wins: older live runs in the group are cancelled and their checks concluded `skipped` |
-| `queue` | One run at a time, oldest first |
+| `queue` (default) | One run at a time, oldest first |
 | `latest` | One run at a time; only the newest waiting run survives, older waiting runs are cancelled |
+
+Groups are scoped to the repository: pipelines naming the same group share it (include `{{ .Pipeline }}` to keep them
+apart). Without `concurrency`, pull request runs of the same pipeline and pull request supersede each other; other runs
+are unconstrained.
 
 Where definitions are read: pull requests, merge groups and pushes read `.switchboard.yaml` and the PipelineRun file
 at the commit under test; comment commands and schedules read them from the default branch (and comment commands still
