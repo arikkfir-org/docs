@@ -11,7 +11,7 @@ repository's CI configuration must agree with this page. Change it here first, t
 | GitHub organization | `arikkfir-org` |
 | GCP project | `arikkfir` (number `8909046976`, organization `468825984716`) |
 | Region / cluster zone | `me-west1` / `me-west1-a` |
-| DNS domain | `kfirs.com` (Cloud DNS zone `kfirs-com`). `kfirfamily.com` (zone `kfirfamily-com`) is imported but unused. |
+| DNS domain | `kfirs.com` (Cloud DNS zone `kfirs-com`): hub tools under `dev.kfirs.com`, sign-in at `auth.kfirs.com`. `kfirfamily.com` (zone `kfirfamily-com`) is imported but unused. |
 | Identity provider | Descope company `KFIRS`, project `development` (`P3JyPV2qsSrMLUpVPTGcBNRHlSkv`), issuer `https://api.descope.com/P3JyPV2qsSrMLUpVPTGcBNRHlSkv` |
 | Label/annotation prefix | `kfirs.com/` for hub-wide labels, `octomatron.kfirs.com/` for Octomatron bookkeeping |
 | Terraform state | GCS bucket `arikkfir-tfstate` (created once by hand, versioned), prefixes `github`, `gcp`, `argocd` |
@@ -141,11 +141,11 @@ DNS-01 through Cloud DNS), stored in secret `traefik/wildcard-kfirs-com-tls`.
 
 | Host | Gateway | Backend |
 | --- | --- | --- |
-| `argocd.kfirs.com` | protected | `argocd/argocd-server:80` |
-| `tekton.kfirs.com` | protected | `tekton-pipelines/tekton-dashboard:9097` |
-| `grafana.kfirs.com` | protected | `grafana/grafana:80` |
-| `traefik.kfirs.com` | protected | Traefik dashboard (`api@internal`, IngressRoute) |
-| `nui.kfirs.com` | protected | `nats/nui` |
+| `argocd.dev.kfirs.com` | protected | `argocd/argocd-server:80` |
+| `tekton.dev.kfirs.com` | protected | `tekton-pipelines/tekton-dashboard:9097` |
+| `grafana.dev.kfirs.com` | protected | `grafana/grafana:80` |
+| `traefik.dev.kfirs.com` | protected | Traefik dashboard (`api@internal`, IngressRoute) |
+| `nui.dev.kfirs.com` | protected | `nats/nui` |
 | `auth.kfirs.com` | public | `auth/oauth2-proxy:80`, path `/oauth2` |
 | `octomatron.dev.kfirs.com` | public | `octomatron/octomatron:80`, path `/github/hooks` |
 
@@ -180,7 +180,7 @@ DNS A records (TTL 300) in zone `kfirs-com` point each host at its gateway's IP.
 | Config | ConfigMap `octomatron` key `config.yaml` mounted at `/etc/octomatron/config.yaml` |
 | GitHub secret | Secret `octomatron-github` (keys `app-id`, `private-key`, `webhook-secret`) mounted at `/etc/octomatron/github/` |
 | Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz`, `GET /metrics` (all on 8080) |
-| Check links | `https://tekton.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
+| Check links | `https://tekton.dev.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
 | Tenant namespaces | `ci-<repository>` (`.github` → `ci-github`); each has ServiceAccount `pipeline` and RoleBinding `octomatron` → ClusterRole `octomatron-tenant` |
 | Tenant permissions | `octomatron-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete) |
 
@@ -193,7 +193,7 @@ github:
   webhookSecretFile: /etc/octomatron/github/webhook-secret
   allowedOwners: [arikkfir-org]        # installations on other owners are ignored
 tekton:
-  dashboardURL: https://tekton.kfirs.com
+  dashboardURL: https://tekton.dev.kfirs.com
 namespaces:
   template: "ci-{{ .Repository.Name }}" # rendered, then sanitized to a DNS label
   overrides:

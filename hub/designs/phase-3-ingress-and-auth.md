@@ -8,7 +8,7 @@ unauthenticated by forgetting a setting. Hosts, IPs and names: [reference](../re
 
 ```mermaid
 flowchart LR
-  U((Browser)) -- "argocd, tekton, grafana,<br/>traefik, nui .kfirs.com" --> P[L4 LB<br/>ingress-protected]
+  U((Browser)) -- "argocd, tekton, grafana,<br/>traefik, nui .dev.kfirs.com" --> P[L4 LB<br/>ingress-protected]
   G((GitHub)) -- octomatron.dev.kfirs.com/github/hooks --> Q[L4 LB<br/>ingress-public]
   U -- auth.kfirs.com/oauth2 --> Q
   subgraph traefik[Traefik]
@@ -50,7 +50,7 @@ sequenceDiagram
   participant O as oauth2-proxy
   participant D as Descope
   participant G as Google
-  B->>T: GET https://grafana.kfirs.com/
+  B->>T: GET https://grafana.dev.kfirs.com/
   T->>O: ForwardAuth (X-Forwarded-Host, X-Forwarded-Uri)
   O-->>T: 302 to Descope authorize
   T-->>B: 302
@@ -118,7 +118,7 @@ configured:
 
 Still manual: create an access key (Access keys → create); store it as Secret Manager secret `oidc-client-secret`.
 Recommended: restrict the OIDC application's approved redirect URLs to `https://auth.kfirs.com/oauth2/callback` and
-`https://argocd.kfirs.com/auth/callback`. To
+`https://argocd.dev.kfirs.com/auth/callback`. To
 admit someone else, create their user in Descope with their Google email as the login ID, and add the email to
 `hub-authorized-emails`.
 

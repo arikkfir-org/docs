@@ -109,8 +109,9 @@ kubectl -n argocd get applications -w     # everything converges to Synced / Hea
 - `kubectl -n traefik get certificate wildcard-kfirs-com` is `Ready`.
 - `kubectl -n external-secrets get clustersecretstore gcp-secret-manager` is `Valid`, and every `ExternalSecret` is
   `SecretSynced`.
-- `https://argocd.kfirs.com`, `https://grafana.kfirs.com`, `https://tekton.kfirs.com`, `https://nui.kfirs.com` and
-  `https://traefik.kfirs.com` redirect to Descope, accept an allowlisted Google account, and reject any other.
+- `https://argocd.dev.kfirs.com`, `https://grafana.dev.kfirs.com`, `https://tekton.dev.kfirs.com`,
+  `https://nui.dev.kfirs.com` and `https://traefik.dev.kfirs.com` redirect to Descope, accept an allowlisted Google
+  account, and reject any other.
 
 ## 9. Verify CI
 
