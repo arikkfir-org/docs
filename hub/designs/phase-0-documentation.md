@@ -18,7 +18,7 @@ flowchart LR
   end
   H -- push to main --> repo
   A -- push to main --> repo
-  repo -- push event --> SB[Octomatron]
+  repo -- push event --> SB[Octomaton]
   SB --> TK[Tekton: render changed Markdown,<br/>rsync to bucket]
   TK --> GCS[(gs://arikkfir-docs<br/>private)]
   GCS -- Cloud Storage FUSE --> WEB[docs.dev.kfirs.com<br/>nginx, behind sign-in]

@@ -8,6 +8,7 @@ meaningful unit of work lands here as a visual design document.
 - [Hub overview](hub/overview.html): the whole platform on one page
 - [Hub reference](hub/reference.md): every name, address, identity and permission (the contract between repositories)
 - [Bootstrap runbook](hub/runbooks/bootstrap.md): bringing the hub up from nothing
+- [Octomaton rename runbook](hub/runbooks/octomaton-rename.md): the one-off move from Octomatron to Octomaton
 - [Contributing](CONTRIBUTING.md): commits, pull requests, Linear, design docs
 
 Designs:
@@ -16,7 +17,8 @@ Designs:
 | --- | --- |
 | 0 | [Documentation](hub/designs/phase-0-documentation.md) |
 | 1 | [Foundations: Terraform, GKE, Argo CD](hub/designs/phase-1-foundations.md) |
-| 2 | [Octomatron](hub/designs/phase-2-octomatron.md) |
+| 2 | [Octomaton](hub/designs/phase-2-octomaton.md) |
+| 2 | [octomaton.dev: domain, webhook and Go module](hub/designs/octomaton-dev.md) |
 | 3 | [Ingress and authentication](hub/designs/phase-3-ingress-and-auth.md) |
 | 4 | [Docs site](hub/designs/phase-4-docs-site.md) |
 | 5 | [Claude Code tooling](hub/designs/phase-5-tooling.md) |
@@ -33,6 +35,7 @@ Diagrams in Markdown are Mermaid code blocks; GitHub and the site both render th
 
 ## Publishing
 
-Every push to `main` publishes the repository to `https://docs.dev.kfirs.com/<path>` (behind the hub's sign-in), so
-this page is at [README.html](https://docs.dev.kfirs.com/README.html). No pull request is needed: push to `main`.
+Every change to `main` (a merged pull request, or an automated push) publishes the repository to
+`https://docs.dev.kfirs.com/<path>` (behind the hub's sign-in), so this page is at
+[README.html](https://docs.dev.kfirs.com/README.html).
 There are no menus or index pages; link to pages directly. How it works: [phase 4](hub/designs/phase-4-docs-site.md).

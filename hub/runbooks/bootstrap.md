@@ -1,7 +1,7 @@
 # Bootstrap runbook
 
 Bringing the hub up from nothing, in order. Names and values: [reference](../reference.md). Designs:
-[phase 1](../designs/phase-1-foundations.md), [phase 2](../designs/phase-2-octomatron.md),
+[phase 1](../designs/phase-1-foundations.md), [phase 2](../designs/phase-2-octomaton.md),
 [phase 3](../designs/phase-3-ingress-and-auth.md).
 
 ```mermaid
@@ -12,7 +12,7 @@ flowchart TD
   APP --> GCP[4. terraform/gcp]
   DS --> GCP
   GCP --> SEC[5. Secret values]
-  SEC --> IMG[6. First Octomatron image]
+  SEC --> IMG[6. First Octomaton image]
   IMG --> ACD[7. terraform/argocd]
   ACD --> VER[8. Verify platform and login]
   VER --> CI[9. Verify CI checks]
@@ -44,8 +44,9 @@ In `arikkfir-org` → Settings → Developer settings → GitHub Apps → New Gi
 
 | Field | Value |
 | --- | --- |
-| Name | `octomatron` |
-| Webhook URL | `https://octomatron.dev.kfirs.com/github/hooks` |
+| Name | `octomaton-dev` (`octomaton` is taken by a GitHub user) |
+| Homepage URL | `https://octomaton.dev` |
+| Webhook URL | `https://octomaton.dev/github/hooks` |
 | Webhook secret | `openssl rand -hex 32` (keep it for step 5) |
 | Repository permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
 | Events | Push, Pull request, Issue comment, Check suite, Check run, Merge group |
@@ -70,30 +71,35 @@ terraform -chdir=terraform/gcp plan    # the two DNS zones must import without c
 terraform -chdir=terraform/gcp apply
 ```
 
-This creates the network, static IPs, the cluster, IAM, secret containers, Artifact Registry, buckets and the DNS
-records for every hub host.
+This creates the network, static IPs, the cluster, IAM, secret containers, Artifact Registry, buckets, the
+`octomaton-dev` DNS zone and the DNS records for every hub host.
+
+Then delegate `octomaton.dev` to its new zone: at the domain's registrar, set the name servers to the four that
+`terraform -chdir=terraform/gcp output octomaton_dev_name_servers` prints. Turn DNSSEC off at the registrar first if
+it's on. `dig +short NS octomaton.dev` must list them before step 7, because the Gateways wait for the
+`octomaton.dev` certificate.
 
 ## 5. Secret values
 
 ```bash
 add() { gcloud secrets versions add "$1" --project=arikkfir --data-file=-; }
-printf '%s' "<app id>"                          | add octomatron-github-app-id
-add octomatron-github-private-key               < octomatron.YYYY-MM-DD.private-key.pem
-printf '%s' "<webhook secret>"                  | add octomatron-github-webhook-secret
+printf '%s' "<app id>"                          | add octomaton-github-app-id
+add octomaton-github-private-key               < octomaton-dev.YYYY-MM-DD.private-key.pem
+printf '%s' "<webhook secret>"                  | add octomaton-github-webhook-secret
 printf '%s' "<descope access key>"              | add oidc-client-secret
 openssl rand -base64 32 | tr -d '\n' | tr -- '+/' '-_' | add oauth2-proxy-cookie-secret
 printf '%s\n' "you@example.com" "friend@example.com" | add hub-authorized-emails
 ```
 
-## 6. First Octomatron image
+## 6. First Octomaton image
 
-Octomatron builds its own releases, but the first one has to come from a workstation:
+Octomaton builds its own releases, but the first one has to come from a workstation:
 
 ```bash
 gcloud auth configure-docker me-west1-docker.pkg.dev
-git clone https://github.com/arikkfir-org/octomatron && cd octomatron
+git clone https://github.com/arikkfir-org/octomaton && cd octomaton
 git tag v0.1.0 && git push origin v0.1.0
-KO_DOCKER_REPO=me-west1-docker.pkg.dev/arikkfir/images/octomatron ko build --bare --tags=v0.1.0 ./cmd/octomatron
+KO_DOCKER_REPO=me-west1-docker.pkg.dev/arikkfir/images/octomaton ko build --bare --tags=v0.1.0 ./cmd/octomaton
 ```
 
 ## 7. Argo CD
@@ -108,7 +114,9 @@ kubectl -n argocd get applications -w     # everything converges to Synced / Hea
 
 ## 8. Verify the platform and login
 
-- `kubectl -n traefik get certificate wildcard-kfirs-com` is `Ready`.
+- `kubectl -n traefik get certificate wildcard-kfirs-com octomaton-dev` shows both `Ready`.
+- `curl -s 'https://octomaton.dev/?go-get=1'` returns the `go-import` tag, and `https://octomaton.dev` redirects to
+  the repository.
 - `kubectl -n external-secrets get clustersecretstore gcp-secret-manager` is `Valid`, and every `ExternalSecret` is
   `SecretSynced`.
 - `https://argocd.dev.kfirs.com`, `https://grafana.dev.kfirs.com`, `https://tekton.dev.kfirs.com`,
@@ -117,11 +125,11 @@ kubectl -n argocd get applications -w     # everything converges to Synced / Hea
 
 ## 9. Verify CI
 
-Open a pull request in any hub repository; a `ci` check run from `octomatron` appears and links to the
+Open a pull request in any hub repository; a `ci` check run from `octomaton-dev` appears and links to the
 Tekton Dashboard.
 
-Pushes made before Octomatron ran were never delivered, so nothing is published yet. Push a commit to `docs/main` and
-to `tooling/main` (directly: the rulesets of step 10 are not applied yet), then check
+Pushes made before Octomaton ran were never delivered, so nothing is published yet. Merge a pull request (any change)
+into `docs` and into `tooling` to trigger the first publish, then check
 `https://docs.dev.kfirs.com/README.html` (after signing in) and `https://storage.googleapis.com/arikkfir-claude/setup.sh`.
 
 ## 10. GitHub repositories and rulesets
@@ -131,7 +139,7 @@ Only once `ci` checks work, since the rulesets require them:
 ```bash
 cd infra
 terraform -chdir=terraform/github init
-terraform -chdir=terraform/github apply -var octomatron_app_id=<app id>
+terraform -chdir=terraform/github apply -var octomaton_app_id=<app id>
 ```
 
 ## 11. Claude Code environment

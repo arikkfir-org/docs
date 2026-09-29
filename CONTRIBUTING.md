@@ -10,7 +10,7 @@ flowchart LR
   L[Linear issue<br/>DEV-123] --> B[Branch<br/>dev-123-short-slug]
   B --> D[Design doc<br/>in docs, if meaningful]
   B --> P[Pull request<br/>Conventional title]
-  P --> C[Octomatron ci check]
+  P --> C[Octomaton ci check]
   P --> R[1 approval]
   C --> Q[Merge queue<br/>squash]
   R --> Q
@@ -25,7 +25,8 @@ flowchart LR
 5. **Merge through the merge queue**. Default branches accept squash merges only, after one approval, resolved
    conversations and a green `ci` check. Nobody pushes directly to a protected default branch.
 
-The `docs` repository is the exception: push directly to `main`.
+This holds for `docs` too. Direct pushes to its `main` are reserved for automation: publishing the site, and syncing
+other repositories' branch and pull-request docs into a directory per repository and branch.
 
 ## Linear
 
@@ -68,7 +69,7 @@ The `docs` repository is the exception: push directly to `main`.
 ## Pull requests
 
 **Title**: the squash commit's subject, so it follows the commit rules above, e.g.
-`feat(octomatron): report skipped pipelines as skipped checks`.
+`feat(octomaton): report skipped pipelines as skipped checks`.
 
 **Description**: the squash commit's body. Use this structure:
 
@@ -99,8 +100,8 @@ Closes DEV-123
 
 ## Continuous integration
 
-- CI is [Octomatron](https://github.com/arikkfir-org/octomatron) running Tekton pipelines declared in each
-  repository's root `.octomatron.yaml`. There are no GitHub Actions workflows.
+- CI is [Octomaton](https://github.com/arikkfir-org/octomaton) running Tekton pipelines declared in each
+  repository's root `.octomaton.yaml`. There are no GitHub Actions workflows.
 - Protected repositories require a check named `ci` on pull requests and in the merge queue. Pipelines that run on
   both must list `pull_request` and `merge_group` in their triggers.
 - A red check is fixed, never bypassed: no skipped tests, no disabled checks, no empty commits to re-trigger. A flaky
@@ -113,7 +114,7 @@ Every meaningful unit of work (a new component, a change of architecture, a new 
 later ask "why is it like this?" about) gets a design document in `arikkfir-org/docs`, written before or alongside the
 change and updated when the implementation diverges.
 
-- **Where**: `<area>/designs/<slug>.md` (e.g. `hub/designs/phase-2-octomatron.md`). Rich visual pages may be HTML.
+- **Where**: `<area>/designs/<slug>.md` (e.g. `hub/designs/phase-2-octomaton.md`). Rich visual pages may be HTML.
 - **Visual first**: at least one diagram (Mermaid in Markdown, or SVG/HTML) showing the moving parts.
 - **Contents**: context and goal; the design; decisions with their rationale and rejected alternatives; security and
   failure modes; rollout and manual steps; open questions.
@@ -134,6 +135,7 @@ change and updated when the implementation diverges.
 - **Least privilege**: grant the narrowest role on the narrowest resource to the narrowest identity (see
   [hub/reference.md](hub/reference.md)).
 - **Names**: lower-case, hyphenated (`ingress-public`, `ci-docs`); labels and annotations use the `kfirs.com/` prefix.
+  A product with a domain of its own uses that domain instead: Octomaton writes `octomaton.dev/` labels.
 
 ## Releases
 
