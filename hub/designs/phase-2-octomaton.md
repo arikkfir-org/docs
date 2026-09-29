@@ -110,10 +110,10 @@ the packages under `internal/`. Every replica serves webhooks; only the leader w
 
 ```mermaid
 flowchart TD
-  SIG["signals<br/>SIGTERM, SIGINT"] --> TEL["telemetry<br/>OCTOMATON_LOG_*, OTEL_*"]
+  SIG["signals<br/>SIGTERM, SIGINT"] --> TEL["telemetry<br/>Google Cloud on GKE, local elsewhere"]
   TEL --> CFG["configuration<br/>OCTOMATON_* variables"]
   CFG --> CLI["clients<br/>Kubernetes, GitHub App"]
-  CLI --> HTTP["HTTP server<br/>/github/hooks, /healthz, /readyz, /metrics"]
+  CLI --> HTTP["HTTP server<br/>/github/hooks, /healthz, /readyz"]
   CLI --> ELEC["Lease election"]
   HTTP --> POOL["webhook workers"]
   ELEC -->|leader| JOBS["reporter, scheduler,<br/>token refresh, PVC retention"]
@@ -125,10 +125,19 @@ flowchart TD
 | Queued deliveries are processed and relayed | 15 s |
 | Telemetry exporters flush | 5 s |
 
-Logs are JSON on stdout with the fields Cloud Logging reads (`severity`, `message`, `timestamp`,
-`logging.googleapis.com/sourceLocation`), client-go's included. Metrics are recorded with OpenTelemetry and scraped
-from `/metrics`. Traces and a copy of the logs leave the pod only when `OTEL_TRACES_EXPORTER` or `OTEL_LOGS_EXPORTER`
-names an exporter. Variables: [reference](../reference.md#server-configuration).
+Telemetry follows where the process runs. On GKE (a pod with a GCP metadata server), everything goes to Google Cloud,
+linked by trace ID; anywhere else, logs are text and nothing is exported. Variables and grants:
+[reference](../reference.md#server-configuration).
+
+```mermaid
+flowchart LR
+  OCT["Octomaton pod<br/>KSA octomaton/octomaton"] -->|"stdout, JSON"| AGENT["GKE logging agent"]
+  AGENT --> CL["Cloud Logging"]
+  OCT -->|"OTLP over gRPC<br/>Workload Identity"| TAPI["telemetry.googleapis.com"]
+  TAPI --> CM["Cloud Monitoring<br/>octomaton.* metrics"]
+  TAPI --> CT["Cloud Trace<br/>webhook spans"]
+  CL -.->|"logging.googleapis.com/trace"| CT
+```
 
 ## Decisions
 
@@ -143,7 +152,7 @@ names an exporter. Variables: [reference](../reference.md#server-configuration).
 | Unstructured objects + dynamic client | Avoids the heavy Tekton Go module; only a few status fields are read | Tekton typed clients |
 | Leader election for the reconciler only | Any replica can take webhooks; one writer updates check runs | Single replica without election |
 | Configuration from environment variables only (`envconfig`) | One mechanism for settings and secrets: the ConfigMap and the Secret map straight to variables, nothing is mounted, and every problem is reported at startup | A YAML file with mounted secret files; flags |
-| Metrics through OpenTelemetry, scraped by Prometheus; traces and logs exported only through the standard `OTEL_*` variables | Vendor-neutral instrumentation, and nothing leaves the pod unless asked | The Prometheus client alone; pushing to Cloud Monitoring |
+| Telemetry to Google Cloud on GKE: logs through stdout to Cloud Logging, metrics and traces over OTLP to the Telemetry API; nothing exported elsewhere | One place for logs, metrics and traces, linked by trace ID. OTLP is Google's recommended path (its own Cloud Monitoring and Cloud Trace exporters are deprecated) and needs no collector | A Prometheus endpoint; an OpenTelemetry Collector; Google's deprecated exporters |
 | The linter is its own command, `octomaton-lint` | The server takes no arguments; the linter is what people install | Subcommands of one binary |
 
 ## Security

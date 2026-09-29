@@ -31,7 +31,9 @@ Every repository gets the same `default-branch` ruleset: no deletion, no force-p
 (stale approvals dismissed, last push approved, conversations resolved), merge commits only, through the merge queue.
 Organization admins may bypass it (`bypass_mode = always`). Required checks are pinned to the Octomaton GitHub App
 (`integration_id`). In `docs`, direct pushes to `main` are reserved for automation: publishing the site and syncing
-other repositories' branch and pull-request docs into a directory per repository and branch.
+other repositories' branch and pull-request docs into a directory per repository and branch. Every repository also has
+Dependabot alerts and Dependabot security updates on; version updates would need a `.github/dependabot.yml` in the
+repository.
 
 ## Network
 
@@ -95,6 +97,7 @@ Kubernetes workloads use GKE Workload Identity Federation with direct principal 
 | `external-secrets/external-secrets` | `roles/secretmanager.secretAccessor` | each secret above |
 | `cert-manager/cert-manager` | `roles/dns.admin` | managed zones `kfirs-com` and `octomaton-dev` |
 | `grafana/grafana` | `roles/monitoring.viewer` | project |
+| `octomaton/octomaton` | `roles/telemetry.metricsWriter`, `roles/telemetry.tracesWriter`, `roles/serviceusage.serviceUsageConsumer` | project |
 | `docs/docs` | `roles/storage.objectViewer` | bucket `arikkfir-docs` |
 | `ci-docs/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
 | `ci-tooling/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-claude` |
@@ -194,9 +197,10 @@ of zone `octomaton-dev` for `octomaton.dev`.
 | Commands | `octomaton`, the server (no arguments); `octomaton-lint [-render] PATH...` validates `.octomaton.yaml` (`go install octomaton.dev/cmd/octomaton-lint@latest`; `-version`) |
 | Go import page | `https://octomaton.dev/<path>?go-get=1` returns `<meta name="go-import" content="octomaton.dev git https://github.com/arikkfir-org/octomaton">`; any other request is redirected (302) to the repository |
 | Kubernetes | namespace `octomaton`, Deployment/ServiceAccount/Service `octomaton` (Service port 80 → container 8080); Deployment/Service/ConfigMap `go-import` for the import page (Service port 80 → container 8080) |
-| Config | Environment variables only ([server configuration](#server-configuration)): ConfigMap `octomaton` through `envFrom`; `OCTOMATON_POD_NAME` and `OCTOMATON_POD_NAMESPACE` from the downward API; `enableServiceLinks: false` |
+| Config | Environment variables only ([server configuration](#server-configuration)): ConfigMap `octomaton` through `envFrom`; `OCTOMATON_POD_NAME` and `OCTOMATON_POD_NAMESPACE` from the downward API; `OTEL_RESOURCE_ATTRIBUTES` with the pod, namespace and container names; `enableServiceLinks: false` |
 | GitHub secret | Secret `octomaton-github`: keys `app-id`, `private-key`, `webhook-secret` as `OCTOMATON_GITHUB_APP_ID`, `OCTOMATON_GITHUB_PRIVATE_KEY`, `OCTOMATON_GITHUB_WEBHOOK_SECRET` |
-| Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz`, `GET /metrics` (all on 8080) |
+| Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz` (all on 8080) |
+| Telemetry | On GKE: JSON logs on stdout to Cloud Logging; metrics to Cloud Monitoring and traces to Cloud Trace through the Telemetry API (`telemetry.googleapis.com`), as `octomaton/octomaton`. Elsewhere: text logs, nothing exported |
 | Check links | `https://tekton.dev.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
 | Tenant namespaces | `ci-<repository>` (`.github` → `ci-github`); each has ServiceAccount `pipeline` and RoleBinding `octomaton` → ClusterRole `octomaton-tenant` |
 | Tenant permissions | `octomaton-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete) |
@@ -216,13 +220,11 @@ The server takes no arguments: environment variables configure it, and it exits 
 | `OCTOMATON_NAMESPACE_OVERRIDES` | none | `owner/name:namespace` pairs, comma-separated; they win over the template |
 | `OCTOMATON_RELAY_URLS` | none | URLs that receive verified `push` and `pull_request` deliveries, comma-separated |
 | `OCTOMATON_RETENTION_FREE_PVCS_AFTER` | `1h` | delay after which the PVCs of finished runs are deleted; runs and pods stay |
-| `OCTOMATON_HTTP_ADDRESS` | `:8080` | address of `/github/hooks`, `/healthz`, `/readyz` and `/metrics` |
+| `OCTOMATON_HTTP_ADDRESS` | `:8080` | address of `/github/hooks`, `/healthz` and `/readyz` |
 | `OCTOMATON_WEBHOOK_WORKERS`, `OCTOMATON_WEBHOOK_QUEUE_SIZE` | `8`, `256` | webhook worker pool |
 | `OCTOMATON_POD_NAME`, `OCTOMATON_POD_NAMESPACE` | host name, service account namespace | holder identity and namespace of the Lease `octomaton` |
 | `OCTOMATON_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
-| `OCTOMATON_LOG_FORMAT` | `json` | `json` (the fields Cloud Logging reads) or `text`, on stdout |
-| `OTEL_TRACES_EXPORTER`, `OTEL_LOGS_EXPORTER` | none | `otlp` (with the `OTEL_EXPORTER_OTLP_*` variables) or `console` to export traces and logs |
-| `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` | `octomaton` | the resource of exported telemetry, e.g. `k8s.pod.name=…` |
+| `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` | `octomaton` | added to the resource of exported metrics and traces, e.g. `k8s.pod.name=…` |
 | `KUBECONFIG` | in-cluster config | used when not running in a cluster |
 
 - `OCTOMATON_NAMESPACE_TEMPLATE` is rendered over `.Repository`, then sanitized: lowercased, leading dots stripped,
@@ -231,6 +233,13 @@ The server takes no arguments: environment variables configure it, and it exits 
   onboarded".
 - `OCTOMATON_RELAY_URLS` receive the original body and GitHub headers (signatures included), asynchronously, with a
   10 s timeout.
+
+Telemetry follows where the server runs. On GKE (a Kubernetes pod with a GCP metadata server), logs are JSON on stdout
+with the fields Cloud Logging reads, including the links to traces, and metrics and traces go to Cloud Monitoring and
+Cloud Trace through the Telemetry API (`telemetry.googleapis.com`). They are sent as the pod's Kubernetes
+ServiceAccount, which needs `roles/telemetry.metricsWriter`, `roles/telemetry.tracesWriter` and
+`roles/serviceusage.serviceUsageConsumer` (the project is the quota project). Anywhere else, logs are text and nothing
+is exported.
 
 The hub's ConfigMap `octomaton` sets:
 

@@ -20,7 +20,7 @@ step 2 lands, the [reference](../reference.md) and the [bootstrap runbook](boots
 | Secret Manager | `octomatron-github-{app-id,private-key,webhook-secret}` | `octomaton-github-{app-id,private-key,webhook-secret}` |
 | IAM | `ci-octomatron/pipeline` writes to `images` | `ci-octomaton/pipeline` |
 | Terraform variable | `octomatron_app_id` | `octomaton_app_id` |
-| Metrics, configuration | `octomatron_*`; `/etc/octomatron/config.yaml` and mounted secret files | `octomaton_*`; `OCTOMATON_*` variables only, nothing mounted |
+| Telemetry, configuration | Prometheus metrics `octomatron_*`; `/etc/octomatron/config.yaml` and mounted secret files | Metrics `octomaton.*` in Cloud Monitoring and traces in Cloud Trace; `OCTOMATON_*` variables only, nothing mounted |
 | DNS | record `octomatron.dev.kfirs.com` | zone `octomaton-dev` for `octomaton.dev`, apex A record → `ingress-public` |
 | TLS (new) | | certificate `octomaton-dev`, listener `octomaton-dev` on the public gateway |
 | Import page (new) | | `go-import` (nginx) in namespace `octomaton`: the `go-import` tag for `?go-get=1`, a redirect to the repository otherwise |
@@ -49,8 +49,8 @@ flowchart TD
 | `docs` | #1 (merged) | Reference, bootstrap runbook, overview, contributing guide, `.octomaton.yaml`; `phase-2-octomatron.md` becomes `phase-2-octomaton.md`; the [octomaton.dev design](../designs/octomaton-dev.md); pull requests for `docs` too |
 | `octomatron` | #1 (open) | Module `octomaton.dev` and every import; `cmd/octomaton` and `cmd/octomaton-lint`; every name above; `.octomaton.yaml`; configuration from `OCTOMATON_*` variables and telemetry through OpenTelemetry; README with the `go install` line. `octomaton-lint -version` falls back to the module version, so `go install` builds report their tag |
 | `delivery` | #1 (open) | Rename the app, namespace, CI tenant, secrets and image; configure Octomaton with environment variables. `octomaton.dev` route: `/github/hooks` to Octomaton, the rest to the new `go-import` nginx. `octomaton.dev` certificate and public-gateway listener; a DNS-01 solver for zone `octomaton-dev` in both ClusterIssuers |
-| `infra` | new: `terraform/github` | Repository key with `moved` blocks; variable `octomaton_app_id`; `.octomaton.yaml`; README |
-| `infra` | new: `terraform/gcp` | Secrets and IAM renamed; record `octomatron.dev.kfirs.com` dropped; zone `octomaton-dev` with its apex record and cert-manager's grant; a name-server output |
+| `infra` | #5: `terraform/github` | Repository key with `moved` blocks; variable `octomaton_app_id`; `.octomaton.yaml`; README; Dependabot alerts and security updates for every repository |
+| `infra` | #6: `terraform/gcp` | Secrets and IAM renamed; record `octomatron.dev.kfirs.com` dropped; zone `octomaton-dev` with its apex record and cert-manager's grant; a name-server output; Octomaton's telemetry grants and the Telemetry and Cloud Trace APIs |
 | `.github`, `tooling` | new | `.octomaton.yaml` and mentions |
 
 Review the pull requests. Nothing live changes until step 2.
@@ -66,8 +66,9 @@ terraform -chdir=terraform/github plan -var octomaton_app_id=<app id>
 ```
 
 The plan must show only this: `github_repository.this` and `github_repository_ruleset.default-branch` moved from
-`["octomatron"]` to `["octomaton"]`, the repository renamed in place and its ruleset updated in place. Nothing is added
-or destroyed. Apply it, then point your own clone at the new name:
+`["octomatron"]` to `["octomaton"]`, the repository renamed in place and its ruleset updated in place, and 12 to add: a
+`github_repository_vulnerability_alerts` and a `github_repository_dependabot_security_updates` for each of the six
+repositories. Nothing is destroyed. Apply it, then point your own clone at the new name:
 
 ```bash
 terraform -chdir=terraform/github apply -var octomaton_app_id=<app id>
@@ -92,6 +93,7 @@ Expect only these changes:
 | Zone `octomaton-dev` (`octomaton.dev.`), its apex A record, cert-manager's `roles/dns.admin` on it | Record `octomatron.dev.kfirs.com.` |
 | Secrets `octomaton-github-*` and External Secrets' accessor grants on them | Secrets `octomatron-github-*` with their values, and their grants |
 | `ci-octomaton/pipeline` as `roles/artifactregistry.writer` on `images` | The same grant for `ci-octomatron` |
+| `octomaton/octomaton` as `roles/telemetry.metricsWriter`, `roles/telemetry.tracesWriter` and `roles/serviceusage.serviceUsageConsumer` on the project; the `cloudtrace` and `telemetry` APIs | |
 
 cert-manager's existing grant on zone `kfirs-com` only moves to a new address. If you never applied this root, the plan
 is [bootstrap](bootstrap.md) step 4 with the new names.
