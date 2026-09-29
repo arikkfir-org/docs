@@ -35,7 +35,7 @@ flowchart TD
   S2 --> S3["3. Zone, records, secrets, IAM<br/>terraform/gcp"]
   S3 --> S4["4. Delegate octomaton.dev<br/>registrar"]
   S3 --> S5["5. App settings and secret values<br/>when Claude says so"]
-  S5 --> S6["6. Merge the Octomaton pull request<br/>tag v0.1.0, first image"]
+  S5 --> S6["6. Merge the Octomaton pull request<br/>first image, afa6953"]
   S4 --> S7["7. Merge the delivery pull request<br/>Argo CD syncs"]
   S6 --> S7
   S7 --> S8["8. Verify"]
@@ -133,20 +133,21 @@ printf '%s' "<new webhook secret>" | add octomaton-github-webhook-secret
 
 If you haven't done [bootstrap](bootstrap.md) step 5 yet, add its other secrets now too.
 
-## 6. Release v0.1.0 (you)
+## 6. First image (you)
 
-Merge the Octomaton pull request (#1, admin bypass), then build the first image from its tag:
+Merge the Octomaton pull request (#1, admin bypass). Releases have no version tags: every commit on `main` is a release
+named by its short SHA, and Octomaton builds the next ones itself. Build the image of #1's merge commit, `afa6953`,
+which the delivery pull request pins:
 
 ```bash
 gcloud auth configure-docker me-west1-docker.pkg.dev
-git clone https://github.com/arikkfir-org/octomaton && cd octomaton
-git tag v0.1.0 && git push origin v0.1.0
-KO_DOCKER_REPO=me-west1-docker.pkg.dev/arikkfir/images/octomaton ko build --bare --tags=v0.1.0 ./cmd/octomaton
+git clone https://github.com/arikkfir-org/octomaton && cd octomaton && git checkout afa6953
+VERSION=afa6953 KO_DOCKER_REPO=me-west1-docker.pkg.dev/arikkfir/images/octomaton \
+  go run github.com/google/ko@v0.19.1 build --bare --tags=afa6953 ./cmd/octomaton
 ```
 
-The Go checksum database records every version it sees permanently: never move or re-push a tag. Don't run
-`go install octomaton.dev/…` before step 8; until `octomaton.dev` answers, the Go proxy may cache the failure for a
-while.
+Don't run `go install octomaton.dev/…` before step 8; until `octomaton.dev` answers, the Go proxy may cache the
+failure for a while.
 
 ## 7. Deploy (you)
 
@@ -161,7 +162,7 @@ kubectl -n traefik get certificate octomaton-dev                         # Ready
 curl -s 'https://octomaton.dev/cmd/octomaton?go-get=1' | grep go-import
 curl -sI https://octomaton.dev | grep -i '^location'                      # https://github.com/arikkfir-org/octomaton
 curl -s -o /dev/null -w '%{http_code}\n' -X POST https://octomaton.dev/github/hooks   # 401: Octomaton, unsigned
-go install octomaton.dev/cmd/octomaton-lint@v0.1.0 && octomaton-lint -version   # v0.1.0
+go install octomaton.dev/cmd/octomaton-lint@latest && octomaton-lint -version    # v0.0.0-<time>-<sha>: newest main commit
 ```
 
 Then [bootstrap](bootstrap.md) step 9: a pull request gets a `ci` check from Octomaton, and the App's recent

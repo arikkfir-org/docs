@@ -127,7 +127,7 @@ to GKE and are not managed here.
 | `grafana` | Grafana | `https://grafana-community.github.io/helm-charts` `grafana` | `13.2.7` (Grafana 13.2.3) |
 | `tekton-operator` | Tekton Operator | `tektoncd/operator` release manifest from `infra.tekton.dev` (Tekton's release host since v0.78) | `v0.81.1` |
 | `tekton-pipelines` | Pipelines, Triggers, Dashboard (via `TektonConfig`; Results, Chains, Pipelines-as-Code and the operator's NetworkPolicies off) | operator-managed | operator default |
-| `octomaton` | Octomaton | `me-west1-docker.pkg.dev/arikkfir/images/octomaton` | `v0.1.0` |
+| `octomaton` | Octomaton | `me-west1-docker.pkg.dev/arikkfir/images/octomaton` | `afa6953`: the short SHA of a `main` commit. There are no version tags; every push to `main` publishes one, which is also the version the binary and its telemetry report |
 | `octomaton` | `go-import`: nginx answering for `octomaton.dev` | `docker.io/nginxinc/nginx-unprivileged` | `1.30.5-alpine` |
 | `docs` | Docs site: nginx serving `arikkfir-docs` (Cloud Storage FUSE mount) | `docker.io/nginxinc/nginx-unprivileged` | `1.30.5-alpine` |
 | `ci-<repo>` | CI tenants (one per repository) | `delivery` | n/a |
