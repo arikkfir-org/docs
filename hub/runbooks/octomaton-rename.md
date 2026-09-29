@@ -80,7 +80,7 @@ cd infra && git pull
 terraform -chdir=terraform/github plan -var octomaton_app_id=<app id>
 ```
 
-The plan must show only this: `github_repository.this` and `github_repository_ruleset.protected` moved from
+The plan must show only this: `github_repository.this` and `github_repository_ruleset.default-branch` moved from
 `["octomatron"]` to `["octomaton"]`, the repository renamed in place and its ruleset updated in place. Nothing is added
 or destroyed. Apply it, then point your own clone at the new name:
 
