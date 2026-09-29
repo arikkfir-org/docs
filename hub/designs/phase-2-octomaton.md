@@ -169,6 +169,6 @@ flowchart LR
 1. Create the GitHub App (permissions and events in the [reference](../reference.md#octomaton)); store its ID, key
    and webhook secret in Secret Manager.
 2. Build the first image locally with `ko` (see the [bootstrap runbook](../runbooks/bootstrap.md)); afterwards
-   Octomaton builds itself on tags `v*`.
+   Octomaton builds itself: every push to `main` publishes an image tagged with the commit's short SHA.
 3. Argo CD deploys it from `delivery`.
 4. Apply the GitHub rulesets once `ci` checks appear on pull requests.
