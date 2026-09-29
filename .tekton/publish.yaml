@@ -57,7 +57,7 @@ spec:
                 value: $(params.bucket)
           steps:
             - name: last-published
-              image: gcr.io/google.com/cloudsdktool/google-cloud-cli:586.0.0-slim
+              image: gcr.io/google.com/cloudsdktool/google-cloud-cli:587.0.0-slim
               script: |
                 #!/usr/bin/env bash
                 set -euo pipefail
@@ -81,7 +81,7 @@ spec:
                 set -eu
                 sh .site/render.sh ../state/render.txt
             - name: sync
-              image: gcr.io/google.com/cloudsdktool/google-cloud-cli:586.0.0-slim
+              image: gcr.io/google.com/cloudsdktool/google-cloud-cli:587.0.0-slim
               workingDir: $(workspaces.work.path)/repo
               script: |
                 #!/usr/bin/env bash

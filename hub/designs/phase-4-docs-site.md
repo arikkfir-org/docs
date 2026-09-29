@@ -20,10 +20,10 @@ flowchart LR
 
 | Step | Image | Does |
 | --- | --- | --- |
-| `last-published` | `google-cloud-cli:586.0.0-slim` | Reads the revision recorded by the last successful publication (empty if none) |
+| `last-published` | `google-cloud-cli:587.0.0-slim` | Reads the revision recorded by the last successful publication (empty if none) |
 | `checkout` | `alpine/git:v2.54.0` | Clones without blobs, checks out the pushed commit, runs `.site/plan.sh` |
 | `render` | `pandoc/core:3.11.0` | Runs `.site/render.sh`: GitHub-flavoured Markdown to standalone HTML with `.site/template.html` and `.site/site.lua` |
-| `sync` | `google-cloud-cli:586.0.0-slim` | Runs `.site/sync.sh`: `gcloud storage rsync` twice, then writes `.published-revision` |
+| `sync` | `google-cloud-cli:587.0.0-slim` | Runs `.site/sync.sh`: `gcloud storage rsync` twice, then writes `.published-revision` |
 
 ## What gets rendered
 
