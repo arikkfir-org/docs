@@ -14,7 +14,7 @@ repository's CI configuration must agree with this page. Change it here first, t
 | DNS domain | `kfirs.com` (Cloud DNS zone `kfirs-com`): hub tools under `dev.kfirs.com`, sign-in at `auth.kfirs.com`. `kfirfamily.com` (zone `kfirfamily-com`) is imported but unused. |
 | Identity provider | Descope company `KFIRS`, project `development` (`P3JyPV2qsSrMLUpVPTGcBNRHlSkv`), issuer `https://api.descope.com/P3JyPV2qsSrMLUpVPTGcBNRHlSkv` |
 | Label/annotation prefix | `kfirs.com/` for hub-wide labels, `octomatron.kfirs.com/` for Octomatron bookkeeping |
-| Terraform state | GCS bucket `arikkfir-tfstate` (created once by hand, versioned), prefixes `github`, `gcp`, `argocd` |
+| Terraform state | GCS bucket `arikkfir-devops` (created by hand, versioned), prefixes `github`, `gcp`, `argocd` |
 
 ## Repositories
 

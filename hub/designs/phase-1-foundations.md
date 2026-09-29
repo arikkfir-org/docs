@@ -35,7 +35,7 @@ flowchart TB
 
 ## Terraform
 
-Three root modules, each with its own state in `gs://arikkfir-tfstate`:
+Three root modules, each with its own state in `gs://arikkfir-devops`:
 
 ```mermaid
 flowchart LR

@@ -30,10 +30,12 @@ flowchart TD
 
 ## 1. Terraform state bucket
 
+State for all three roots lives in `gs://arikkfir-devops`. Skip this step if the bucket already exists.
+
 ```bash
-gcloud storage buckets create gs://arikkfir-tfstate --project=arikkfir --location=me-west1 \
+gcloud storage buckets create gs://arikkfir-devops --project=arikkfir --location=me-west1 \
   --uniform-bucket-level-access --public-access-prevention
-gcloud storage buckets update gs://arikkfir-tfstate --versioning
+gcloud storage buckets update gs://arikkfir-devops --versioning
 ```
 
 ## 2. GitHub App
