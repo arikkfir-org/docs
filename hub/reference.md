@@ -178,9 +178,13 @@ of zone `octomaton-dev` for `octomaton.dev`.
 - Traefik's `oidc` ForwardAuth middleware calls `http://oauth2-proxy.auth.svc.cluster.local/` (static `202` upstream)
   for every request on the protected entry point, and copies `X-Auth-Request-User`, `X-Auth-Request-Email` and
   `X-Auth-Request-Preferred-Username` to the upstream request. `strip-auth-headers` removes client-supplied copies first.
-- Grafana trusts `X-Auth-Request-Email` (auth proxy mode). Argo CD also logs users in through Descope (OIDC, same
-  client) and grants `role:admin` to every authenticated user; Tekton Dashboard, NUI and the Traefik dashboard rely on
-  the interceptor alone.
+- Grafana trusts `X-Auth-Request-Email` (auth proxy mode). Argo CD's route adds the `argocd/descope-token` ForwardAuth
+  middleware, which copies oauth2-proxy's `Authorization: Bearer <Descope ID token>` to Argo CD only; Argo CD verifies
+  the token against Descope (OIDC, same client), so the Descope session signs the user in, and grants `role:admin` to
+  every authenticated user. Its own "Log in via Descope" remains the fallback. Tekton Dashboard, NUI and the Traefik
+  dashboard rely on the interceptor alone.
+- oauth2-proxy requests `offline_access` and refreshes a session's tokens after 5 minutes (`cookie-refresh`), so the ID
+  token it hands to Argo CD stays valid.
 - Protected backends accept traffic only from the `traefik` namespace (NetworkPolicy); Argo CD's server also admits
   its own namespace and Octomaton, which relays GitHub webhooks to `/api/webhook`.
 - oauth2-proxy sets `emailDomains: []`: any domain rule would be OR-ed with the allowlist and bypass it.
