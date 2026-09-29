@@ -1,7 +1,7 @@
 # Hub reference
 
 The authoritative list of every name, identifier, address and permission in the development hub. Terraform
-(`arikkfir-org/infra`), GitOps manifests (`arikkfir-org/delivery`), Octomatron (`arikkfir-org/octomatron`) and every
+(`arikkfir-org/infra`), GitOps manifests (`arikkfir-org/delivery`), Octomaton (`arikkfir-org/octomaton`) and every
 repository's CI configuration must agree with this page. Change it here first, then in code.
 
 ## Identity and placement
@@ -11,9 +11,9 @@ repository's CI configuration must agree with this page. Change it here first, t
 | GitHub organization | `arikkfir-org` |
 | GCP project | `arikkfir` (number `8909046976`, organization `468825984716`) |
 | Region / cluster zone | `me-west1` / `me-west1-a` |
-| DNS domain | `kfirs.com` (Cloud DNS zone `kfirs-com`): hub tools under `dev.kfirs.com`, sign-in at `auth.kfirs.com`. `kfirfamily.com` (zone `kfirfamily-com`) is imported but unused. |
+| DNS domain | `kfirs.com` (Cloud DNS zone `kfirs-com`): hub tools under `dev.kfirs.com`, sign-in at `auth.kfirs.com`. `octomaton.dev` (zone `octomaton-dev`): Octomaton's webhook and Go module path. `kfirfamily.com` (zone `kfirfamily-com`) is imported but unused. |
 | Identity provider | Descope company `KFIRS`, project `development` (`P3JyPV2qsSrMLUpVPTGcBNRHlSkv`), issuer `https://api.descope.com/P3JyPV2qsSrMLUpVPTGcBNRHlSkv` |
-| Label/annotation prefix | `kfirs.com/` for hub-wide labels, `octomatron.kfirs.com/` for Octomatron bookkeeping |
+| Label/annotation prefix | `kfirs.com/` for hub-wide labels, `octomaton.dev/` for Octomaton bookkeeping |
 | Terraform state | GCS bucket `arikkfir-devops` (created by hand, versioned), prefixes `github`, `gcp`, `argocd` |
 
 ## Repositories
@@ -21,15 +21,17 @@ repository's CI configuration must agree with this page. Change it here first, t
 | Repository | Purpose | Default-branch rules | Required checks |
 | --- | --- | --- | --- |
 | `.github` | Org profile, org-wide GitHub defaults | PR + 1 approval + merge queue | `ci` |
-| `docs` | Knowledge base, published to `arikkfir-docs` and served at `docs.dev.kfirs.com` | Direct pushes to `main` allowed (no deletion, no force-push) | none |
+| `docs` | Knowledge base, published to `arikkfir-docs` and served at `docs.dev.kfirs.com` | PR + 1 approval + merge queue; direct pushes to `main` only from automation | `ci` |
 | `infra` | Terraform: GitHub, GCP, Argo CD bootstrap | PR + 1 approval + merge queue | `ci` |
 | `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `ci` |
-| `octomatron` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `ci` |
+| `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `ci` |
 | `tooling` | Claude Code web bundle | PR + 1 approval + merge queue | `ci` |
 
-Merge method is squash only, via the merge queue. Organization admins may bypass rules on pull requests only
-(`bypass_mode = pull_request`) so a solo maintainer can merge without a second reviewer; nobody may push directly to a
-protected default branch. Required checks are pinned to the Octomatron GitHub App (`integration_id`).
+Every repository gets the same `default-branch` ruleset: no deletion, no force-push, pull requests with one approval
+(stale approvals dismissed, last push approved, conversations resolved), merge commits only, through the merge queue.
+Organization admins may bypass it (`bypass_mode = always`). Required checks are pinned to the Octomaton GitHub App
+(`integration_id`). In `docs`, direct pushes to `main` are reserved for automation: publishing the site and syncing
+other repositories' branch and pull-request docs into a directory per repository and branch.
 
 ## Network
 
@@ -63,7 +65,7 @@ Tekton runs land on the `ci` pool through Tekton's default pod template (node se
 
 | Resource | Name | Access |
 | --- | --- | --- |
-| Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomatron/pipeline` writes |
+| Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomaton/pipeline` writes |
 | Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private: `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; `ci-docs/pipeline` writes |
 | Bucket | `arikkfir-claude` (`ME-WEST1`, uniform access) | public object reads (no listing); `ci-tooling/pipeline` writes |
 
@@ -76,9 +78,9 @@ Operator is the only reader.
 
 | Secret | Content | Consumed by |
 | --- | --- | --- |
-| `octomatron-github-app-id` | GitHub App ID (number) | `octomatron/octomatron-github` key `app-id` |
-| `octomatron-github-private-key` | GitHub App private key (PEM) | `octomatron/octomatron-github` key `private-key` |
-| `octomatron-github-webhook-secret` | GitHub App webhook secret | `octomatron/octomatron-github` key `webhook-secret` |
+| `octomaton-github-app-id` | GitHub App ID (number) | `octomaton/octomaton-github` key `app-id` |
+| `octomaton-github-private-key` | GitHub App private key (PEM) | `octomaton/octomaton-github` key `private-key` |
+| `octomaton-github-webhook-secret` | GitHub App webhook secret | `octomaton/octomaton-github` key `webhook-secret` |
 | `oidc-client-secret` | Descope access key (OIDC client secret) | `auth/oauth2-proxy` key `client-secret`; `argocd/argocd-oidc` key `clientSecret` |
 | `oauth2-proxy-cookie-secret` | 32 random bytes, base64 | `auth/oauth2-proxy` key `cookie-secret` |
 | `hub-authorized-emails` | Newline-separated emails allowed through the auth interceptor | `auth/oauth2-proxy-emails` key `emails` |
@@ -91,12 +93,12 @@ Kubernetes workloads use GKE Workload Identity Federation with direct principal 
 | Principal (namespace/KSA) | Role | Scope |
 | --- | --- | --- |
 | `external-secrets/external-secrets` | `roles/secretmanager.secretAccessor` | each secret above |
-| `cert-manager/cert-manager` | `roles/dns.admin` | managed zone `kfirs-com` |
+| `cert-manager/cert-manager` | `roles/dns.admin` | managed zones `kfirs-com` and `octomaton-dev` |
 | `grafana/grafana` | `roles/monitoring.viewer` | project |
 | `docs/docs` | `roles/storage.objectViewer` | bucket `arikkfir-docs` |
 | `ci-docs/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
 | `ci-tooling/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-claude` |
-| `ci-octomatron/pipeline` | `roles/artifactregistry.writer` | repository `images` |
+| `ci-octomaton/pipeline` | `roles/artifactregistry.writer` | repository `images` |
 | `gke-hub-nodes@` (GSA) | `roles/container.defaultNodeServiceAccount` | project |
 | `gke-hub-nodes@` (GSA) | `roles/artifactregistry.reader` | repository `images` |
 
@@ -122,7 +124,8 @@ to GKE and are not managed here.
 | `grafana` | Grafana | `https://grafana-community.github.io/helm-charts` `grafana` | `13.2.6` |
 | `tekton-operator` | Tekton Operator | `tektoncd/operator` release manifest | `v0.77.0` |
 | `tekton-pipelines` | Pipelines, Triggers, Dashboard (via `TektonConfig`) | operator-managed | operator default |
-| `octomatron` | Octomatron | `me-west1-docker.pkg.dev/arikkfir/images/octomatron` | `v0.1.0` |
+| `octomaton` | Octomaton | `me-west1-docker.pkg.dev/arikkfir/images/octomaton` | `v0.1.0` |
+| `octomaton` | `go-import`: nginx answering for `octomaton.dev` | `docker.io/nginxinc/nginx-unprivileged` | `1.30.5-alpine` |
 | `docs` | Docs site: nginx serving `arikkfir-docs` (Cloud Storage FUSE mount) | `docker.io/nginxinc/nginx-unprivileged` | `1.30.5-alpine` |
 | `ci-<repo>` | CI tenants (one per repository) | `delivery` | n/a |
 
@@ -138,8 +141,12 @@ balancers need GKE 1.36+:
 | `traefik/protected` | `web` 8000→80 (redirect), `websecure` 8443→443 | `ingress-protected` | Entry-point middlewares `strip-auth-headers` + `oidc` on `websecure`, applied to every route | any namespace |
 | `traefik/public` | `public-web` 9080→80 (redirect), `public-websecure` 9443→443 | `ingress-public` | `strip-auth-headers` only | namespaces labelled `kfirs.com/public-ingress=true` |
 
-Every listener serves the wildcard certificate for `*.kfirs.com` and `*.dev.kfirs.com` (cert-manager, Let's Encrypt,
-DNS-01 through Cloud DNS), stored in secret `traefik/wildcard-kfirs-com-tls`.
+Certificates come from cert-manager (Let's Encrypt, DNS-01 through Cloud DNS, ClusterIssuer `letsencrypt`):
+
+| Listener | Hostname | Certificate / secret |
+| --- | --- | --- |
+| `protected/websecure`, `public/public-websecure` | `*.kfirs.com` (which also matches `*.dev.kfirs.com`) | `wildcard-kfirs-com` (`*.kfirs.com`, `*.dev.kfirs.com`) / `traefik/wildcard-kfirs-com-tls` |
+| `public/octomaton-dev` (port 9443) | `octomaton.dev` | `octomaton-dev` / `traefik/octomaton-dev-tls` |
 
 | Host | Gateway | Backend |
 | --- | --- | --- |
@@ -150,9 +157,10 @@ DNS-01 through Cloud DNS), stored in secret `traefik/wildcard-kfirs-com-tls`.
 | `nui.dev.kfirs.com` | protected | `nats/nui` |
 | `docs.dev.kfirs.com` | protected | `docs/docs:80` |
 | `auth.kfirs.com` | public | `auth/oauth2-proxy:80`, path `/oauth2` |
-| `octomatron.dev.kfirs.com` | public | `octomatron/octomatron:80`, path `/github/hooks` |
+| `octomaton.dev` | public (listener `octomaton-dev`) | `octomaton/octomaton:80` for path `/github/hooks`; `octomaton/go-import:80` for everything else |
 
-DNS A records (TTL 300) in zone `kfirs-com` point each host at its gateway's IP.
+DNS A records (TTL 300) point each host at its gateway's IP: in zone `kfirs-com` for `kfirs.com` hosts, and the apex
+of zone `octomaton-dev` for `octomaton.dev`.
 
 ## Authentication
 
@@ -168,32 +176,34 @@ DNS A records (TTL 300) in zone `kfirs-com` point each host at its gateway's IP.
   client) and grants `role:admin` to every authenticated user; Tekton Dashboard, NUI and the Traefik dashboard rely on
   the interceptor alone.
 - Protected backends accept traffic only from the `traefik` namespace (NetworkPolicy); Argo CD's server also admits
-  its own namespace and Octomatron, which relays GitHub webhooks to `/api/webhook`.
+  its own namespace and Octomaton, which relays GitHub webhooks to `/api/webhook`.
 - oauth2-proxy sets `emailDomains: []`: any domain rule would be OR-ed with the allowlist and bypass it.
 
-## Octomatron
+## Octomaton
 
 | Item | Value |
 | --- | --- |
-| GitHub App | `octomatron` (created by hand), installed on all `arikkfir-org` repositories |
+| GitHub App | `octomaton-dev` (created by hand; `octomaton` is taken by a GitHub user), homepage `https://octomaton.dev`, installed on all `arikkfir-org` repositories |
 | App permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
 | App events | `push`, `pull_request`, `issue_comment`, `check_suite`, `check_run`, `merge_group` |
-| Webhook URL | `https://octomatron.dev.kfirs.com/github/hooks` |
-| Kubernetes | namespace `octomatron`, Deployment/ServiceAccount/Service `octomatron` (Service port 80 → container 8080) |
-| Config | ConfigMap `octomatron` key `config.yaml` mounted at `/etc/octomatron/config.yaml` |
-| GitHub secret | Secret `octomatron-github` (keys `app-id`, `private-key`, `webhook-secret`) mounted at `/etc/octomatron/github/` |
+| Webhook URL | `https://octomaton.dev/github/hooks` |
+| Go module | `octomaton.dev` (`go install octomaton.dev/cmd/octomaton@latest`); repository `arikkfir-org/octomaton` |
+| Go import page | `https://octomaton.dev/<path>?go-get=1` returns `<meta name="go-import" content="octomaton.dev git https://github.com/arikkfir-org/octomaton">`; any other request is redirected (302) to the repository |
+| Kubernetes | namespace `octomaton`, Deployment/ServiceAccount/Service `octomaton` (Service port 80 → container 8080); Deployment/Service/ConfigMap `go-import` for the import page (Service port 80 → container 8080) |
+| Config | ConfigMap `octomaton` key `config.yaml` mounted at `/etc/octomaton/config.yaml` |
+| GitHub secret | Secret `octomaton-github` (keys `app-id`, `private-key`, `webhook-secret`) mounted at `/etc/octomaton/github/` |
 | Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz`, `GET /metrics` (all on 8080) |
 | Check links | `https://tekton.dev.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
-| Tenant namespaces | `ci-<repository>` (`.github` → `ci-github`); each has ServiceAccount `pipeline` and RoleBinding `octomatron` → ClusterRole `octomatron-tenant` |
-| Tenant permissions | `octomatron-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete) |
+| Tenant namespaces | `ci-<repository>` (`.github` → `ci-github`); each has ServiceAccount `pipeline` and RoleBinding `octomaton` → ClusterRole `octomaton-tenant` |
+| Tenant permissions | `octomaton-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete) |
 
-### Server configuration (`/etc/octomatron/config.yaml`)
+### Server configuration (`/etc/octomaton/config.yaml`)
 
 ```yaml
 github:
-  appIDFile: /etc/octomatron/github/app-id
-  privateKeyFile: /etc/octomatron/github/private-key
-  webhookSecretFile: /etc/octomatron/github/webhook-secret
+  appIDFile: /etc/octomaton/github/app-id
+  privateKeyFile: /etc/octomaton/github/private-key
+  webhookSecretFile: /etc/octomaton/github/webhook-secret
   allowedOwners: [arikkfir-org]        # installations on other owners are ignored
 tekton:
   dashboardURL: https://tekton.dev.kfirs.com
@@ -207,13 +217,13 @@ retention:
   freePVCsAfter: 1h                     # PVCs of finished runs are deleted after this; runs and pods stay
 ```
 
-### Repository configuration (`.octomatron.yaml`)
+### Repository configuration (`.octomaton.yaml`)
 
-The only file Octomatron reads from a repository, always at the root. Octomatron knows nothing else about the
+The only file Octomaton reads from a repository, always at the root. Octomaton knows nothing else about the
 repository. It is parsed as YAML 1.2, so the `on` key needs no quoting.
 
 ```yaml
-apiVersion: octomatron.kfirs.com/v1
+apiVersion: octomaton.dev/v1
 pipelines:
   - name: ci                           # check-run name; unique; [a-z0-9][a-z0-9-]*
     pipelineRun: .tekton/ci.yaml       # repository-relative file holding exactly one tekton.dev/v1 PipelineRun
@@ -258,7 +268,7 @@ Groups are scoped to the repository: pipelines naming the same group share it (i
 apart). Without `concurrency`, pull request runs of the same pipeline and pull request supersede each other; other runs
 are unconstrained.
 
-Where definitions are read: pull requests, merge groups and pushes read `.octomatron.yaml` and the PipelineRun file
+Where definitions are read: pull requests, merge groups and pushes read `.octomaton.yaml` and the PipelineRun file
 at the commit under test; comment commands and schedules read them from the default branch (and comment commands still
 run against the pull request's head commit).
 
@@ -270,4 +280,4 @@ Template context: `.Event` (`push`, `pull_request`, `merge_group`, `comment`, `s
 referencing a missing value fails the check with the rendering error.
 
 Reporting conventions: a pipeline or task result named `check-title` or `check-summary` replaces the check run's title
-or Markdown summary. Runs may mount no Secret other than the token Octomatron binds.
+or Markdown summary. Runs may mount no Secret other than the token Octomaton binds.

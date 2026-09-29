@@ -1,19 +1,19 @@
-# Phase 2: Octomatron
+# Phase 2: Octomaton
 
-**Goal**: replace GitHub Actions. A GitHub App delivers webhooks to Octomatron in GKE; Octomatron runs the Tekton
-`PipelineRun`s that the repository's root `.octomatron.yaml` maps to those events and reports each one as a GitHub
-check run. Code: [arikkfir-org/octomatron](https://github.com/arikkfir-org/octomatron). Names and wiring:
-[reference](../reference.md#octomatron).
+**Goal**: replace GitHub Actions. A GitHub App delivers webhooks to Octomaton in GKE; Octomaton runs the Tekton
+`PipelineRun`s that the repository's root `.octomaton.yaml` maps to those events and reports each one as a GitHub
+check run. Code: [arikkfir-org/octomaton](https://github.com/arikkfir-org/octomaton). Names and wiring:
+[reference](../reference.md#octomaton). Domain, webhook host and Go module path: [octomaton.dev](octomaton-dev.md).
 
 ## Principles
 
-1. **Application-agnostic.** Octomatron knows nothing about what a repository builds, its language, layout, CI or CD.
-2. **One file.** The only repository file Octomatron reads is the root `.octomatron.yaml`, plus the `PipelineRun`
+1. **Application-agnostic.** Octomaton knows nothing about what a repository builds, its language, layout, CI or CD.
+2. **One file.** The only repository file Octomaton reads is the root `.octomaton.yaml`, plus the `PipelineRun`
    files it points to. There are no conventional directories and no configuration in Tekton labels or annotations.
-3. **Plain Tekton.** `PipelineRun` files are ordinary Tekton YAML. Octomatron injects event context only through
+3. **Plain Tekton.** `PipelineRun` files are ordinary Tekton YAML. Octomaton injects event context only through
    `params` (Go templates over a documented context) and an optional token workspace.
 
-Octomatron is derived from an earlier, application-aware implementation; these principles are what changed.
+Octomaton is derived from an earlier, application-aware implementation; these principles are what changed.
 
 ## Flow
 
@@ -21,11 +21,11 @@ Octomatron is derived from an earlier, application-aware implementation; these p
 sequenceDiagram
   autonumber
   participant GH as GitHub
-  participant SB as Octomatron
+  participant SB as Octomaton
   participant K8s as Kubernetes / Tekton
   GH->>SB: webhook (push, pull_request, merge_group, check_run, check_suite)
   SB->>SB: verify HMAC signature, dedupe delivery, 202
-  SB->>GH: read .octomatron.yaml at the commit under test
+  SB->>GH: read .octomaton.yaml at the commit under test
   SB->>SB: match events, branches, tags and paths, then apply trust rules
   alt paths don't match
     SB->>GH: check run "completed / skipped"
@@ -47,10 +47,10 @@ sequenceDiagram
 ## Configuration
 
 ```yaml
-apiVersion: octomatron.kfirs.com/v1
+apiVersion: octomaton.dev/v1
 pipelines:
   - name: ci                          # check-run name
-    pipelineRun: .tekton/ci.yaml      # any path; Octomatron assumes no layout
+    pipelineRun: .tekton/ci.yaml      # any path; Octomaton assumes no layout
     on:
       pull_request: {branches: [main]}
       merge_group: {}
@@ -63,15 +63,15 @@ pipelines:
     concurrency: {group: "pr-{{ .PullRequest.Number }}", policy: supersede}
 ```
 
-The full schema and template context are in the [reference](../reference.md#repository-configuration-octomatronyaml)
-and the Octomatron README.
+The full schema and template context are in the [reference](../reference.md#repository-configuration-octomatonyaml)
+and the Octomaton README.
 
 ## Behaviour
 
 | Situation | Behaviour |
 | --- | --- |
-| No `.octomatron.yaml` | Nothing happens |
-| Invalid `.octomatron.yaml` | One failed check run named `octomatron` explaining the error |
+| No `.octomaton.yaml` | Nothing happens |
+| Invalid `.octomaton.yaml` | One failed check run named `octomaton` explaining the error |
 | Event matches, paths don't | Check run reported as `skipped`, which satisfies required checks |
 | Changed files can't be determined | Treated as matching (runs rather than silently skipping) |
 | Pull request from outside the org (fork) | `action_required` check with an "Approve and run" button for users with write access |
@@ -80,7 +80,7 @@ and the Octomatron README.
 | `/command` comment on a pull request | Pipelines with a matching `on.comment.pattern` run (definitions from the default branch, code from the pull request); the commenter needs write access; 👀 when started, a reply with the result when done |
 | Cron schedule | Pipelines with `on.schedule` run at the default branch head, once per slot |
 | Long run | The installation token is refreshed while the run lives; a live task table and per-task checks (`taskChecks`) show progress |
-| Octomatron restarts mid-dispatch | Runs are created held (`PipelineRunPending`) and released only once their check and token exist; held runs are resumed |
+| Octomaton restarts mid-dispatch | Runs are created held (`PipelineRunPending`) and released only once their check and token exist; held runs are resumed |
 | Merge group destroyed | Its runs are cancelled |
 | "Re-run" in GitHub | The pipeline re-runs with the original context, stored in the check run itself, so it works after pruning |
 
@@ -88,8 +88,8 @@ and the Octomatron README.
 
 ```mermaid
 flowchart LR
-  SB[octomatron/octomatron] -- creates PipelineRuns, token Secrets --> NS1[ci-docs]
-  SB --> NS2[ci-octomatron]
+  SB[octomaton/octomaton] -- creates PipelineRuns, token Secrets --> NS1[ci-docs]
+  SB --> NS2[ci-octomaton]
   SB --> NS3[ci-...]
   NS1 -- KSA pipeline --> B1[(arikkfir-docs: object user)]
   NS2 -- KSA pipeline --> B2[(Artifact Registry images: writer)]
@@ -99,8 +99,8 @@ flowchart LR
   small change there, plus IAM in `infra` if it needs cloud access).
 - Runs use the namespace's `pipeline` service account. GCP permissions attach to that identity through Workload
   Identity, so one repository's pipelines can never use another's permissions.
-- Octomatron's own identity can create `PipelineRun`s and token Secrets only in tenant namespaces
-  (`ClusterRole octomatron-tenant`, bound per namespace), and watch runs cluster-wide.
+- Octomaton's own identity can create `PipelineRun`s and token Secrets only in tenant namespaces
+  (`ClusterRole octomaton-tenant`, bound per namespace), and watch runs cluster-wide.
 - Tekton's default pod template schedules runs onto the Spot `ci` node pool.
 
 ## Decisions
@@ -127,9 +127,9 @@ flowchart LR
 
 ## Rollout
 
-1. Create the GitHub App (permissions and events in the [reference](../reference.md#octomatron)); store its ID, key
+1. Create the GitHub App (permissions and events in the [reference](../reference.md#octomaton)); store its ID, key
    and webhook secret in Secret Manager.
 2. Build the first image locally with `ko` (see the [bootstrap runbook](../runbooks/bootstrap.md)); afterwards
-   Octomatron builds itself on tags `v*`.
+   Octomaton builds itself on tags `v*`.
 3. Argo CD deploys it from `delivery`.
 4. Apply the GitHub rulesets once `ci` checks appear on pull requests.

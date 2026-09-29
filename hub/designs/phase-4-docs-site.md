@@ -7,8 +7,8 @@ no listings; pages are reached by direct links.
 
 ## Pipeline
 
-Octomatron runs [`.tekton/publish.yaml`](https://github.com/arikkfir-org/docs/blob/main/.tekton/publish.yaml) on
-pushes to `main` (see [`.octomatron.yaml`](https://github.com/arikkfir-org/docs/blob/main/.octomatron.yaml)), in
+Octomaton runs [`.tekton/publish.yaml`](https://github.com/arikkfir-org/docs/blob/main/.tekton/publish.yaml) on
+pushes to `main` (see [`.octomaton.yaml`](https://github.com/arikkfir-org/docs/blob/main/.octomaton.yaml)), in
 namespace `ci-docs` as service account `pipeline`.
 
 ```mermaid
