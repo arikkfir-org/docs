@@ -20,18 +20,19 @@ flowchart LR
   A -- push to main --> repo
   repo -- push event --> SB[Octomatron]
   SB --> TK[Tekton: render changed Markdown,<br/>rsync to bucket]
-  TK --> GCS[(gs://arikkfir-docs<br/>public objects, no listing)]
-  GCS -- page.html --> B[Browsers]
-  GCS -- page.md --> AG[Agents]
+  TK --> GCS[(gs://arikkfir-docs<br/>private)]
+  GCS -- Cloud Storage FUSE --> WEB[docs.dev.kfirs.com<br/>nginx, behind sign-in]
+  WEB -- page.html, page.md --> B[Browsers]
+  repo -- page.md on GitHub --> AG[Agents]
 ```
 
 | Source in Git | Served as | Consumer |
 | --- | --- | --- |
-| `path/page.md` | `path/page.html` (rendered) and `path/page.md` (original) | browsers; agents |
+| `path/page.md` | `path/page.html` (rendered) and `path/page.md` (original) | browsers |
 | `path/page.html` | `path/page.html` (unchanged) | browsers |
 | `path/image.svg` | `path/image.svg` | pages |
 
-URLs are `https://storage.googleapis.com/arikkfir-docs/<path>`.
+URLs are `https://docs.dev.kfirs.com/<path>`, behind the hub's sign-in. Agents read the repository itself.
 
 ## Decisions
 
@@ -40,8 +41,8 @@ URLs are `https://storage.googleapis.com/arikkfir-docs/<path>`.
 | Direct pushes to `main`, no pull requests | Knowledge sharing must be frictionless; designs are discussed in the pull requests they accompany | Review gate on docs: slows the habit of writing things down |
 | Markdown + Mermaid by default | Diffable, renders on GitHub and on the site, agents read it natively | Wiki (not in Git), Google Docs (not agent-friendly) |
 | HTML allowed as-is | AI-generated architecture pages are often richer than Markdown | Forcing everything through Markdown |
-| Serve the Markdown source next to the HTML | Agents fetch `.md` directly without scraping HTML | HTML only |
-| Public bucket, direct links only, no navigation | Simplest thing that works; navigation can come later | Static-site generator with menus and search |
+| Serve the Markdown source next to the HTML | The source is one click from its page | HTML only |
+| Private bucket served at `docs.dev.kfirs.com` behind the hub's sign-in; direct links only, no navigation | Same access control as every other hub tool; navigation can come later | Public bucket; static-site generator with menus and search |
 | `hub/reference.md` as the single source of facts | Five repositories must agree on names, identities and addresses | Repeating values in every design |
 
 ## Organization README
@@ -56,4 +57,3 @@ for every repository. Each repository adds a `CLAUDE.md` with its own agent rule
 ## Open questions
 
 - A landing page or search, once the number of pages makes direct links impractical.
-- A custom domain (for example `docs.kfirs.com`) would need a load balancer or a proxy for HTTPS.

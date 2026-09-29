@@ -8,7 +8,7 @@ unauthenticated by forgetting a setting. Hosts, IPs and names: [reference](../re
 
 ```mermaid
 flowchart LR
-  U((Browser)) -- "argocd, tekton, grafana,<br/>traefik, nui .dev.kfirs.com" --> P[L4 LB<br/>ingress-protected]
+  U((Browser)) -- "argocd, tekton, grafana, traefik,<br/>nui, docs .dev.kfirs.com" --> P[L4 LB<br/>ingress-protected]
   G((GitHub)) -- octomatron.dev.kfirs.com/github/hooks --> Q[L4 LB<br/>ingress-public]
   U -- auth.kfirs.com/oauth2 --> Q
   subgraph traefik[Traefik]

@@ -120,7 +120,7 @@ Tekton Dashboard.
 
 Pushes made before Octomatron ran were never delivered, so nothing is published yet. Push a commit to `docs/main` and
 to `tooling/main` (directly: the rulesets of step 10 are not applied yet), then check
-`https://storage.googleapis.com/arikkfir-docs/README.html` and `https://storage.googleapis.com/arikkfir-claude/setup.sh`.
+`https://docs.dev.kfirs.com/README.html` (after signing in) and `https://storage.googleapis.com/arikkfir-claude/setup.sh`.
 
 ## 10. GitHub repositories and rulesets
 

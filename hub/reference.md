@@ -21,7 +21,7 @@ repository's CI configuration must agree with this page. Change it here first, t
 | Repository | Purpose | Default-branch rules | Required checks |
 | --- | --- | --- | --- |
 | `.github` | Org profile, org-wide GitHub defaults | PR + 1 approval + merge queue | `ci` |
-| `docs` | Knowledge base, published to `arikkfir-docs` | Direct pushes to `main` allowed (no deletion, no force-push) | none |
+| `docs` | Knowledge base, published to `arikkfir-docs` and served at `docs.dev.kfirs.com` | Direct pushes to `main` allowed (no deletion, no force-push) | none |
 | `infra` | Terraform: GitHub, GCP, Argo CD bootstrap | PR + 1 approval + merge queue | `ci` |
 | `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `ci` |
 | `octomatron` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `ci` |
@@ -52,6 +52,7 @@ protected default branch. Required checks are pinned to the Octomatron GitHub Ap
 | Nodes | private (no external IPs), egress through Cloud NAT |
 | Control plane access | DNS-based endpoint (IAM-authenticated); no external IP endpoint |
 | Gateway API | GKE-managed Gateway API disabled; CRDs and Traefik installed by Argo CD |
+| Add-ons | HTTP load balancing (Traefik's load balancers); Cloud Storage FUSE CSI driver (docs site) |
 | Node service account | `gke-hub-nodes@arikkfir.iam.gserviceaccount.com` |
 | Node pool `system` | `e2-standard-4`, on-demand, `me-west1-a`, autoscaling 1-3, label `kfirs.com/pool=system` |
 | Node pool `ci` | `e2-standard-4`, Spot, `me-west1-a/b/c`, autoscaling 0-4, label `kfirs.com/pool=ci`, taint `kfirs.com/pool=ci:NoSchedule` |
@@ -63,10 +64,10 @@ Tekton runs land on the `ci` pool through Tekton's default pod template (node se
 | Resource | Name | Access |
 | --- | --- | --- |
 | Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomatron/pipeline` writes |
-| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access) | public object reads (`allUsers` → `roles/storage.legacyObjectReader`, no listing); `ci-docs/pipeline` writes |
+| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private: `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; `ci-docs/pipeline` writes |
 | Bucket | `arikkfir-claude` (`ME-WEST1`, uniform access) | public object reads (no listing); `ci-tooling/pipeline` writes |
 
-Public URLs are `https://storage.googleapis.com/<bucket>/<path>`.
+Public URLs (`arikkfir-claude` only) are `https://storage.googleapis.com/<bucket>/<path>`.
 
 ## Secret Manager
 
@@ -92,16 +93,16 @@ Kubernetes workloads use GKE Workload Identity Federation with direct principal 
 | `external-secrets/external-secrets` | `roles/secretmanager.secretAccessor` | each secret above |
 | `cert-manager/cert-manager` | `roles/dns.admin` | managed zone `kfirs-com` |
 | `grafana/grafana` | `roles/monitoring.viewer` | project |
+| `docs/docs` | `roles/storage.objectViewer` | bucket `arikkfir-docs` |
 | `ci-docs/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
 | `ci-tooling/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-claude` |
 | `ci-octomatron/pipeline` | `roles/artifactregistry.writer` | repository `images` |
 | `gke-hub-nodes@` (GSA) | `roles/container.defaultNodeServiceAccount` | project |
 | `gke-hub-nodes@` (GSA) | `roles/artifactregistry.reader` | repository `images` |
 
-Workload Identity Federation for workloads outside GCP: pool `hub-github` with OIDC provider `github-actions`
-(`https://token.actions.githubusercontent.com`, condition `assertion.repository_owner == 'arikkfir-org'`). It has no
-role grants; it exists for exceptional external automation. The pre-existing `github-actions`, `greenstar` and
-`arikkfir.svc.id.goog` pools belong to other projects or to GKE and are not managed here.
+There is no Workload Identity Federation pool for workloads outside GCP: no GitHub Actions run, and CI runs in the
+cluster. The pre-existing `github-actions`, `greenstar` and `arikkfir.svc.id.goog` pools belong to other projects or
+to GKE and are not managed here.
 
 ## Kubernetes platform
 
@@ -122,6 +123,7 @@ role grants; it exists for exceptional external automation. The pre-existing `gi
 | `tekton-operator` | Tekton Operator | `tektoncd/operator` release manifest | `v0.77.0` |
 | `tekton-pipelines` | Pipelines, Triggers, Dashboard (via `TektonConfig`) | operator-managed | operator default |
 | `octomatron` | Octomatron | `me-west1-docker.pkg.dev/arikkfir/images/octomatron` | `v0.1.0` |
+| `docs` | Docs site: nginx serving `arikkfir-docs` (Cloud Storage FUSE mount) | `docker.io/nginxinc/nginx-unprivileged` | `1.30.5-alpine` |
 | `ci-<repo>` | CI tenants (one per repository) | `delivery` | n/a |
 
 ## Ingress
@@ -146,6 +148,7 @@ DNS-01 through Cloud DNS), stored in secret `traefik/wildcard-kfirs-com-tls`.
 | `grafana.dev.kfirs.com` | protected | `grafana/grafana:80` |
 | `traefik.dev.kfirs.com` | protected | Traefik dashboard (`api@internal`, IngressRoute) |
 | `nui.dev.kfirs.com` | protected | `nats/nui` |
+| `docs.dev.kfirs.com` | protected | `docs/docs:80` |
 | `auth.kfirs.com` | public | `auth/oauth2-proxy:80`, path `/oauth2` |
 | `octomatron.dev.kfirs.com` | public | `octomatron/octomatron:80`, path `/github/hooks` |
 

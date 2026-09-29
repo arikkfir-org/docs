@@ -45,7 +45,7 @@ flowchart LR
 
 | Root | Owns | Notes |
 | --- | --- | --- |
-| `gcp` | APIs, network, static IPs, cluster and node pools, node service account, IAM bindings, WIF pool, secret containers, Artifact Registry, buckets, DNS zones (imported) and records | Secret values are added by hand |
+| `gcp` | APIs, network, static IPs, cluster and node pools, node service account, IAM bindings, secret containers, Artifact Registry, buckets, DNS zones (imported) and records | Secret values are added by hand |
 | `argocd` | Argo CD release and the `root` Application | Connects through the cluster's DNS endpoint with the caller's Google credentials |
 | `github` | The six hub repositories (imported) and their default-branch rulesets | Applied last: rulesets require the Octomatron `ci` check |
 
@@ -89,6 +89,7 @@ flowchart LR
     NU[nui]
     TC[tekton config]
     SW[octomatron]
+    DS[docs site]
     CT[ci-tenants]
   end
   root[root Application] --> w1 --> w2 --> w3
@@ -117,7 +118,7 @@ flowchart LR
 | Three Terraform roots | Kubernetes providers can't be configured from a cluster created in the same apply; GitHub rules must come last | One root with `-target` applies |
 | Terraform imports existing repos and zones | Adopts what exists without recreation | Recreating (would lose history and records) |
 | App-of-apps with sync waves | Deterministic ordering (CRDs before users) with plain Argo CD | ApplicationSets (more indirection for a fixed set) |
-| Workload Identity Federation pool for GitHub OIDC without grants | Ready for exceptional external automation; nothing uses it yet | No pool at all |
+| No Workload Identity Federation pool for GitHub | No GitHub Actions run; CI runs in the cluster with GKE Workload Identity | A GitHub OIDC pool without grants |
 
 ## Security
 

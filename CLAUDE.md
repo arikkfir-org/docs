@@ -1,6 +1,6 @@
 # docs
 
-Knowledge base of the `arikkfir-org` hub, published to `https://storage.googleapis.com/arikkfir-docs/<path>`.
+Knowledge base of the `arikkfir-org` hub, published to `https://docs.dev.kfirs.com/<path>` (behind the hub's sign-in).
 
 ## Rules
 

@@ -33,6 +33,6 @@ Diagrams in Markdown are Mermaid code blocks; GitHub and the site both render th
 
 ## Publishing
 
-Every push to `main` publishes the repository to `https://storage.googleapis.com/arikkfir-docs/<path>`, so this page
-is at [README.html](https://storage.googleapis.com/arikkfir-docs/README.html). No pull request is needed: push to
-`main`. There are no menus or index pages; link to pages directly. How it works: [phase 4](hub/designs/phase-4-docs-site.md).
+Every push to `main` publishes the repository to `https://docs.dev.kfirs.com/<path>` (behind the hub's sign-in), so
+this page is at [README.html](https://docs.dev.kfirs.com/README.html). No pull request is needed: push to `main`.
+There are no menus or index pages; link to pages directly. How it works: [phase 4](hub/designs/phase-4-docs-site.md).
