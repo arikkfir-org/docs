@@ -93,14 +93,16 @@ printf '%s\n' "you@example.com" "friend@example.com" | add hub-authorized-emails
 
 ## 6. First Octomaton image
 
-Octomaton builds its own releases, but the first one has to come from a workstation:
+Octomaton builds its own releases, but the first one has to come from a workstation. Every commit on `main` is a
+release, tagged with its short SHA; `make image` builds and pushes the image of `HEAD` that way:
 
 ```bash
 gcloud auth configure-docker me-west1-docker.pkg.dev
 git clone https://github.com/arikkfir-org/octomaton && cd octomaton
-git tag v0.1.0 && git push origin v0.1.0
-KO_DOCKER_REPO=me-west1-docker.pkg.dev/arikkfir/images/octomaton ko build --bare --tags=v0.1.0 ./cmd/octomaton
+make image    # tags the image with HEAD's short SHA
 ```
+
+`delivery` must pin that tag in `platform/octomaton/manifests/deployment.yaml`.
 
 ## 7. Argo CD
 
