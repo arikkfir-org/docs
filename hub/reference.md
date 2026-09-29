@@ -47,12 +47,12 @@ protected default branch. Required checks are pinned to the Octomatron GitHub Ap
 
 | Setting | Value |
 | --- | --- |
-| Cluster | `hub`, zonal `me-west1-a`, release channel `REGULAR`, Dataplane V2 |
+| Cluster | `hub`, zonal `me-west1-a`, release channel `REGULAR` with minimum version 1.36, Dataplane V2 |
 | Workload Identity pool | `arikkfir.svc.id.goog` |
 | Nodes | private (no external IPs), egress through Cloud NAT |
 | Control plane access | DNS-based endpoint (IAM-authenticated); no external IP endpoint |
 | Gateway API | GKE-managed Gateway API disabled; CRDs and Traefik installed by Argo CD |
-| Add-ons | HTTP load balancing (Traefik's load balancers); Cloud Storage FUSE CSI driver (docs site) |
+| Add-ons | Cloud Storage FUSE CSI driver (docs site). HTTP load balancing (GKE Ingress) is disabled |
 | Node service account | `gke-hub-nodes@arikkfir.iam.gserviceaccount.com` |
 | Node pool `system` | `e2-standard-4`, on-demand, `me-west1-a`, autoscaling 1-3, label `kfirs.com/pool=system` |
 | Node pool `ci` | `e2-standard-4`, Spot, `me-west1-a/b/c`, autoscaling 0-4, label `kfirs.com/pool=ci`, taint `kfirs.com/pool=ci:NoSchedule` |
@@ -130,8 +130,8 @@ to GKE and are not managed here.
 
 Traefik runs once with two entry-point pairs, each exposed by its own L4 (passthrough network) load balancer: a
 `LoadBalancer` Service with `loadBalancerClass: networking.gke.io/l4-regional-external` that binds the reserved IP by
-name (annotation `networking.gke.io/load-balancer-ip-addresses`), which needs GKE 1.33.1+ and the HTTP load-balancing
-add-on:
+name (annotation `networking.gke.io/load-balancer-ip-addresses`). Without the HTTP load-balancing add-on, these load
+balancers need GKE 1.36+:
 
 | Gateway | Entry points (container → exposed) | Load balancer IP | Interceptor | Who may attach routes |
 | --- | --- | --- | --- | --- |
