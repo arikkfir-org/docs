@@ -103,6 +103,42 @@ flowchart LR
   (`ClusterRole octomaton-tenant`, bound per namespace), and watch runs cluster-wide.
 - Tekton's default pod template schedules runs onto the Spot `ci` node pool.
 
+## Process
+
+`cmd/octomaton` is a launcher: it starts the parts in dependency order and stops them in reverse; the logic lives in
+the packages under `internal/`. Every replica serves webhooks; only the leader writes to GitHub from the reporter.
+
+```mermaid
+flowchart TD
+  SIG["signals<br/>SIGTERM, SIGINT"] --> TEL["telemetry<br/>Google Cloud on GKE, local elsewhere"]
+  TEL --> CFG["configuration<br/>OCTOMATON_* variables"]
+  CFG --> CLI["clients<br/>Kubernetes, GitHub App"]
+  CLI --> HTTP["HTTP server<br/>/github/hooks, /healthz, /readyz"]
+  CLI --> ELEC["Lease election"]
+  HTTP --> POOL["webhook workers"]
+  ELEC -->|leader| JOBS["reporter, scheduler,<br/>token refresh, PVC retention"]
+```
+
+| On SIGTERM, in order | Bound |
+| --- | --- |
+| `/readyz` fails; the HTTP server stops accepting connections and finishes the requests in flight. Meanwhile the leader's jobs stop and it releases the Lease | 10 s |
+| Queued deliveries are processed and relayed | 15 s |
+| Telemetry exporters flush | 5 s |
+
+Telemetry follows where the process runs. On GKE (a pod with a GCP metadata server), everything goes to Google Cloud,
+linked by trace ID; anywhere else, logs are text and nothing is exported. Variables and grants:
+[reference](../reference.md#server-configuration).
+
+```mermaid
+flowchart LR
+  OCT["Octomaton pod<br/>KSA octomaton/octomaton"] -->|"stdout, JSON"| AGENT["GKE logging agent"]
+  AGENT --> CL["Cloud Logging"]
+  OCT -->|"OTLP over gRPC<br/>Workload Identity"| TAPI["telemetry.googleapis.com"]
+  TAPI --> CM["Cloud Monitoring<br/>octomaton.* metrics"]
+  TAPI --> CT["Cloud Trace<br/>webhook spans"]
+  CL -.->|"logging.googleapis.com/trace"| CT
+```
+
 ## Decisions
 
 | Decision | Why | Rejected |
@@ -115,6 +151,9 @@ flowchart LR
 | Namespace per repository | Isolation of credentials and permissions | Shared CI namespace |
 | Unstructured objects + dynamic client | Avoids the heavy Tekton Go module; only a few status fields are read | Tekton typed clients |
 | Leader election for the reconciler only | Any replica can take webhooks; one writer updates check runs | Single replica without election |
+| Configuration from environment variables only (`envconfig`) | One mechanism for settings and secrets: the ConfigMap and the Secret map straight to variables, nothing is mounted, and every problem is reported at startup | A YAML file with mounted secret files; flags |
+| Telemetry to Google Cloud on GKE: logs through stdout to Cloud Logging, metrics and traces over OTLP to the Telemetry API; nothing exported elsewhere | One place for logs, metrics and traces, linked by trace ID. OTLP is Google's recommended path (its own Cloud Monitoring and Cloud Trace exporters are deprecated) and needs no collector | A Prometheus endpoint; an OpenTelemetry Collector; Google's deprecated exporters |
+| The linter is its own command, `octomaton-lint` | The server takes no arguments; the linter is what people install | Subcommands of one binary |
 
 ## Security
 
