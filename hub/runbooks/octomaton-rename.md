@@ -12,7 +12,7 @@ step 2 lands, the [reference](../reference.md) and the [bootstrap runbook](boots
 | Repository | `arikkfir-org/octomatron` | `arikkfir-org/octomaton` |
 | Go module | `github.com/arikkfir-org/octomatron` | `octomaton.dev`: `go install octomaton.dev/cmd/octomaton-lint@latest` |
 | Commands and image | `cmd/octomatron` (server, `lint`, `version`), `images/octomatron` | `cmd/octomaton` (server), `cmd/octomaton-lint`, `images/octomaton` |
-| GitHub App | `octomatron` | `octomaton-dev`, homepage `https://octomaton.dev`; App ID, installation and private key unchanged |
+| GitHub App | `octomatron` | `Octomaton`, homepage `https://github.com/arikkfir-org/octomaton`; App ID, installation and private key unchanged |
 | Webhook URL | `https://octomatron.dev.kfirs.com/github/hooks` | `https://octomaton.dev/github/hooks` |
 | Repository config | `.octomatron.yaml`, `apiVersion: octomatron.kfirs.com/v1` | `.octomaton.yaml`, `apiVersion: octomaton.dev/v1` |
 | Bookkeeping | labels `octomatron.kfirs.com/…`, config-error check `octomatron` | labels `octomaton.dev/…`, check `octomaton` |
@@ -117,8 +117,8 @@ App settings, General:
 
 | Field | Value |
 | --- | --- |
-| GitHub App name | `octomaton-dev`. Any free name works; tell Claude if you choose another |
-| Homepage URL | `https://octomaton.dev` |
+| GitHub App name | `Octomaton` |
+| Homepage URL | `https://github.com/arikkfir-org/octomaton` |
 | Webhook URL | `https://octomaton.dev/github/hooks` |
 | Webhook secret | A new one: `openssl rand -hex 32` |
 
@@ -164,7 +164,7 @@ curl -s -o /dev/null -w '%{http_code}\n' -X POST https://octomaton.dev/github/ho
 go install octomaton.dev/cmd/octomaton-lint@v0.1.0 && octomaton-lint -version   # v0.1.0
 ```
 
-Then [bootstrap](bootstrap.md) step 9: a pull request gets a `ci` check from `octomaton-dev`, and the App's recent
+Then [bootstrap](bootstrap.md) step 9: a pull request gets a `ci` check from Octomaton, and the App's recent
 deliveries succeed. Finish any bootstrap steps still open (8 to 11).
 
 ## 9. Clean up

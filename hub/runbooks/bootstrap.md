@@ -44,8 +44,8 @@ In `arikkfir-org` → Settings → Developer settings → GitHub Apps → New Gi
 
 | Field | Value |
 | --- | --- |
-| Name | `octomaton-dev` (`octomaton` is taken by a GitHub user) |
-| Homepage URL | `https://octomaton.dev` |
+| Name | `Octomaton` |
+| Homepage URL | `https://github.com/arikkfir-org/octomaton` |
 | Webhook URL | `https://octomaton.dev/github/hooks` |
 | Webhook secret | `openssl rand -hex 32` (keep it for step 5) |
 | Repository permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
@@ -84,7 +84,7 @@ it's on. `dig +short NS octomaton.dev` must list them before step 7, because the
 ```bash
 add() { gcloud secrets versions add "$1" --project=arikkfir --data-file=-; }
 printf '%s' "<app id>"                          | add octomaton-github-app-id
-add octomaton-github-private-key               < octomaton-dev.YYYY-MM-DD.private-key.pem
+add octomaton-github-private-key               < octomaton.YYYY-MM-DD.private-key.pem
 printf '%s' "<webhook secret>"                  | add octomaton-github-webhook-secret
 printf '%s' "<descope access key>"              | add oidc-client-secret
 openssl rand -base64 32 | tr -d '\n' | tr -- '+/' '-_' | add oauth2-proxy-cookie-secret
@@ -125,7 +125,7 @@ kubectl -n argocd get applications -w     # everything converges to Synced / Hea
 
 ## 9. Verify CI
 
-Open a pull request in any hub repository; a `ci` check run from `octomaton-dev` appears and links to the
+Open a pull request in any hub repository; a `ci` check run from Octomaton appears and links to the
 Tekton Dashboard.
 
 Pushes made before Octomaton ran were never delivered, so nothing is published yet. Merge a pull request (any change)
