@@ -84,7 +84,7 @@ Granting access means adding the user in Descope and their email to the allowlis
 | Application | Application-level login |
 | --- | --- |
 | Grafana | Trusts `X-Auth-Request-Email` (auth proxy mode); users are created on first visit |
-| Argo CD | Its own OIDC login against the same Descope client (single sign-on, no second password); every authenticated user is admin |
+| Argo CD | Signed in from the Descope session: its route's `descope-token` middleware passes oauth2-proxy's `Authorization: Bearer <ID token>`, which Argo CD verifies against the same Descope client; every authenticated user is admin. Its own Descope login remains the fallback |
 | Tekton Dashboard, NUI, Traefik dashboard | None; the interceptor is the only gate |
 
 Header safety: `strip-auth-headers` removes `X-Auth-Request-*` headers sent by clients before ForwardAuth runs, and
