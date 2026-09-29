@@ -58,12 +58,13 @@ hands the implementations to the services. `tekton` and `leader` share the Kuber
 | Package | May import | Never imports |
 | --- | --- | --- |
 | `internal/services/ci` | the standard library | anything else, in or outside the module |
-| `internal/services/*` | `services/ci`, `services/pipelines`, other services, `system/metrics`, the standard library | `internal/adapters/*`, `k8s.io/*`, go-github, Tekton |
+| `internal/services/*` | `services/ci`, `services/pipelines`, other services, `system/metrics`, the standard library, libraries that aren't provider SDKs (YAML, globs, cron) | `internal/adapters/*`, `k8s.io/*`, go-github, Tekton |
 | `internal/adapters/*` | `services/ci`, `services/pipelines` (to parse it), `adapters/kube`, provider SDKs, `system/*` | the other services |
 | `internal/system/*` | the standard library, OpenTelemetry, envconfig | `services`, `adapters` |
 | `cmd/octomaton` | everything | |
 
-A test walks the module's imports and fails on any violation, so the layering can't erode.
+A test (`internal/architecture`) walks the imports of every package, tests included, and fails on any violation, so
+the layering can't erode. A new package without a rule fails it too.
 
 ## Packages
 
@@ -72,20 +73,24 @@ cmd/octomaton/            launcher: signals, system, adapters, services, run
 cmd/octomaton-lint/       the linter's launcher
 internal/system/          config, telemetry, metrics (+ metricstest), buildinfo
 internal/services/
-  ci/                     vocabulary (Repository, Trigger, Event, Run, Outcome, Report) and ports (CodeHost, Runner, Leadership)
+  ci/                     vocabulary (Repository, Trigger, Event, Run, Outcome, Report) and ports (CodeHost, Runner)
+    citest/               in-memory CodeHost and Runner for the services' tests
   pipelines/              .octomaton.yaml: schema, event matching, templates
   runs/                   events to runs: evaluation, start, concurrency, re-runs, comment commands
   reports/                run state to reports: titles, task tables, failure logs, task checks
   schedules/              cron triggers to runs
   upkeep/                 token refresh, retention of finished runs' resources
-  lint/                   validating a repository's configuration
+  lint/                   validating a repository's configuration, rendering through a Renderer
 internal/adapters/
   github/                 CodeHost: App auth, REST calls, check-run markers (+ githubtest); webhook payloads to ci.Event
-  tekton/                 Runner: PipelineRun rendering, bookkeeping labels and annotations, status to ci.Run, Watch
+  tekton/                 Runner: PipelineRun rendering, bookkeeping labels and annotations, status to ci.Run, Watch;
+                          Renderer for the linter; the repository-to-namespace mapping
   kube/                   Kubernetes clients
-  leader/                 Leadership through a Lease
+  leader/                 Lease election; cmd/octomaton runs the leader's jobs through it
   http/                   server, readiness, the webhook endpoint (signature, deduplication, worker pool)
   relay/                  forwarding verified deliveries
+internal/architecture/    the import rules, as a test
+internal/e2e/             signed webhooks through the real adapters over fakes
 ```
 
 | Today | Becomes |
@@ -114,53 +119,57 @@ internal/adapters/
 | `Outcome` | How a finished run ended: success, failure, cancelled, timed out or skipped, with a reason | `tekton.Outcome` |
 | `Report` | The status shown on the code host: name, status, conclusion, title, summary, link, trigger | GitHub check-run options |
 
-The ports, as a sketch; exact signatures settle in code:
+The ports, as built. The deviations from the first sketch are listed under [As built](#as-built).
 
 ```go
-// CodeHost is GitHub: installations, repository files, reports (check runs), people and tokens.
+// CodeHost is GitHub: the App's installations, repository tokens and the permissions they can carry.
 type CodeHost interface {
-	Installations(ctx context.Context) ([]int64, error)
+	Accounts(ctx context.Context) ([]Account, error) // installations of the served owners
 	Installation(id int64) Installation
-	RepositoryToken(ctx context.Context, installation, repository int64, permissions map[string]string) (Token, error)
+	RepositoryToken(ctx context.Context, installationID, repositoryID int64, permissions map[string]string) (Token, error)
+	CheckPermissions(permissions map[string]string) error // githubToken.permissions GitHub can grant
 }
 
 type Installation interface {
 	Repositories(ctx context.Context) ([]Repository, error)
 	ReadFile(ctx context.Context, repo Repository, path, ref string) ([]byte, error) // ErrNotFound
-	ChangedFiles(ctx context.Context, t Trigger) (Changes, error)
+	PullRequestFiles(ctx context.Context, repo Repository, number int) (ChangedFiles, error)
+	CompareFiles(ctx context.Context, repo Repository, base, head string) (ChangedFiles, error)
+	PullRequest(ctx context.Context, repo Repository, number int) (PullRequestState, error)
+	BranchHead(ctx context.Context, repo Repository, branch string) (string, error)
+	Permission(ctx context.Context, repo Repository, user string) (Permission, error)
 	OpenReport(ctx context.Context, repo Repository, r Report) (ReportID, error)
 	UpdateReport(ctx context.Context, repo Repository, id ReportID, r Report) error
-	Report(ctx context.Context, repo Repository, id ReportID) (Report, error)
-	FindReport(ctx context.Context, repo Repository, sha, name, key string) (ReportID, error)
-	Permission(ctx context.Context, repo Repository, user string) (Permission, error)
-	PullRequest(ctx context.Context, repo Repository, number int) (PullRequest, error)
-	BranchHead(ctx context.Context, repo Repository, branch string) (string, error)
-	React(ctx context.Context, repo Repository, comment int64, reaction string) error
+	FindReport(ctx context.Context, repo Repository, revision, name, externalID string) (ReportID, error)
+	ReportTrigger(ctx context.Context, repo Repository, id ReportID) (*Trigger, error)
+	SuiteReports(ctx context.Context, repo Repository, suiteID int64) ([]ReportRef, error)
+	React(ctx context.Context, repo Repository, commentID int64, reaction string) error
 	Comment(ctx context.Context, repo Repository, number int, body string) error
 }
 
 // Runner is the CI system that executes pipelines: Tekton on Kubernetes.
 type Runner interface {
-	Prepare(definition []byte, spec RunSpec) (Prepared, error) // parse, check and render; no side effects
-	Create(ctx context.Context, p Prepared) (Run, error)      // held; ErrExists when the name is taken
+	Check(ctx context.Context, spec RunSpec) error                     // a *Refusal before anything exists
+	Create(ctx context.Context, spec RunSpec, attempt int) (Run, error) // held; ErrExists when the attempt exists
 	Get(ctx context.Context, id RunID) (Run, error)
 	List(ctx context.Context, q RunQuery) ([]Run, error)
 	Release(ctx context.Context, id RunID) error
-	Cancel(ctx context.Context, id RunID, reason string) error
-	Record(ctx context.Context, id RunID, r Record) error // what was reported, report IDs, superseded-by, …
-	SetToken(ctx context.Context, id RunID, t Token) error
-	TaskLogs(ctx context.Context, id RunID, task string) (string, error)
-	Links(id RunID) RunLinks // where people watch a run and its tasks
+	Cancel(ctx context.Context, id RunID, why Cancellation) error
+	Record(ctx context.Context, id RunID, r Record) error // what was reported, report IDs, progress, …
+	SetToken(ctx context.Context, run Run, t Token) error
+	TokenExpiry(ctx context.Context, id RunID) (expires time.Time, ok bool, err error)
+	Details(ctx context.Context, id RunID) (Details, error) // tasks, results, failed steps
+	StepLogs(ctx context.Context, id RunID, step Step, tailLines, limitBytes int64) (string, error)
+	Link(id RunID) RunLink               // where people watch a run
+	TaskURL(id RunID, task string) string // and one of its tasks
 	FreeResources(ctx context.Context, finishedBefore time.Time) (int, error)
-	TenantExists(ctx context.Context, tenant string) (bool, error)
-	// Watch calls on for every change of a run until ctx ends; on returns when to look again.
-	Watch(ctx context.Context, on func(context.Context, Run) (again time.Duration, err error)) error
+	Watch(ctx context.Context, w Watcher) error // until ctx ends
 }
 
-// Leadership elects the one replica that does leader-only work.
-type Leadership interface {
-	Lead(ctx context.Context, work func(ctx context.Context))
-	Leading() bool
+// Watcher is told about runs that changed; services/reports implements it.
+type Watcher interface {
+	Reconcile(ctx context.Context, run Run) (again time.Duration, err error)
+	Deleted(ctx context.Context, run Run) error // deleted before it was reported
 }
 ```
 
@@ -184,7 +193,7 @@ sequenceDiagram
   R->>C: ReadFile(.octomaton.yaml, revision)
   R->>R: pipelines: match triggers, render params
   R->>C: ReadFile(pipelineRun file)
-  R->>T: Prepare, then Create (held)
+  R->>T: Check, then Create (held)
   R->>C: OpenReport (queued)
   R->>C: RepositoryToken, then T: SetToken
   R->>T: Release, or wait per the concurrency policy
@@ -198,17 +207,21 @@ sequenceDiagram
   participant P as services/reports
   participant R as services/runs
   participant C as CodeHost (adapters/github)
-  T->>P: Watch: a run changed (ci.Run)
+  T->>P: Watch: Reconcile(run)
   P->>C: UpdateReport (in progress, task table, conclusion)
   P->>T: Record(reported)
-  T->>R: Watch: a run finished, or is held too long
-  R->>T: Release the next held run of its group, or resume it
+  P->>R: finished: ReleaseNext; held too long: Resume
+  R->>T: Release the next held run of its group, or finish starting this one
 ```
+
+`cmd/octomaton` hands `runs.Service.ReleaseNext` and `Resume` to `reports.Service`, so neither service holds the
+other.
 
 ## Behaviour and contract
 
 Unchanged: environment variables, endpoints, check names and markers (written only by `adapters/github`), labels and
-annotations (written only by `adapters/tekton`), metrics, RBAC and IAM. The reference needs no change.
+annotations (written only by `adapters/tekton`), metrics, RBAC and IAM. The reference needs no change. The few
+behaviour changes are listed under [As built](#as-built).
 
 ## Decisions
 
@@ -235,6 +248,29 @@ Every step keeps `go vet`, `go test -race` and the end-to-end test green. All of
 6. Rewire `cmd/octomaton`, point the end-to-end test at the real adapters over fakes, add the architecture test, and
    update the README and CLAUDE.md.
 
-## Open questions
+## As built
 
-- Names: `ci` for the vocabulary; `runs`, `reports`, `schedules` and `upkeep` for the services.
+All six steps landed in octomaton#1. Where the code differs from the design above:
+
+| Design | As built | Why |
+| --- | --- | --- |
+| A `Leadership` port in `services/ci` | No port. `cmd/octomaton` runs the leader's jobs through `adapters/leader` | No service asks who leads; only the launcher decides what runs on the leader |
+| `CodeHost.Installations` | `Accounts`: installation IDs with their owners, filtered by `OCTOMATON_GITHUB_ALLOWED_OWNERS` in `adapters/github` | Which owners are served is GitHub's concern |
+| — | `CodeHost.CheckPermissions` | `pipelines` checks `githubToken.permissions` against what GitHub grants, in the server and in `octomaton-lint` |
+| `Installation.ChangedFiles(trigger)` | `PullRequestFiles` and `CompareFiles` | Which range counts as changed for a trigger is a rule of the core |
+| `Installation.Report` | `ReportTrigger` and `SuiteReports` | A re-run needs only a report's stored trigger, or a suite's reports |
+| `Runner.Prepare`, then `Create(prepared)` | `Check(spec)`, then `Create(spec, attempt)` | The runner renders at creation; `Check` refuses (as a `ci.Refusal`) before anything exists |
+| `Runner.TenantExists` | Part of `Check` | A missing namespace is one of the refusals |
+| `Runner.TaskLogs(task)` | `Details` and `StepLogs(step)` | Reports show the log tails of failed steps |
+| `Runner.Watch(on func)` | `Watch(ctx, Watcher)`, with `Reconcile` and `Deleted` | A run deleted before it was reported still gets its report concluded |
+| Namespaces mapped in `system/config` | `adapters/tekton.Namespaces`, from the settings `system/config` reads | A tenant is the runner's notion |
+| `services/lint` renders through the Tekton adapter | Through `lint.Renderer`, which `adapters/tekton.Renderer` implements | Services don't import adapters |
+| `adapters/http` decodes through `adapters/github` | Through its `Decoder` and `EventHandler` interfaces, filled by `cmd/octomaton` with the GitHub App and the runs service | Adapters don't import other adapters (except `kube`) or services |
+
+Behaviour changes:
+
+| Change | Effect |
+| --- | --- |
+| The comment and schedule-slot labels of a run come from its trigger | Re-runs of scheduled runs keep the slot label |
+| The runner's checks (namespace, definition) run after the pipelineRun file is read and its params rendered | With several problems, another one may be reported first |
+| Log `component` values are `runs`, `reports`, `schedules`, `upkeep` and `runner` | Log queries on `trigger` or `reporter` need the new names |
