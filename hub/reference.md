@@ -113,7 +113,7 @@ to GKE and are not managed here.
 
 | Namespace | Component | Source | Version |
 | --- | --- | --- | --- |
-| `argocd` | Argo CD (self-managed after bootstrap) | `https://argoproj.github.io/argo-helm` `argo-cd` | `10.9.2` (Argo CD v3.5.3) |
+| `argocd` | Argo CD (self-managed after bootstrap) | `https://argoproj.github.io/argo-helm` `argo-cd` | `10.9.4` (Argo CD v3.5.3) |
 | `cert-manager` | cert-manager | `https://charts.jetstack.io` `cert-manager` | `v1.21.2` |
 | `external-secrets` | External Secrets Operator | `https://charts.external-secrets.io` `external-secrets` | `2.11.0` |
 | `keda` | KEDA | `https://kedacore.github.io/charts` `keda` | `2.21.0` |
@@ -121,12 +121,12 @@ to GKE and are not managed here.
 | `nats` | NACK (JetStream controller) | same repo, `nack` | `0.35.0` |
 | `nats` | NUI | `https://nats-nui.github.io/k8s/helm/charts` `nui` | `0.1.6` (image tag pinned) |
 | `reloader` | Stakater Reloader | `https://stakater.github.io/stakater-charts` `reloader` | `2.2.17` |
-| `traefik` | Gateway API CRDs (standard channel) | `kubernetes-sigs/gateway-api` release | `v1.6.1` |
+| `traefik` | Gateway API CRDs (standard channel) | `kubernetes-sigs/gateway-api` release | `v1.6.2` |
 | `traefik` | Traefik | `https://traefik.github.io/charts` `traefik` | `41.6.0` (Traefik v3.7) |
 | `auth` | oauth2-proxy (auth interceptor) | `https://oauth2-proxy.github.io/manifests` `oauth2-proxy` | `10.7.0` |
-| `grafana` | Grafana | `https://grafana-community.github.io/helm-charts` `grafana` | `13.2.6` |
-| `tekton-operator` | Tekton Operator | `tektoncd/operator` release manifest | `v0.77.0` |
-| `tekton-pipelines` | Pipelines, Triggers, Dashboard (via `TektonConfig`) | operator-managed | operator default |
+| `grafana` | Grafana | `https://grafana-community.github.io/helm-charts` `grafana` | `13.2.7` (Grafana 13.2.3) |
+| `tekton-operator` | Tekton Operator | `tektoncd/operator` release manifest from `infra.tekton.dev` (Tekton's release host since v0.78) | `v0.81.1` |
+| `tekton-pipelines` | Pipelines, Triggers, Dashboard (via `TektonConfig`; Results, Chains, Pipelines-as-Code and the operator's NetworkPolicies off) | operator-managed | operator default |
 | `octomaton` | Octomaton | `me-west1-docker.pkg.dev/arikkfir/images/octomaton` | `afa6953`: the short SHA of a `main` commit. There are no version tags; every push to `main` publishes one, which is also the version the binary and its telemetry report |
 | `octomaton` | `go-import`: nginx answering for `octomaton.dev` | `docker.io/nginxinc/nginx-unprivileged` | `1.30.5-alpine` |
 | `docs` | Docs site: nginx serving `arikkfir-docs` (Cloud Storage FUSE mount) | `docker.io/nginxinc/nginx-unprivileged` | `1.30.5-alpine` |
