@@ -62,11 +62,11 @@ Markdown files are pruned. The object metadata is informational: the docs site s
 ```mermaid
 flowchart LR
   B((Browser)) -- "https://docs.dev.kfirs.com/..." --> T[Traefik protected gateway<br/>OIDC interceptor]
-  T --> N[docs/docs<br/>nginx-unprivileged]
+  T --> N[docs/docs<br/>Caddy]
   N -- "Cloud Storage FUSE<br/>read-only mount" --> G[(gs://arikkfir-docs<br/>private)]
 ```
 
-The `docs` Application in `delivery` runs nginx with the bucket mounted read-only by GKE's Cloud Storage FUSE CSI
+The `docs` Application in `delivery` runs Caddy with the bucket mounted read-only by GKE's Cloud Storage FUSE CSI
 driver (sidecar), as Kubernetes service account `docs/docs`. Sign-in happens at the gateway, as for every hub tool.
 
 | Request | Response |
@@ -98,7 +98,7 @@ The bucket enforces public access prevention; nothing reads it anonymously.
 
 | Decision | Why | Rejected |
 | --- | --- | --- |
-| Private bucket, served by nginx in the cluster through Cloud Storage FUSE, behind the OIDC interceptor | Same sign-in as every hub tool; the pipeline and the bucket stay as they are | Public bucket; Cloud Storage website hosting behind an HTTPS load balancer and IAP (cost, a second sign-in system) |
+| Private bucket, served by Caddy in the cluster through Cloud Storage FUSE, behind the OIDC interceptor | Same sign-in as every hub tool; the pipeline and the bucket stay as they are | Public bucket; Cloud Storage website hosting behind an HTTPS load balancer and IAP (cost, a second sign-in system) |
 | pandoc with a small Lua filter | One static binary, faithful GitHub-flavoured Markdown, easy link rewriting | Static-site generators (navigation, themes and config we don't want yet) |
 | Render only changed Markdown | Required; keeps publications fast as the site grows | Re-render everything on every push |
 | Record the published revision in the bucket | Makes incremental rendering self-healing after failures | Trusting each push's `before` SHA |

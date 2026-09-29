@@ -14,7 +14,7 @@ flowchart LR
   BR["Browser"] -->|"GET /path"| LB
   LB["octomaton.dev<br/>ingress-public L4 LB"] --> GW["Traefik gateway public<br/>listener octomaton-dev"]
   GW -->|"Exact /github/hooks"| OC["octomaton/octomaton"]
-  GW -->|"everything else"| GI["octomaton/go-import<br/>nginx"]
+  GW -->|"everything else"| GI["octomaton/go-import<br/>Caddy"]
 ```
 
 | Request | Answer |
@@ -48,7 +48,7 @@ sequenceDiagram
 | Module path `octomaton.dev` | Short, owned, and independent of where the repository lives; `go install` works through the `go-import` tag | `github.com/arikkfir-org/octomaton` (imports follow repository renames); `octo` (not installable, and dotless paths are reserved for the standard library) |
 | The hub serves the domain | Cloud DNS, cert-manager and the public gateway already exist; everything stays in Terraform and Argo CD | GitHub Pages |
 | One host, two backends | The webhook stays the only path that reaches Octomaton; the rest is a static answer | A separate webhook host |
-| nginx in the `octomaton` namespace | No code to maintain; one namespace owns the domain | Serving the tag from Octomaton itself |
+| Caddy in the `octomaton` namespace | No code to maintain; one namespace owns the domain | Serving the tag from Octomaton itself |
 | A certificate and listener of its own | A problem with the new domain can't block renewal of the `*.kfirs.com` certificate | A SAN on the wildcard certificate |
 | GitHub App named `Octomaton`, with the repository as its homepage | It is the product's name. Octomaton and the `ci` ruleset identify the App by its ID, so the name only labels its checks and comments | `octomaton-dev`, a homepage at `https://octomaton.dev` (which redirects to the repository anyway) |
 

@@ -21,7 +21,7 @@ flowchart LR
   repo -- push event --> SB[Octomaton]
   SB --> TK[Tekton: render changed Markdown,<br/>rsync to bucket]
   TK --> GCS[(gs://arikkfir-docs<br/>private)]
-  GCS -- Cloud Storage FUSE --> WEB[docs.dev.kfirs.com<br/>nginx, behind sign-in]
+  GCS -- Cloud Storage FUSE --> WEB[docs.dev.kfirs.com<br/>Caddy, behind sign-in]
   WEB -- page.html, page.md --> B[Browsers]
   repo -- page.md on GitHub --> AG[Agents]
 ```
