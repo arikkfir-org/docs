@@ -148,6 +148,9 @@ Certificates come from cert-manager (Let's Encrypt, DNS-01 through Cloud DNS, Cl
 | `protected/websecure`, `public/public-websecure` | `*.kfirs.com` (which also matches `*.dev.kfirs.com`) | `wildcard-kfirs-com` (`*.kfirs.com`, `*.dev.kfirs.com`) / `traefik/wildcard-kfirs-com-tls` |
 | `public/octomaton-dev` (port 9443) | `octomaton.dev` | `octomaton-dev` / `traefik/octomaton-dev-tls` |
 
+The `octomaton-dev` listener accepts routes only from namespace `octomaton` (which also carries
+`kfirs.com/public-ingress=true`).
+
 | Host | Gateway | Backend |
 | --- | --- | --- |
 | `argocd.dev.kfirs.com` | protected | `argocd/argocd-server:80` |
