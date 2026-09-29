@@ -9,7 +9,7 @@ wiring: [reference](../reference.md#octomaton). Migration from Octomatron:
 
 ```mermaid
 flowchart LR
-  GH["GitHub App<br/>octomaton-dev"] -->|"POST /github/hooks"| LB
+  GH["GitHub App<br/>Octomaton"] -->|"POST /github/hooks"| LB
   GO["go command,<br/>proxy.golang.org"] -->|"GET /path?go-get=1"| LB
   BR["Browser"] -->|"GET /path"| LB
   LB["octomaton.dev<br/>ingress-public L4 LB"] --> GW["Traefik gateway public<br/>listener octomaton-dev"]
@@ -50,7 +50,7 @@ sequenceDiagram
 | One host, two backends | The webhook stays the only path that reaches Octomaton; the rest is a static answer | A separate webhook host |
 | nginx in the `octomaton` namespace | No code to maintain; one namespace owns the domain | Serving the tag from Octomaton itself |
 | A certificate and listener of its own | A problem with the new domain can't block renewal of the `*.kfirs.com` certificate | A SAN on the wildcard certificate |
-| GitHub App named `octomaton-dev` | GitHub refuses App names that match an existing account, and a user `octomaton` exists | |
+| GitHub App named `Octomaton`, with the repository as its homepage | It is the product's name. Octomaton and the `ci` ruleset identify the App by its ID, so the name only labels its checks and comments | `octomaton-dev`, a homepage at `https://octomaton.dev` (which redirects to the repository anyway) |
 
 ## Security and failure modes
 

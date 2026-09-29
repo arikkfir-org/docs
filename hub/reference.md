@@ -189,7 +189,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 
 | Item | Value |
 | --- | --- |
-| GitHub App | `octomaton-dev` (created by hand; `octomaton` is taken by a GitHub user), homepage `https://octomaton.dev`, installed on all `arikkfir-org` repositories |
+| GitHub App | `Octomaton` (created by hand), homepage `https://github.com/arikkfir-org/octomaton`, installed on all `arikkfir-org` repositories. Octomaton and the `ci` ruleset identify it by its App ID, never by name |
 | App permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
 | App events | `push`, `pull_request`, `issue_comment`, `check_suite`, `check_run`, `merge_group` |
 | Webhook URL | `https://octomaton.dev/github/hooks` |
