@@ -190,35 +190,58 @@ of zone `octomaton-dev` for `octomaton.dev`.
 | App permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
 | App events | `push`, `pull_request`, `issue_comment`, `check_suite`, `check_run`, `merge_group` |
 | Webhook URL | `https://octomaton.dev/github/hooks` |
-| Go module | `octomaton.dev` (`go install octomaton.dev/cmd/octomaton@latest`); repository `arikkfir-org/octomaton` |
+| Go module | `octomaton.dev`; repository `arikkfir-org/octomaton` |
+| Commands | `octomaton`, the server (no arguments); `octomaton-lint [-render] PATH...` validates `.octomaton.yaml` (`go install octomaton.dev/cmd/octomaton-lint@latest`; `-version`) |
 | Go import page | `https://octomaton.dev/<path>?go-get=1` returns `<meta name="go-import" content="octomaton.dev git https://github.com/arikkfir-org/octomaton">`; any other request is redirected (302) to the repository |
 | Kubernetes | namespace `octomaton`, Deployment/ServiceAccount/Service `octomaton` (Service port 80 → container 8080); Deployment/Service/ConfigMap `go-import` for the import page (Service port 80 → container 8080) |
-| Config | ConfigMap `octomaton` key `config.yaml` mounted at `/etc/octomaton/config.yaml` |
-| GitHub secret | Secret `octomaton-github` (keys `app-id`, `private-key`, `webhook-secret`) mounted at `/etc/octomaton/github/` |
+| Config | Environment variables only ([server configuration](#server-configuration)): ConfigMap `octomaton` through `envFrom`; `OCTOMATON_POD_NAME` and `OCTOMATON_POD_NAMESPACE` from the downward API; `enableServiceLinks: false` |
+| GitHub secret | Secret `octomaton-github`: keys `app-id`, `private-key`, `webhook-secret` as `OCTOMATON_GITHUB_APP_ID`, `OCTOMATON_GITHUB_PRIVATE_KEY`, `OCTOMATON_GITHUB_WEBHOOK_SECRET` |
 | Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz`, `GET /metrics` (all on 8080) |
 | Check links | `https://tekton.dev.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
 | Tenant namespaces | `ci-<repository>` (`.github` → `ci-github`); each has ServiceAccount `pipeline` and RoleBinding `octomaton` → ClusterRole `octomaton-tenant` |
 | Tenant permissions | `octomaton-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete) |
 
-### Server configuration (`/etc/octomaton/config.yaml`)
+### Server configuration
 
-```yaml
-github:
-  appIDFile: /etc/octomaton/github/app-id
-  privateKeyFile: /etc/octomaton/github/private-key
-  webhookSecretFile: /etc/octomaton/github/webhook-secret
-  allowedOwners: [arikkfir-org]        # installations on other owners are ignored
-tekton:
-  dashboardURL: https://tekton.dev.kfirs.com
-namespaces:
-  template: "ci-{{ .Repository.Name }}" # rendered, then sanitized to a DNS label
-  overrides:
-    arikkfir-org/.github: ci-github
-relay:                                  # verified push and pull_request deliveries are forwarded here
-  urls: [http://argocd-server.argocd.svc.cluster.local/api/webhook]
-retention:
-  freePVCsAfter: 1h                     # PVCs of finished runs are deleted after this; runs and pods stay
-```
+The server takes no arguments: environment variables configure it, and it exits at startup listing every problem.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `OCTOMATON_GITHUB_APP_ID` | required | the GitHub App's ID |
+| `OCTOMATON_GITHUB_PRIVATE_KEY` | required | the App's PEM private key (PKCS#1 or PKCS#8) |
+| `OCTOMATON_GITHUB_WEBHOOK_SECRET` | required | the App's webhook secret |
+| `OCTOMATON_GITHUB_ALLOWED_OWNERS` | every owner | users and organizations whose installations are served, comma-separated |
+| `OCTOMATON_TEKTON_DASHBOARD_URL` | none | Tekton Dashboard base URL that check runs link to |
+| `OCTOMATON_NAMESPACE_TEMPLATE` | `ci-{{ .Repository.Name }}` | namespace of a repository's runs, rendered then sanitized |
+| `OCTOMATON_NAMESPACE_OVERRIDES` | none | `owner/name:namespace` pairs, comma-separated; they win over the template |
+| `OCTOMATON_RELAY_URLS` | none | URLs that receive verified `push` and `pull_request` deliveries, comma-separated |
+| `OCTOMATON_RETENTION_FREE_PVCS_AFTER` | `1h` | delay after which the PVCs of finished runs are deleted; runs and pods stay |
+| `OCTOMATON_HTTP_ADDRESS` | `:8080` | address of `/github/hooks`, `/healthz`, `/readyz` and `/metrics` |
+| `OCTOMATON_WEBHOOK_WORKERS`, `OCTOMATON_WEBHOOK_QUEUE_SIZE` | `8`, `256` | webhook worker pool |
+| `OCTOMATON_POD_NAME`, `OCTOMATON_POD_NAMESPACE` | host name, service account namespace | holder identity and namespace of the Lease `octomaton` |
+| `OCTOMATON_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
+| `OCTOMATON_LOG_FORMAT` | `json` | `json` (the fields Cloud Logging reads) or `text`, on stdout |
+| `OTEL_TRACES_EXPORTER`, `OTEL_LOGS_EXPORTER` | none | `otlp` (with the `OTEL_EXPORTER_OTLP_*` variables) or `console` to export traces and logs |
+| `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` | `octomaton` | the resource of exported telemetry, e.g. `k8s.pod.name=…` |
+| `KUBECONFIG` | in-cluster config | used when not running in a cluster |
+
+- `OCTOMATON_NAMESPACE_TEMPLATE` is rendered over `.Repository`, then sanitized: lowercased, leading dots stripped,
+  every run of characters outside `[a-z0-9-]` replaced by `-`, leading and trailing `-` trimmed, cut to 63 characters.
+  Overrides (`owner/name`, case-insensitive) win. A namespace that does not exist fails the check with "repository not
+  onboarded".
+- `OCTOMATON_RELAY_URLS` receive the original body and GitHub headers (signatures included), asynchronously, with a
+  10 s timeout.
+
+The hub's ConfigMap `octomaton` sets:
+
+| Variable | Value |
+| --- | --- |
+| `OCTOMATON_GITHUB_ALLOWED_OWNERS` | `arikkfir-org` |
+| `OCTOMATON_TEKTON_DASHBOARD_URL` | `https://tekton.dev.kfirs.com` |
+| `OCTOMATON_NAMESPACE_TEMPLATE` | `ci-{{ .Repository.Name }}` |
+| `OCTOMATON_NAMESPACE_OVERRIDES` | `arikkfir-org/.github:ci-github` |
+| `OCTOMATON_RELAY_URLS` | `http://argocd-server.argocd.svc.cluster.local/api/webhook` (Argo CD refreshes on pushes) |
+| `OCTOMATON_RETENTION_FREE_PVCS_AFTER` | `1h` |
 
 ### Repository configuration (`.octomaton.yaml`)
 

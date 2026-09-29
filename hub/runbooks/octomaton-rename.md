@@ -10,8 +10,8 @@ step 2 lands, the [reference](../reference.md) and the [bootstrap runbook](boots
 | | Before | After |
 | --- | --- | --- |
 | Repository | `arikkfir-org/octomatron` | `arikkfir-org/octomaton` |
-| Go module | `github.com/arikkfir-org/octomatron` | `octomaton.dev`: `go install octomaton.dev/cmd/octomaton@latest` |
-| Command and image | `cmd/octomatron`, `images/octomatron` | `cmd/octomaton`, `images/octomaton` |
+| Go module | `github.com/arikkfir-org/octomatron` | `octomaton.dev`: `go install octomaton.dev/cmd/octomaton-lint@latest` |
+| Commands and image | `cmd/octomatron` (server, `lint`, `version`), `images/octomatron` | `cmd/octomaton` (server), `cmd/octomaton-lint`, `images/octomaton` |
 | GitHub App | `octomatron` | `octomaton-dev`, homepage `https://octomaton.dev`; App ID, installation and private key unchanged |
 | Webhook URL | `https://octomatron.dev.kfirs.com/github/hooks` | `https://octomaton.dev/github/hooks` |
 | Repository config | `.octomatron.yaml`, `apiVersion: octomatron.kfirs.com/v1` | `.octomaton.yaml`, `apiVersion: octomaton.dev/v1` |
@@ -20,7 +20,7 @@ step 2 lands, the [reference](../reference.md) and the [bootstrap runbook](boots
 | Secret Manager | `octomatron-github-{app-id,private-key,webhook-secret}` | `octomaton-github-{app-id,private-key,webhook-secret}` |
 | IAM | `ci-octomatron/pipeline` writes to `images` | `ci-octomaton/pipeline` |
 | Terraform variable | `octomatron_app_id` | `octomaton_app_id` |
-| Metrics, env, paths | `octomatron_*`, `OCTOMATRON_*`, `/etc/octomatron/` | `octomaton_*`, `OCTOMATON_*`, `/etc/octomaton/` |
+| Metrics, configuration | `octomatron_*`; `/etc/octomatron/config.yaml` and mounted secret files | `octomaton_*`; `OCTOMATON_*` variables only, nothing mounted |
 | DNS | record `octomatron.dev.kfirs.com` | zone `octomaton-dev` for `octomaton.dev`, apex A record → `ingress-public` |
 | TLS (new) | | certificate `octomaton-dev`, listener `octomaton-dev` on the public gateway |
 | Import page (new) | | `go-import` (nginx) in namespace `octomaton`: the `go-import` tag for `?go-get=1`, a redirect to the repository otherwise |
@@ -46,9 +46,9 @@ flowchart TD
 
 | Repository | Pull request | Change |
 | --- | --- | --- |
-| `docs` | #1 (open) | Reference, bootstrap runbook, overview, contributing guide, `.octomaton.yaml`; `phase-2-octomatron.md` becomes `phase-2-octomaton.md`; the [octomaton.dev design](../designs/octomaton-dev.md); pull requests for `docs` too |
-| `octomatron` | #1 (open) | Module `octomaton.dev` and every import; `cmd/octomaton`; every name above; `.octomaton.yaml`; README with the `go install` line. `octomaton version` falls back to the module version, so `go install` builds report their tag |
-| `delivery` | #1 (open) | Rename the app, namespace, CI tenant, secrets and image. `octomaton.dev` route: `/github/hooks` to Octomaton, the rest to the new `go-import` nginx. `octomaton.dev` certificate and public-gateway listener; a DNS-01 solver for zone `octomaton-dev` in both ClusterIssuers |
+| `docs` | #1 (merged) | Reference, bootstrap runbook, overview, contributing guide, `.octomaton.yaml`; `phase-2-octomatron.md` becomes `phase-2-octomaton.md`; the [octomaton.dev design](../designs/octomaton-dev.md); pull requests for `docs` too |
+| `octomatron` | #1 (open) | Module `octomaton.dev` and every import; `cmd/octomaton` and `cmd/octomaton-lint`; every name above; `.octomaton.yaml`; configuration from `OCTOMATON_*` variables and telemetry through OpenTelemetry; README with the `go install` line. `octomaton-lint -version` falls back to the module version, so `go install` builds report their tag |
+| `delivery` | #1 (open) | Rename the app, namespace, CI tenant, secrets and image; configure Octomaton with environment variables. `octomaton.dev` route: `/github/hooks` to Octomaton, the rest to the new `go-import` nginx. `octomaton.dev` certificate and public-gateway listener; a DNS-01 solver for zone `octomaton-dev` in both ClusterIssuers |
 | `infra` | new: `terraform/github` | Repository key with `moved` blocks; variable `octomaton_app_id`; `.octomaton.yaml`; README |
 | `infra` | new: `terraform/gcp` | Secrets and IAM renamed; record `octomatron.dev.kfirs.com` dropped; zone `octomaton-dev` with its apex record and cert-manager's grant; a name-server output |
 | `.github`, `tooling` | new | `.octomaton.yaml` and mentions |
@@ -159,7 +159,7 @@ kubectl -n traefik get certificate octomaton-dev                         # Ready
 curl -s 'https://octomaton.dev/cmd/octomaton?go-get=1' | grep go-import
 curl -sI https://octomaton.dev | grep -i '^location'                      # https://github.com/arikkfir-org/octomaton
 curl -s -o /dev/null -w '%{http_code}\n' -X POST https://octomaton.dev/github/hooks   # 401: Octomaton, unsigned
-go install octomaton.dev/cmd/octomaton@v0.1.0 && octomaton version        # v0.1.0
+go install octomaton.dev/cmd/octomaton-lint@v0.1.0 && octomaton-lint -version   # v0.1.0
 ```
 
 Then [bootstrap](bootstrap.md) step 9: a pull request gets a `ci` check from `octomaton-dev`, and the App's recent

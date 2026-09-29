@@ -103,6 +103,33 @@ flowchart LR
   (`ClusterRole octomaton-tenant`, bound per namespace), and watch runs cluster-wide.
 - Tekton's default pod template schedules runs onto the Spot `ci` node pool.
 
+## Process
+
+`cmd/octomaton` is a launcher: it starts the parts in dependency order and stops them in reverse; the logic lives in
+the packages under `internal/`. Every replica serves webhooks; only the leader writes to GitHub from the reporter.
+
+```mermaid
+flowchart TD
+  SIG["signals<br/>SIGTERM, SIGINT"] --> TEL["telemetry<br/>OCTOMATON_LOG_*, OTEL_*"]
+  TEL --> CFG["configuration<br/>OCTOMATON_* variables"]
+  CFG --> CLI["clients<br/>Kubernetes, GitHub App"]
+  CLI --> HTTP["HTTP server<br/>/github/hooks, /healthz, /readyz, /metrics"]
+  CLI --> ELEC["Lease election"]
+  HTTP --> POOL["webhook workers"]
+  ELEC -->|leader| JOBS["reporter, scheduler,<br/>token refresh, PVC retention"]
+```
+
+| On SIGTERM, in order | Bound |
+| --- | --- |
+| `/readyz` fails; the HTTP server stops accepting connections and finishes the requests in flight. Meanwhile the leader's jobs stop and it releases the Lease | 10 s |
+| Queued deliveries are processed and relayed | 15 s |
+| Telemetry exporters flush | 5 s |
+
+Logs are JSON on stdout with the fields Cloud Logging reads (`severity`, `message`, `timestamp`,
+`logging.googleapis.com/sourceLocation`), client-go's included. Metrics are recorded with OpenTelemetry and scraped
+from `/metrics`. Traces and a copy of the logs leave the pod only when `OTEL_TRACES_EXPORTER` or `OTEL_LOGS_EXPORTER`
+names an exporter. Variables: [reference](../reference.md#server-configuration).
+
 ## Decisions
 
 | Decision | Why | Rejected |
@@ -115,6 +142,9 @@ flowchart LR
 | Namespace per repository | Isolation of credentials and permissions | Shared CI namespace |
 | Unstructured objects + dynamic client | Avoids the heavy Tekton Go module; only a few status fields are read | Tekton typed clients |
 | Leader election for the reconciler only | Any replica can take webhooks; one writer updates check runs | Single replica without election |
+| Configuration from environment variables only (`envconfig`) | One mechanism for settings and secrets: the ConfigMap and the Secret map straight to variables, nothing is mounted, and every problem is reported at startup | A YAML file with mounted secret files; flags |
+| Metrics through OpenTelemetry, scraped by Prometheus; traces and logs exported only through the standard `OTEL_*` variables | Vendor-neutral instrumentation, and nothing leaves the pod unless asked | The Prometheus client alone; pushing to Cloud Monitoring |
+| The linter is its own command, `octomaton-lint` | The server takes no arguments; the linter is what people install | Subcommands of one binary |
 
 ## Security
 
