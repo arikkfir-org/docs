@@ -50,7 +50,7 @@ sequenceDiagram
 | One host, two backends | The webhook stays the only path that reaches Octomaton; the rest is a static answer | A separate webhook host |
 | Caddy in the `octomaton` namespace | No code to maintain; one namespace owns the domain | Serving the tag from Octomaton itself |
 | A certificate and listener of its own | A problem with the new domain can't block renewal of the `*.kfirs.com` certificate | A SAN on the wildcard certificate |
-| GitHub App named `Octomaton`, with the repository as its homepage | It is the product's name. Octomaton and the `ci` ruleset identify the App by its ID, so the name only labels its checks and comments | `octomaton-dev`, a homepage at `https://octomaton.dev` (which redirects to the repository anyway) |
+| GitHub App named `octomaton-dev`, with the repository as its homepage | `Octomaton`, the product's name, is taken on GitHub. Octomaton and the rulesets' required check identify the App by its ID, so the name only labels its checks and comments | `Octomaton` (taken); a homepage at `https://octomaton.dev` (which redirects to the repository anyway) |
 
 ## Security and failure modes
 

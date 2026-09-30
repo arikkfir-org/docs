@@ -47,7 +47,8 @@ sequenceDiagram
 ```yaml
 apiVersion: octomaton.dev/v1
 pipelines:
-  - name: ci                          # check-run name
+  - name: ci                          # the pipeline's ID
+    displayName: Continuous Integration # the check's name on GitHub
     pipelineRun: .tekton/ci.yaml      # any path; Octomaton assumes no layout
     on:
       pull_request: {branches: [main]}
@@ -142,6 +143,7 @@ flowchart LR
 | Decision | Why | Rejected |
 | --- | --- | --- |
 | Check runs (Checks API) rather than commit statuses | Rich output, re-run buttons, required-check integration | Commit statuses |
+| A check is named by its pipeline's `displayName` (`Continuous Integration`); `name` (`ci`) stays the pipeline's ID | GitHub shows the check name, and a two-letter link is hard to click; run names, labels and concurrency groups keep the short ID | Renaming the pipelines (spaces are not valid in run names or labels) |
 | Ignore forks entirely, even members' | The repositories are public: anyone can fork one and open a pull request, and its code must never run in the cluster, nor be one click away from it | An "Approve and run" button for fork pull requests; trusting forks of owners, members and collaborators |
 | Params and a token workspace instead of templating inside PipelineRun files | Files stay valid Tekton; no templating collisions with scripts | Pipelines-as-Code style `{{ }}` substitution in YAML |
 | Runs are created held, then released | The check run and token Secret exist before anything executes; a restart mid-dispatch is resumed; concurrency queues need held runs anyway | Creating Secrets first, `generateName` |

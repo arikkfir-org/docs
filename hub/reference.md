@@ -20,20 +20,20 @@ repository's CI configuration must agree with this page. Change it here first, t
 
 | Repository | Purpose | Default-branch rules | Required checks |
 | --- | --- | --- | --- |
-| `.github` | Org profile, org-wide GitHub defaults | PR + 1 approval + merge queue | `ci` |
-| `docs` | Knowledge base, published to `arikkfir-docs` and served at `docs.dev.kfirs.com` | PR + 1 approval + merge queue; direct pushes to `main` only from automation | `ci` |
-| `infra` | Terraform: GitHub, GCP, Argo CD bootstrap | PR + 1 approval + merge queue | `ci` |
-| `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `ci` |
-| `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `ci` |
-| `tooling` | Claude Code web bundle | PR + 1 approval + merge queue | `ci` |
+| `.github` | Org profile, org-wide GitHub defaults | PR + 1 approval + merge queue | `Continuous Integration` |
+| `docs` | Knowledge base, published to `arikkfir-docs` and served at `docs.dev.kfirs.com` | PR + 1 approval + merge queue; direct pushes to `main` only from automation | `Continuous Integration` |
+| `infra` | Terraform: GitHub, GCP, Argo CD bootstrap | PR + 1 approval + merge queue | `Continuous Integration` |
+| `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `Continuous Integration` |
+| `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `Continuous Integration` |
+| `tooling` | Claude Code web bundle | PR + 1 approval + merge queue | `Continuous Integration` |
 
 Every repository gets the same `default-branch` ruleset: no deletion, no force-push, pull requests with one approval
 (stale approvals dismissed, last push approved, conversations resolved), merge commits only, through the merge queue.
-Organization admins may bypass it (`bypass_mode = always`). Required checks are pinned to the Octomaton GitHub App
-(`integration_id`). In `docs`, direct pushes to `main` are reserved for automation: publishing the site and syncing
-other repositories' branch and pull-request docs into a directory per repository and branch. Every repository also has
-Dependabot alerts and Dependabot security updates on; version updates would need a `.github/dependabot.yml` in the
-repository.
+Organization admins may bypass it (`bypass_mode = always`). The required check, `Continuous Integration`, is each
+repository's `ci` pipeline under its `displayName`, pinned to the Octomaton GitHub App (`integration_id`). In `docs`,
+direct pushes to `main` are reserved for automation: publishing the site and syncing other repositories' branch and
+pull-request docs into a directory per repository and branch. Every repository also has Dependabot alerts and Dependabot
+security updates on; version updates would need a `.github/dependabot.yml` in the repository.
 
 ## Network
 
@@ -194,7 +194,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 
 | Item | Value |
 | --- | --- |
-| GitHub App | `Octomaton` (created by hand), homepage `https://github.com/arikkfir-org/octomaton`, installed on all `arikkfir-org` repositories. Octomaton and the `ci` ruleset identify it by its App ID, never by name |
+| GitHub App | `octomaton-dev` (created by hand; `Octomaton` is taken on GitHub), homepage `https://github.com/arikkfir-org/octomaton`, installed on all `arikkfir-org` repositories. Octomaton and the rulesets' required check identify it by its App ID, never by name |
 | App permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
 | App events | `push`, `pull_request`, `issue_comment`, `check_suite`, `check_run`, `merge_group` |
 | Webhook URL | `https://octomaton.dev/github/hooks` |
@@ -266,7 +266,8 @@ repository. It is parsed as YAML 1.2, so the `on` key needs no quoting.
 ```yaml
 apiVersion: octomaton.dev/v1
 pipelines:
-  - name: ci                           # check-run name; unique; [a-z0-9][a-z0-9-]*
+  - name: ci                           # identifies the pipeline and its runs; unique; [a-z0-9][a-z0-9-]*
+    displayName: Continuous Integration  # optional: the check's name on GitHub (default: name); unique
     pipelineRun: .tekton/ci.yaml       # repository-relative file holding exactly one tekton.dev/v1 PipelineRun
     on:
       pull_request:
@@ -296,7 +297,7 @@ pipelines:
     concurrency:                       # optional; default for pull_request: group "pr-<number>", policy supersede
       group: "publish"                 # Go template, scoped to the repository
       policy: latest                   # supersede | queue | latest
-    taskChecks: false                  # optional: also report each pipeline task as "<name> / <task>"
+    taskChecks: false                  # optional: also report each pipeline task as "<check> / <task>"
 ```
 
 | Concurrency policy | Behaviour |
