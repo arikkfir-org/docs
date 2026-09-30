@@ -102,7 +102,8 @@ git clone https://github.com/arikkfir-org/octomaton && cd octomaton
 make image    # tags the image with HEAD's short SHA
 ```
 
-`delivery` must pin that tag in `platform/octomaton/manifests/deployment.yaml`.
+Build it from the head of `main`: Argo CD deploys that commit, with the image tagged with its short SHA
+([Octomaton deployment](../designs/octomaton-deployment.md)).
 
 ## 7. Argo CD
 
