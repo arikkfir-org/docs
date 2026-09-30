@@ -20,7 +20,7 @@ repository's CI configuration must agree with this page. Change it here first, t
 
 | Repository | Purpose | Default-branch rules | Required checks |
 | --- | --- | --- | --- |
-| `.github` | Org profile, org-wide GitHub defaults | PR + 1 approval + merge queue | `Continuous Integration` |
+| `.github` | Org profile, org-wide GitHub defaults, and the organization pipelines every repository runs (`.octomaton.yaml`) | PR + 1 approval + merge queue | `Continuous Integration` |
 | `docs` | Knowledge base, published to `arikkfir-docs` and served at `docs.dev.kfirs.com` | PR + 1 approval + merge queue; direct pushes to `main` only from automation | `Continuous Integration` |
 | `infra` | Terraform: GitHub, GCP, Argo CD bootstrap | PR + 1 approval + merge queue | `Continuous Integration` |
 | `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `Continuous Integration` |
@@ -268,7 +268,8 @@ The hub's ConfigMap `octomaton` sets:
 ### Repository configuration (`.octomaton.yaml`)
 
 The only file Octomaton reads from a repository, always at the root. Octomaton knows nothing else about the
-repository. It is parsed as YAML 1.2, so the `on` key needs no quoting.
+repository. It is parsed as YAML 1.2, so the `on` key needs no quoting. The owner's `.github` repository's copy may also
+declare organization pipelines, which every repository of the owner runs (below).
 
 ```yaml
 apiVersion: octomaton.dev/v1
@@ -315,6 +316,8 @@ pipelines:
       group: "publish"                 # Go template, scoped to the repository
       policy: latest                   # supersede | queue | latest
     taskChecks: false                  # optional: also report each pipeline task as "<check> / <task>"
+organization:                          # only in the owner's .github repository: pipelines for every repository
+  pipelines: []                        # same fields as pipelines; read at .github's default branch
 ```
 
 | Concurrency policy | Behaviour |
@@ -331,6 +334,15 @@ Where definitions are read: pull requests, merge groups and pushes read `.octoma
 at the commit under test. Comment commands, review requests and schedules read them from the default branch (comment
 commands and review requests still run against the pull request's head commit). A `pipelineRun` in another repository
 is always read at that repository's default branch.
+
+Organization pipelines: the owner's `.github` repository may declare `organization.pipelines`, with the same fields as
+`pipelines`. Octomaton adds them to the pipelines of every repository of that owner, `.github` included, and always
+reads them at `.github`'s default branch, even for `.github`'s own pull requests. A plain `pipelineRun` path in them
+names a file of `.github`. Their runs belong to the repository: its namespace, checks, template context and token. A
+repository pipeline with the name or check name of an organization pipeline is a configuration error of that
+repository, so no repository can replace one. Organization pipelines can't use `schedule`, and `secrets` follows the
+same rule as for any pipeline. `organization` in any other repository is a configuration error. Without the file or the
+section in `.github`, there are no organization pipelines.
 
 A review request runs pipelines whose `review_request.reviewers` include the requested user (team requests are
 ignored), on open pull requests, drafts included. Each request gets its own run. Requesting a review takes triage or
@@ -370,7 +382,7 @@ Requesting a review from `arikkfir-reviewer` runs the reviewer on the pull reque
 | Model | DeepSeek V4 Pro (`deepseek-v4-pro`), through opencode `1.18.33` (`ghcr.io/anomalyco/opencode`) as `deepseek/deepseek-v4-pro`; key in Secret Manager `reviewer-deepseek-api-key` |
 | Definitions | `arikkfir-org/tooling`, `reviewer/`: the PipelineRun `reviewer/pipelinerun.yaml`, its scripts, the prompt and `opencode.json`, all read at `tooling`'s default branch |
 | Findings | Each a thread, marked 🔴 blocking (must fix), 🟡 non-blocking (should fix) or 🔵 nit (could fix), with a severity (`low`, `medium`, `high`, `urgent`) and a likelihood (`low`, `medium`, `high`). The review approves when there are none or only nits, and requests changes otherwise |
-| Trigger | Pipeline `review`, display name `AI Review`, in every repository's `.octomaton.yaml`: `on.review_request.reviewers: [arikkfir-reviewer]`, `secrets: [reviewer-deepseek-api-key, reviewer-github-pat]`, `githubToken` with contents and pull requests read |
+| Trigger | Pipeline `review`, display name `AI Review`: an organization pipeline in `arikkfir-org/.github`'s `.octomaton.yaml`, so every repository has it. `on.review_request.reviewers: [arikkfir-reviewer]`, `secrets: [reviewer-deepseek-api-key, reviewer-github-pat]`, `githubToken` with contents and pull requests read |
 | Tasks | `setup` (clone, state), `review` (opencode, check, fix, recheck), `report`; all as ServiceAccount `reviewer`, all labelled `kfirs.com/sandbox=true` |
 | Volume | One per run: 50Gi, `ReadWriteOnce` (`volumeClaimTemplate`), deleted an hour after the run (`OCTOMATON_RETENTION_FREE_PVCS_AFTER`) |
 | Files on the volume | `pr.json`, `pr.diff`, `pr.log` (setup), `findings.json` (review), `repos/<repository>/`, `.review/` |
