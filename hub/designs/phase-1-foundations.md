@@ -101,7 +101,7 @@ flowchart LR
 | cert-manager | Let's Encrypt certificates via DNS-01 on Cloud DNS |
 | Gateway API CRDs + Traefik | Ingress on L4 load balancers (see [phase 3](phase-3-ingress-and-auth.md)) |
 | KEDA | Event-driven autoscaling for future workloads |
-| NATS (JetStream), NACK, NUI | Messaging, JetStream resources as CRDs, and a UI |
+| NATS (JetStream), NACK, NUI | Messaging on a three-server JetStream cluster, JetStream resources as CRDs, and a UI |
 | Stakater Reloader | Restarts workloads when their ConfigMaps/Secrets change |
 | Grafana | Dashboards over Cloud Monitoring (including GKE managed Prometheus) |
 | Tekton operator + `TektonConfig` | Pipelines, Triggers and Dashboard; runs default to the `ci` node pool |
@@ -114,6 +114,7 @@ flowchart LR
 | Private nodes, no external control-plane IP, DNS endpoint | No public node IPs; control plane reachable only with Google IAM credentials, from anywhere | Authorized networks (static IP allowlists), bastion hosts |
 | Direct Workload Identity principals, no Google service accounts | Fewer identities and keys; IAM binds straight to `namespace/serviceaccount` | One GSA per workload with impersonation |
 | Spot `ci` pool scaling from zero | CI is bursty and retryable; pay only while pipelines run | Running CI on the system pool |
+| Three clustered NATS servers, a 50Gi JetStream volume each, spread across nodes only when possible | Streams can keep three replicas and survive a server restart; a soft spread doesn't grow the system pool just for NATS | A single server (no replication; a restart stops messaging); a hard spread (forces three system nodes) |
 | Self-managed Gateway API CRDs, GKE Gateway disabled | Traefik implements the Gateway API; GKE's controller is not used | GKE Gateway controller (unreliable for this use) |
 | Three Terraform roots | Kubernetes providers can't be configured from a cluster created in the same apply; GitHub rules must come last | One root with `-target` applies |
 | Terraform imports existing repos and zones | Adopts what exists without recreation | Recreating (would lose history and records) |

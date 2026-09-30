@@ -116,7 +116,7 @@ to GKE and are not managed here.
 | `cert-manager` | cert-manager | `https://charts.jetstack.io` `cert-manager` | `v1.21.2` |
 | `external-secrets` | External Secrets Operator | `https://charts.external-secrets.io` `external-secrets` | `2.11.0` |
 | `keda` | KEDA | `https://kedacore.github.io/charts` `keda` | `2.21.0` |
-| `nats` | NATS (JetStream) | `https://nats-io.github.io/k8s/helm/charts` `nats` | `2.15.0` |
+| `nats` | NATS (JetStream): three clustered servers, a 50Gi volume each | `https://nats-io.github.io/k8s/helm/charts` `nats` | `2.15.0` |
 | `nats` | NACK (JetStream controller) | same repo, `nack` | `0.35.0` |
 | `nats` | NUI | `https://nats-nui.github.io/k8s/helm/charts` `nui` | `0.1.6` (image tag pinned) |
 | `reloader` | Stakater Reloader | `https://stakater.github.io/stakater-charts` `reloader` | `2.2.17` |
@@ -130,6 +130,9 @@ to GKE and are not managed here.
 | `octomaton` | `go-import`: Caddy answering for `octomaton.dev` | `docker.io/library/caddy` | `2.11.4-alpine` |
 | `docs` | Docs site: Caddy serving `arikkfir-docs` (Cloud Storage FUSE mount) | `docker.io/library/caddy` | `2.11.4-alpine` |
 | `ci-<repo>` | CI tenants (one per repository) | `delivery` | n/a |
+
+NATS clients, NACK included, connect to `nats://nats.nats.svc.cluster.local:4222`. JetStream streams may keep up to
+three replicas. The servers spread across system-pool nodes when there are several, but don't make the pool grow.
 
 ## Ingress
 
