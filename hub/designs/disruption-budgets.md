@@ -63,7 +63,7 @@ oauth2-proxy request nothing (their charts' defaults).
 flowchart LR
   T[Traefik] --> G1[grafana replica]
   T --> G2[grafana replica]
-  G1 <-- "gossip 9094" --> G2
+  G1 <-->|gossip 9094| G2
   G1 -- "postgres.hub.internal:5432, TLS" --> SQL[(Cloud SQL hub<br/>database grafana)]
   G2 --> SQL
   ESO[ExternalSecret grafana-db] -. password .-> G1

@@ -210,7 +210,7 @@ sequenceDiagram
   T->>P: Watch: Reconcile(run)
   P->>C: UpdateReport (in progress, task table, conclusion)
   P->>T: Record(reported)
-  P->>R: finished: ReleaseNext; held too long: Resume
+  P->>R: finished: ReleaseNext, held too long: Resume
   R->>T: Release the next held run of its group, or finish starting this one
 ```
 
