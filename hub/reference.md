@@ -203,7 +203,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 | --- | --- |
 | GitHub App | `octomaton-dev` (created by hand; `Octomaton` is taken on GitHub), homepage `https://github.com/arikkfir-org/octomaton`, installed on all `arikkfir-org` repositories. Octomaton and the rulesets' required check identify it by its App ID, never by name |
 | App permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
-| App events | `push`, `pull_request`, `issue_comment`, `check_suite`, `check_run`, `merge_group` |
+| App events | `push`, `pull_request`, `issue_comment`, `check_suite`, `check_run`, `merge_group`; also `pull_request_review`, `pull_request_review_comment` and `pull_request_review_thread`, which Octomaton ignores |
 | Webhook URL | `https://octomaton.dev/github/hooks` |
 | Go module | `octomaton.dev`; repository `arikkfir-org/octomaton` |
 | Commands | `octomaton`, the server (no arguments); `octomaton-lint [-render] PATH...` validates `.octomaton.yaml` (`go install octomaton.dev/cmd/octomaton-lint@latest`; `-version`) |
@@ -365,8 +365,8 @@ Requesting a review from `arikkfir-reviewer` runs the reviewer on the pull reque
 | GitHub user | `arikkfir-reviewer`, a member of `arikkfir-org` |
 | Team | `reviewers` (closed): `arikkfir-reviewer`, with `push` on every repository (resolving threads takes write access) |
 | Token | Fine-grained personal access token of `arikkfir-reviewer`: resource owner `arikkfir-org`, all repositories, pull requests read and write; expires within a year; Secret Manager `reviewer-github-token` |
-| Model | DeepSeek V4 Pro (`deepseek-v4-pro`, until V4.1 Pro is released), through opencode `1.18.33` (`ghcr.io/anomalyco/opencode`) as `deepseek/deepseek-v4-pro`; key in Secret Manager `deepseek-api-key` |
-| Definitions | `arikkfir-org/tooling`, `reviewer/`: the PipelineRun `reviewer/pipelinerun.yaml`, its scripts, `prompt.md` and `opencode.json`, all read at `tooling`'s default branch |
+| Model | DeepSeek V4 Pro (`deepseek-v4-pro`), through opencode `1.18.33` (`ghcr.io/anomalyco/opencode`) as `deepseek/deepseek-v4-pro`; key in Secret Manager `deepseek-api-key` |
+| Definitions | `arikkfir-org/tooling`, `reviewer/`: the PipelineRun `reviewer/pipelinerun.yaml`, its scripts, `prompt.md`, `guidelines.md` and `opencode.json`, all read at `tooling`'s default branch |
 | Trigger | Pipeline `review`, display name `AI Review`, in every repository's `.octomaton.yaml`: `on.review_request.reviewers: [arikkfir-reviewer]`, `secrets: [deepseek-api-key, reviewer-github-token]`, `githubToken` with contents and pull requests read |
 | Tasks | `setup` (clone, state), `review` (opencode, check, fix, recheck), `report`; all as ServiceAccount `reviewer`, all labelled `kfirs.com/sandbox=true` |
 | Volume | One per run: 50Gi, `ReadWriteOnce` (`volumeClaimTemplate`), deleted an hour after the run (`OCTOMATON_RETENTION_FREE_PVCS_AFTER`) |

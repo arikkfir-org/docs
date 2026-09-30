@@ -4,8 +4,8 @@
 Octomaton:
 
 - `setup` puts the hub's repositories and the pull request's full state on a 50Gi volume.
-- `review` runs opencode with DeepSeek V4 Pro in a sandbox, until DeepSeek releases V4.1 Pro. The sandbox holds no
-  credential but the model's API key and can reach nothing but the internet.
+- `review` runs opencode with DeepSeek V4 Pro in a sandbox. The sandbox holds no credential but the model's API key and
+  can reach nothing but the internet.
 - `report` turns the findings into one GitHub review by `arikkfir-reviewer`, with one thread per finding.
 
 Each finding carries a short code (`IAM-3`), so later rounds reply to its thread or resolve it. Names and wiring:
@@ -73,7 +73,10 @@ sequenceDiagram
 
 The ServiceAccount has no RoleBinding and doesn't mount its token, and its Workload Identity principal has no IAM
 role. Every pod carries `kfirs.com/sandbox=true`, which NetworkPolicy `sandbox` confines to public addresses. The pods
-resolve names through public resolvers (`dnsPolicy: None`), because cluster DNS is itself inside the cluster.
+resolve names through public resolvers (`dnsPolicy: None`), because cluster DNS is itself inside the cluster. The
+cluster's Dataplane V2 enforces the policy (no Calico add-on, which GKE doesn't combine with Dataplane V2). The denied
+`169.254.0.0/16` also holds Workload Identity's metadata endpoint (`169.254.169.252:988` on Dataplane V2), so no
+reviewer pod can get Google credentials either.
 
 ```mermaid
 flowchart LR
@@ -98,7 +101,7 @@ flowchart LR
 | Setting | Value | Why |
 | --- | --- | --- |
 | Image | `ghcr.io/anomalyco/opencode:1.18.33` pinned by digest (Alpine; `opencode` and `ripgrep`, no git) | The official image of the current v1 release. v2 is days old. Without git, the model reads `pr.diff` and `pr.log` |
-| Model | `deepseek/deepseek-v4-pro` in `reviewer/opencode.json`; `enabled_providers: ["deepseek"]` | DeepSeek hasn't released V4.1 Pro; its API serves V4 Pro and V4.1 Flash. When V4.1 Pro ships, the model ID is a one-line change |
+| Model | `deepseek/deepseek-v4-pro` in `reviewer/opencode.json`; `enabled_providers: ["deepseek"]` | DeepSeek's strongest released model. V4.1 Pro, once released, is a one-line change |
 | Permissions | `"permission": "allow"`, `experimental.continue_loop_on_deny: true` | `opencode run` rejects any "ask" and stops. The sandbox is the boundary, not opencode's prompts |
 | Isolation from the repositories | `OPENCODE_DISABLE_PROJECT_CONFIG=1`, `OPENCODE_CONFIG=/workspace/.review/opencode.json`, `--pure` | No `AGENTS.md`, `opencode.json` or plugin from a reviewed repository configures the reviewer; the model reads each `CLAUDE.md` as material, not as its instructions |
 | No uploads, no updates | `"share": "disabled"`, `OPENCODE_DISABLE_SHARE=1`, `OPENCODE_DISABLE_MODELS_FETCH=1` (the bundled model list), `"snapshot": false` | Sessions stay in the pod; nothing but DeepSeek's API is called on opencode's own account |
@@ -184,12 +187,13 @@ tokens, mostly cached across its turns, costs cents.
 
 ### What the prompt asks
 
-`reviewer/prompt.md` is a draft to refine with real reviews. It sets the rules below:
+`reviewer/prompt.md` sets how the review runs; `reviewer/guidelines.md` sets what a good change looks like. Both are
+drafts to refine with real reviews. The prompt:
 
 - Read the rules first: each repository's `CLAUDE.md` and `README.md`, `docs/CONTRIBUTING.md` and the contract,
-  `docs/hub/reference.md`.
-- Review the change (`git diff` against the base branch in `repos/<repository>`). Check it against the other
-  repositories wherever it names something they define or use.
+  `docs/hub/reference.md`. Then `reviewer/guidelines.md`.
+- Review the change (`pr.diff`, `pr.log`). Check it against the other repositories wherever it names something they
+  define or use.
 - Look for correctness and security problems, breaks of a repository's rules or of the contract, missing tests or
   docs the rules require, and a description that doesn't match the change. Leave style to linters.
 - Carry earlier rounds forward. Read every thread and reply in `pr.json`. Raise a finding again under its code only if
@@ -198,6 +202,20 @@ tokens, mostly cached across its turns, costs cents.
 - One problem per finding, with a new code for a new problem. Anchor it on the changed line that causes it or should
   fix it. `nit` is only for what shouldn't block a merge.
 - Write `findings.json`, and nothing else: the repositories are read-only.
+
+The guidelines, from the owner:
+
+1. Comments are plain: simple English, short and concise.
+2. Less is more. Expect reuse over duplication, unless there is a good reason not to reuse.
+3. Expect authors to refactor when things need to align, rather than build abstractions or scaffolding around
+   existing code to avoid the risk of changing it.
+4. Expect the right thing, not the easy thing, with some slack for urgency, or when the effort far outweighs the value.
+5. Go:
+   1. Every error is checked, without exception. Logging an error isn't handling it, except at the top of the call
+      stack, where the error is either logged or actually handled (another route taken).
+   2. Programs are configured with `envconfig`, not command-line flags.
+   3. Significant methods start an OpenTelemetry span.
+   4. Logs go through `log/slog` only.
 
 ### From findings to GitHub
 
@@ -284,8 +302,11 @@ The body holds the summary, the pull-request-wide findings and the counts. It ne
 ## Open questions
 
 - The prompt: `reviewer/prompt.md` starts as a draft. It will be tuned against real reviews.
-- DeepSeek V4.1 Pro: switch `reviewer/opencode.json` to it when DeepSeek releases it. DeepSeek said on 2026-09-10 that
-  it is coming, without a date.
+- DeepSeek V4.1 Pro: DeepSeek said on 2026-09-10 that it is coming, without a date. Switching is one line in
+  `reviewer/opencode.json`.
+- The App already receives review events (`pull_request_review`, `pull_request_review_comment`,
+  `pull_request_review_thread`), which Octomaton ignores. An author's reply to a finding could start a new round
+  without a re-request.
 - Every pull request could get the reviewer automatically (a `CODEOWNERS` entry requests it on open) instead of on
   request.
 - A token budget per review, if DeepSeek's spend needs a cap.
