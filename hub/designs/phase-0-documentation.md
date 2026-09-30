@@ -38,7 +38,7 @@ URLs are `https://docs.dev.kfirs.com/<path>`, behind the hub's sign-in. Agents r
 
 | Decision | Why | Rejected |
 | --- | --- | --- |
-| Pull requests, as in every other repository, with a `ci` check | Pages are reviewed with the changes they accompany, and broken pages or links never reach the site | Direct pushes to `main` (no review, no validation) |
+| Pull requests, as in every other repository, with a `Continuous Integration` check | Pages are reviewed with the changes they accompany, and broken pages or links never reach the site | Direct pushes to `main` (no review, no validation) |
 | Markdown + Mermaid by default | Diffable, renders on GitHub and on the site, agents read it natively | Wiki (not in Git), Google Docs (not agent-friendly) |
 | HTML allowed as-is | AI-generated architecture pages are often richer than Markdown | Forcing everything through Markdown |
 | Serve the Markdown source next to the HTML | The source is one click from its page | HTML only |

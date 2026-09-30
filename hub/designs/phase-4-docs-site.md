@@ -27,10 +27,10 @@ flowchart LR
 
 ## Pull request checks
 
-Octomaton runs [`.tekton/ci.yaml`](https://github.com/arikkfir-org/docs/blob/main/.tekton/ci.yaml) as the required `ci`
-check on every pull request into `main` and every merge queue group, in namespace `ci-docs` as service account
-`default` (no Google Cloud access). It validates only the Markdown and HTML files the change adds or modifies since its
-merge base (`.ci/changed.sh`):
+Octomaton runs [`.tekton/ci.yaml`](https://github.com/arikkfir-org/docs/blob/main/.tekton/ci.yaml) (pipeline `ci`) as
+the required `Continuous Integration` check on every pull request into `main` and every merge queue group, in namespace
+`ci-docs` as service account `default` (no Google Cloud access). It validates only the Markdown and HTML files the
+change adds or modifies since its merge base (`.ci/changed.sh`):
 
 ```mermaid
 flowchart LR

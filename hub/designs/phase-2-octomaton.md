@@ -173,4 +173,4 @@ flowchart LR
 2. Build the first image locally with `ko` (see the [bootstrap runbook](../runbooks/bootstrap.md)); afterwards
    Octomaton builds itself: every push to `main` publishes an image tagged with the commit's short SHA.
 3. Argo CD deploys every commit on `main` with its own image ([deployment](octomaton-deployment.md)).
-4. Apply the GitHub rulesets once `ci` checks appear on pull requests.
+4. Apply the GitHub rulesets once `Continuous Integration` checks appear on pull requests.
