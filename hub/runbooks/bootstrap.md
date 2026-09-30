@@ -59,8 +59,9 @@ Then: generate a private key (download the `.pem`), note the App ID, and install
 
 Company `KFIRS`, project `development` (`P3JyPV2qsSrMLUpVPTGcBNRHlSkv`). The sign-in-only Google flow `hub-sign-in`,
 the default OIDC application's login page and the first user are already configured
-([phase 3](../designs/phase-3-ingress-and-auth.md#manual-setup)). Create an access key (Access keys → create) and keep
-it for step 5: it is the OIDC client secret.
+([phase 3](../designs/phase-3-ingress-and-auth.md#manual-setup)). Turn on Project Settings → "Block self-registration
+sign up": every user of the project can sign in to the hub, so users must not be able to register themselves. Create
+an access key (Access keys → create) and keep it for step 5: it is the OIDC client secret.
 
 ## 4. GCP resources
 
@@ -88,7 +89,6 @@ add octomaton-github-private-key               < octomaton.YYYY-MM-DD.private-ke
 printf '%s' "<webhook secret>"                  | add octomaton-github-webhook-secret
 printf '%s' "<descope access key>"              | add oidc-client-secret
 openssl rand -base64 32 | tr -d '\n' | tr -- '+/' '-_' | add oauth2-proxy-cookie-secret
-printf '%s\n' "you@example.com" "friend@example.com" | add hub-authorized-emails
 ```
 
 ## 6. First Octomaton image
@@ -122,8 +122,8 @@ kubectl -n argocd get applications -w     # everything converges to Synced / Hea
 - `kubectl -n external-secrets get clustersecretstore gcp-secret-manager` is `Valid`, and every `ExternalSecret` is
   `SecretSynced`.
 - `https://argocd.dev.kfirs.com`, `https://grafana.dev.kfirs.com`, `https://tekton.dev.kfirs.com`,
-  `https://nui.dev.kfirs.com` and `https://traefik.dev.kfirs.com` redirect to Descope, accept an allowlisted Google
-  account, and reject any other.
+  `https://nui.dev.kfirs.com` and `https://traefik.dev.kfirs.com` redirect to Descope, accept the Google account of a
+  Descope user, and reject any other.
 
 ## 9. Verify CI
 
