@@ -134,6 +134,12 @@ to GKE and are not managed here.
 NATS clients, NACK included, connect to `nats://nats.nats.svc.cluster.local:4222`. JetStream streams may keep up to
 three replicas. The servers spread across system-pool nodes when there are several, but don't make the pool grow.
 
+Availability ([design](designs/disruption-budgets.md)): Traefik, oauth2-proxy, the docs site, Octomaton, `go-import`
+and KEDA's operator, metrics server and webhooks run two replicas each. NATS runs three servers. Each has a
+PodDisruptionBudget of `maxUnavailable: 1` and spreads its pods over nodes when the pool has several
+(`whenUnsatisfiable: ScheduleAnyway`). Grafana runs one replica with no budget: its database is on a `ReadWriteOnce`
+volume.
+
 ## Ingress
 
 Traefik runs once with two entry-point pairs, each exposed by its own L4 (passthrough network) load balancer: a
@@ -204,7 +210,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 | Go module | `octomaton.dev`; repository `arikkfir-org/octomaton` |
 | Commands | `octomaton`, the server (no arguments); `octomaton-lint [-render] PATH...` validates `.octomaton.yaml` (`go install octomaton.dev/cmd/octomaton-lint@latest`; `-version`) |
 | Go import page | `https://octomaton.dev/<path>?go-get=1` returns `<meta name="go-import" content="octomaton.dev git https://github.com/arikkfir-org/octomaton">`; any other request is redirected (302) to the repository |
-| Kubernetes | namespace `octomaton`, Deployment/ServiceAccount/Service `octomaton` (Service port 80 → container 8080); Deployment/Service/ConfigMap `go-import` for the import page (Service port 80 → container 8080) |
+| Kubernetes | namespace `octomaton`, Deployment/ServiceAccount/Service `octomaton` (Service port 80 → container 8080); Deployment/Service/ConfigMap `go-import` for the import page (Service port 80 → container 8080); two replicas of each Deployment, with PodDisruptionBudgets `octomaton` and `go-import` (`maxUnavailable: 1`) |
 | Deployment | `deploy/` in `arikkfir-org/octomaton` (Kustomize), applied by the Argo CD Application `octomaton` (defined in `delivery`) from `main`, with the image tagged `${ARGOCD_APP_REVISION_SHORT}`: the synced commit's short SHA ([design](designs/octomaton-deployment.md)) |
 | Config | Environment variables only ([server configuration](#server-configuration)): ConfigMap `octomaton` through `envFrom`; `OCTOMATON_POD_NAME` and `OCTOMATON_POD_NAMESPACE` from the downward API; `OTEL_RESOURCE_ATTRIBUTES` with the pod, namespace and container names; `enableServiceLinks: false` |
 | GitHub secret | Secret `octomaton-github`: keys `app-id`, `private-key`, `webhook-secret` as `OCTOMATON_GITHUB_APP_ID`, `OCTOMATON_GITHUB_PRIVATE_KEY`, `OCTOMATON_GITHUB_WEBHOOK_SECRET` |
