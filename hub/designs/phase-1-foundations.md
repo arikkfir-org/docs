@@ -131,6 +131,10 @@ flowchart LR
 
 See the [bootstrap runbook](../runbooks/bootstrap.md).
 
+Changing the size of NATS's JetStream volumes means recreating the `nats` StatefulSet and its claims once, because
+Kubernetes doesn't update a StatefulSet's volume claim templates. The pull request that made NATS a three-server cluster
+([arikkfir-org/delivery#9](https://github.com/arikkfir-org/delivery/pull/9)) lists the commands.
+
 ## Open questions
 
 - CD for application images (automatic pull requests to `delivery` on release).
