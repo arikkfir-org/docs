@@ -33,12 +33,12 @@ sequenceDiagram
   A->>GH: request a review from arikkfir-reviewer
   GH->>OCT: pull_request (review_requested)
   OCT->>GH: read .octomaton.yaml (default branch) and reviewer/pipelinerun.yaml (tooling, default branch)
-  OCT->>S: start the PipelineRun; check "AI Review" on the head commit
-  S->>GH: clone five repositories (+ the pull request's); read the pull request, reviews and threads
+  OCT->>S: start the PipelineRun, with check "AI Review" on the head commit
+  S->>GH: clone five repositories (+ the pull request's), read the pull request, reviews and threads
   S->>S: write pr.json
   R->>DS: opencode run: prompt, repositories, pr.json
   R->>R: write findings.json, checked against the diff (one correction round)
-  P->>GH: one review as arikkfir-reviewer: new threads, replies, verdict; then resolve and unresolve threads
+  P->>GH: one review as arikkfir-reviewer (new threads, replies, verdict), then resolve and unresolve threads
   P->>OCT: check title and summary (task results)
 ```
 
@@ -77,7 +77,7 @@ resolve names through public resolvers (`dnsPolicy: None`), because cluster DNS 
 
 ```mermaid
 flowchart LR
-  subgraph NS["ci-&lt;repository&gt; namespace"]
+  subgraph NS["a ci-* namespace"]
     S[setup]
     R[review]
     P[report]
