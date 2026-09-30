@@ -20,19 +20,20 @@ repository's CI configuration must agree with this page. Change it here first, t
 
 | Repository | Purpose | Default-branch rules | Required checks |
 | --- | --- | --- | --- |
-| `.github` | Org profile, org-wide GitHub defaults, and the organization pipelines every repository runs (`.octomaton.yaml`) | PR + 1 approval + merge queue | `Continuous Integration` |
+| `.github` | The organization's welcome page on GitHub: `profile/README.md`, nothing else | PR + 1 approval + merge queue | `Continuous Integration` (none runs: merged with the admin bypass) |
 | `docs` | Knowledge base, published to `arikkfir-docs` and served at `docs.dev.kfirs.com` | PR + 1 approval + merge queue; direct pushes to `main` only from automation | `Continuous Integration` |
 | `infra` | Terraform: GitHub, GCP, Argo CD bootstrap | PR + 1 approval + merge queue | `Continuous Integration` |
 | `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `Continuous Integration` |
 | `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `Continuous Integration` |
-| `tooling` | Claude Code web bundle | PR + 1 approval + merge queue | `Continuous Integration` |
+| `tooling` | Org-wide tooling: the Claude Code web bundle, the [pull request reviewer](#pull-request-reviewer), and the organization pipelines every repository runs (`.octomaton.yaml`) | PR + 1 approval + merge queue | `Continuous Integration` |
 
 Every repository gets the same `default-branch` ruleset: no deletion, no force-push, pull requests with one approval
 (stale approvals dismissed, last push approved, conversations resolved), merge commits only, through the merge queue.
 Organization admins may bypass it (`bypass_mode = always`). An approval by `arikkfir-reviewer`, the [pull request
 reviewer](#pull-request-reviewer), counts: it has `push` on every repository. The required check, `Continuous
 Integration`, is each repository's `ci` pipeline under its `displayName`, pinned to the Octomaton GitHub App
-(`integration_id`). In `docs`, direct pushes to `main` are reserved for automation: publishing the site and syncing
+(`integration_id`). `.github` has no CI (Claude Code can't clone a repository whose name starts with a dot, so nothing
+else lives there), and an organization admin merges its rare pull requests with the bypass. In `docs`, direct pushes to `main` are reserved for automation: publishing the site and syncing
 other repositories' branch and pull-request docs into a directory per repository and branch. Every repository also has
 Dependabot alerts and Dependabot security updates on; version updates would need a `.github/dependabot.yml` in the
 repository.
@@ -228,7 +229,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 | Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz` (all on 8080) |
 | Telemetry | On GKE: JSON logs on stdout to Cloud Logging; metrics to Cloud Monitoring and traces to Cloud Trace through the Telemetry API (`telemetry.googleapis.com`), as `octomaton/octomaton`. Elsewhere: text logs, nothing exported |
 | Check links | `https://tekton.dev.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
-| Tenant namespaces | `ci-<repository>` (`.github` → `ci-github`); each has ServiceAccount `pipeline` and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer) |
+| Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccount `pipeline` and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer) |
 | Tenant permissions | `octomaton-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete) |
 
 ### Server configuration
@@ -244,6 +245,7 @@ The server takes no arguments: environment variables configure it, and it exits 
 | `OCTOMATON_TEKTON_DASHBOARD_URL` | none | Tekton Dashboard base URL that check runs link to |
 | `OCTOMATON_NAMESPACE_TEMPLATE` | `ci-{{ .Repository.Name }}` | namespace of a repository's runs, rendered then sanitized |
 | `OCTOMATON_NAMESPACE_OVERRIDES` | none | `owner/name:namespace` pairs, comma-separated; they win over the template |
+| `OCTOMATON_ORGANIZATION_REPOSITORY` | none | the repository, in each owner, whose `.octomaton.yaml` may declare organization pipelines; none disables them |
 | `OCTOMATON_RELAY_URLS` | none | URLs that receive verified `push` and `ping` deliveries, comma-separated |
 | `OCTOMATON_RETENTION_FREE_PVCS_AFTER` | `1h` | delay after which the PVCs of finished runs are deleted; runs and pods stay |
 | `OCTOMATON_HTTP_ADDRESS` | `:8080` | address of `/github/hooks`, `/healthz` and `/readyz` |
@@ -274,14 +276,14 @@ The hub's ConfigMap `octomaton` sets:
 | `OCTOMATON_GITHUB_ALLOWED_OWNERS` | `arikkfir-org` |
 | `OCTOMATON_TEKTON_DASHBOARD_URL` | `https://tekton.dev.kfirs.com` |
 | `OCTOMATON_NAMESPACE_TEMPLATE` | `ci-{{ .Repository.Name }}` |
-| `OCTOMATON_NAMESPACE_OVERRIDES` | `arikkfir-org/.github:ci-github` |
+| `OCTOMATON_ORGANIZATION_REPOSITORY` | `tooling` |
 | `OCTOMATON_RELAY_URLS` | `http://argocd-server.argocd.svc.cluster.local/api/webhook` (Argo CD refreshes on pushes) |
 | `OCTOMATON_RETENTION_FREE_PVCS_AFTER` | `1h` |
 
 ### Repository configuration (`.octomaton.yaml`)
 
 The only file Octomaton reads from a repository, always at the root. Octomaton knows nothing else about the
-repository. It is parsed as YAML 1.2, so the `on` key needs no quoting. The owner's `.github` repository's copy may also
+repository. It is parsed as YAML 1.2, so the `on` key needs no quoting. The organization repository's copy may also
 declare organization pipelines, which every repository of the owner runs (below).
 
 ```yaml
@@ -329,8 +331,8 @@ pipelines:
       group: "publish"                 # Go template, scoped to the repository
       policy: latest                   # supersede | queue | latest
     taskChecks: false                  # optional: also report each pipeline task as "<check> / <task>"
-organization:                          # only in the owner's .github repository: pipelines for every repository
-  pipelines: []                        # same fields as pipelines; read at .github's default branch
+organization:                          # only in the organization repository: pipelines for every repository
+  pipelines: []                        # same fields as pipelines; read at its default branch
 ```
 
 | Concurrency policy | Behaviour |
@@ -348,16 +350,17 @@ at the commit under test. Comment commands, review requests and schedules read t
 commands and review requests still run against the pull request's head commit). A `pipelineRun` in another repository
 is always read at that repository's default branch.
 
-Organization pipelines: the owner's `.github` repository may declare `organization.pipelines`, with the same fields as
-`pipelines`. Octomaton adds them to the pipelines of every repository of that owner, `.github` included, and always
-reads them at `.github`'s default branch, even for `.github`'s own pull requests. A plain `pipelineRun` path in them
-names a file of `.github`. Their runs belong to the repository: its namespace, checks, template context and token. A
-repository pipeline with the name or check name of an organization pipeline is a configuration error of that
+Organization pipelines: the organization repository, which `OCTOMATON_ORGANIZATION_REPOSITORY` names (`tooling` in
+the hub), may declare `organization.pipelines` in each owner, with the same fields as `pipelines`. Octomaton adds them
+to the pipelines of every repository of that owner, the organization repository included, and always reads them at the
+organization repository's default branch, even for its own pull requests. A plain `pipelineRun` path in them names a
+file of the organization repository. Their runs belong to the repository: its namespace, checks, template context and
+token. A repository pipeline with the name or check name of an organization pipeline is a configuration error of that
 repository, so no repository can replace one. Organization pipelines can't use `schedule`, and `secrets` follows the
-same rule as for any pipeline. `organization` in any other repository is a configuration error. Without the file or the
-section in `.github`, there are no organization pipelines. A repository without its own `.octomaton.yaml` still runs
-them, and an unreadable or invalid `.github` configuration stops every pipeline of the repository, reported on the
-`octomaton` check.
+same rule as for any pipeline. `organization` in any other repository, or when the setting is unset, is a
+configuration error. Without the setting, the file or the section, there are no organization pipelines. A repository
+without its own `.octomaton.yaml` still runs them, and an unreadable or invalid organization repository configuration
+stops every pipeline of the repository, reported on the `octomaton` check.
 
 A review request runs pipelines whose `review_request.reviewers` include the requested user (team requests are
 ignored), on open pull requests, drafts included. Each request gets its own run. Requesting a review takes triage or
@@ -397,7 +400,7 @@ Requesting a review from `arikkfir-reviewer` runs the reviewer on the pull reque
 | Model | DeepSeek V4 Pro (`deepseek-v4-pro`), through opencode `1.18.33` (`ghcr.io/anomalyco/opencode`) as `deepseek/deepseek-v4-pro`; key in Secret Manager `reviewer-deepseek-api-key` |
 | Definitions | `arikkfir-org/tooling`, `reviewer/`: the PipelineRun `reviewer/pipelinerun.yaml`, its scripts, the prompt and `opencode.json`, all read at `tooling`'s default branch |
 | Findings | Each a thread, marked 🔴 blocking (must fix), 🟡 non-blocking (should fix) or 🔵 nit (could fix), with a severity (`low`, `medium`, `high`, `urgent`) and a likelihood (`low`, `medium`, `high`). The review approves when there are none or only nits, and requests changes otherwise |
-| Trigger | Pipeline `review`, display name `AI Review`: an organization pipeline in `arikkfir-org/.github`'s `.octomaton.yaml`, so every repository has it. `on.review_request.reviewers: [arikkfir-reviewer]`, `secrets: [reviewer-deepseek-api-key, reviewer-github-pat]`, `githubToken` with contents and pull requests read |
+| Trigger | Pipeline `review`, display name `AI Review`: an organization pipeline in `arikkfir-org/tooling`'s `.octomaton.yaml` (the organization repository), so every repository has it. `on.review_request.reviewers: [arikkfir-reviewer]`, `secrets: [reviewer-deepseek-api-key, reviewer-github-pat]`, `githubToken` with contents and pull requests read |
 | Tasks | `setup` (clone, state), `review` (opencode, check, fix, recheck), `report`; all as ServiceAccount `reviewer`, all labelled `kfirs.com/sandbox=true` |
 | Volume | One per run: 50Gi, `ReadWriteOnce` (`volumeClaimTemplate`), deleted an hour after the run (`OCTOMATON_RETENTION_FREE_PVCS_AFTER`) |
 | Files on the volume | `pr.json`, `pr.diff`, `pr.log` (setup), `findings.json` (review), `repos/<repository>/`, `.review/` |

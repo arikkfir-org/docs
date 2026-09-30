@@ -32,7 +32,7 @@ sequenceDiagram
   participant P as report
   A->>GH: request a review from arikkfir-reviewer
   GH->>OCT: pull_request (review_requested)
-  OCT->>GH: read the repository's and .github's .octomaton.yaml, and tooling's reviewer/pipelinerun.yaml (default branches)
+  OCT->>GH: read the repository's and tooling's .octomaton.yaml, and tooling's reviewer/pipelinerun.yaml (default branches)
   OCT->>S: start the PipelineRun, with check "AI Review" on the head commit
   S->>GH: clone five repositories (+ the pull request's), read the pull request, reviews and threads
   S->>S: write pr.json
@@ -44,7 +44,7 @@ sequenceDiagram
 
 | Piece | Where | What |
 | --- | --- | --- |
-| Trigger | `.github`: `organization.pipelines` in `.octomaton.yaml`, read at its default branch | Pipeline `review` (`AI Review`) for every repository, on `review_request` from `arikkfir-reviewer`; params from the template context; a read-only installation token; the two Secrets it may mount |
+| Trigger | `tooling`: `organization.pipelines` in `.octomaton.yaml` (the organization repository), read at its default branch | Pipeline `review` (`AI Review`) for every repository, on `review_request` from `arikkfir-reviewer`; params from the template context; a read-only installation token; the two Secrets it may mount |
 | Pipeline | `tooling`: `reviewer/pipelinerun.yaml` | The PipelineRun: tasks `setup`, `review`, `report`; the 50Gi volume; ServiceAccount, sandbox label, DNS and resources per task. Octomaton reads it at `tooling`'s default branch for every repository |
 | Scripts and prompt | `tooling`: `reviewer/` | `state.py` writes `pr.json`, `findings.py` checks `findings.json`, `report.py` posts the review. Also `prompt.md` and `opencode.json`. Standard-library Python, tested in `tooling`'s CI. `report` runs its own fresh copy, never the volume's |
 | Octomaton | `octomaton` | The `review_request` trigger; `pipelineRun` in another repository; `secrets` a pipeline may mount; remote Tekton references refused; organization pipelines |
@@ -63,7 +63,7 @@ sequenceDiagram
 | Remote references refused | A PipelineRun with `pipelineRef`, a `taskRef`, a step `ref`, a `resolver` or a `bundle` is refused, so the Secret guard sees every definition |
 | Default concurrency | As for pull requests: runs of one pipeline on one pull request supersede each other |
 | Configuration errors | Not reported on review requests: most requests are for people, and each would add a failed check |
-| Organization pipelines | `organization.pipelines` in the owner's `.github` `.octomaton.yaml`, read at its default branch, join every repository's pipelines. A repository can't redefine one: a name clash is a configuration error. No `schedule` triggers |
+| Organization pipelines | `organization.pipelines` in the organization repository's `.octomaton.yaml` (server setting `OCTOMATON_ORGANIZATION_REPOSITORY`, `tooling` in the hub), read at its default branch, join every repository's pipelines. A repository can't redefine one: a name clash is a configuration error. No `schedule` triggers |
 
 ### Tasks
 
@@ -265,7 +265,8 @@ fixed, and the approval stands. The body holds the summary and one line of count
 | `arikkfir-reviewer` gets `push` through team `reviewers` | Resolving a thread takes write access, and an approval by a user with write access counts toward the one required approval | `triage` (can't resolve threads) |
 | `review_request` reads definitions from default branches only | A pull request can't rewrite its reviewer, its prompt or its Secrets, like comment commands | Definitions at the head commit, like `pull_request` |
 | One PipelineRun in `tooling`, referenced by every repository | One copy to change; it sits next to its scripts and their tests | A copy in each of six repositories; a cluster Pipeline through Tekton's cluster resolver (the Secret guard can't see it) |
-| Pipeline `review` declared once, as an organization pipeline in `.github` | Nothing about it differs between repositories; every repository, new ones included, gets it without a change | An identical entry in each repository's `.octomaton.yaml` |
+| Pipeline `review` declared once, as an organization pipeline in `tooling` | Nothing about it differs between repositories; every repository, new ones included, gets it without a change. `tooling` already holds the reviewer, and Claude Code can't clone `.github` (its name starts with a dot) | An identical entry in each repository's `.octomaton.yaml`; `.github`, GitHub's convention |
+| The organization repository is an Octomaton server setting | Octomaton stays free of repository names; the hub sets `tooling` | A fixed `.github` or `tooling` in the code |
 | A repository can't redefine an organization pipeline | No repository can skip the reviewer or point `review` at another definition | Repository pipelines overriding organization ones by name |
 | Octomaton lets a pipeline mount the Secrets it declares, only if all its triggers read default-branch definitions | Head-commit definitions still can't name a Secret, so a pull request can't reach the reviewer's token | A server-wide allowlist: any pull request's CI could mount the token |
 | Octomaton refuses remote Tekton references (`pipelineRef`, resolvers, bundles) | The guard only sees inline definitions; a remote one would slip past it. No repository uses them | Resolving them first (Octomaton would fetch and trust what Tekton fetches) |
@@ -313,7 +314,8 @@ fixed, and the approval stands. The body holds the summary and one line of count
 4. octomaton: the trigger, cross-repository `pipelineRun`, `secrets`, and refusing remote references; then
    organization pipelines. Each deploys itself.
 5. tooling: `reviewer/`.
-6. `.github`: pipeline `review` under `organization.pipelines`, once organization pipelines are live.
+6. octomaton: the organization repository as a server setting, `tooling` in the hub. Then `tooling`: pipeline `review`
+   under `organization.pipelines`.
 7. Try it: request a review from `arikkfir-reviewer` on a pull request.
 
 ## Open questions
