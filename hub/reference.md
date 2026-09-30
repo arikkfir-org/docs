@@ -185,6 +185,8 @@ of zone `octomaton-dev` for `octomaton.dev`.
   dashboard rely on the interceptor alone.
 - oauth2-proxy requests `offline_access` and refreshes a session's tokens after 5 minutes (`cookie-refresh`), so the ID
   token it hands to Argo CD stays valid.
+- NUI's route adds `nats/strip-cookies`, which removes the `Cookie` header after ForwardAuth: NUI's server (fasthttp)
+  refuses request headers over 4 KiB, which oauth2-proxy's session cookies on `.kfirs.com` can exceed.
 - Protected backends accept traffic only from the `traefik` namespace (NetworkPolicy); Argo CD's server also admits
   its own namespace and Octomaton, which relays GitHub webhooks to `/api/webhook`.
 - oauth2-proxy sets `emailDomains: []`: any domain rule would be OR-ed with the allowlist and bypass it.
