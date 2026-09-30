@@ -46,6 +46,8 @@ security updates on; version updates would need a `.github/dependabot.yml` in th
 | Cloud Router / NAT | `hub` / `hub` | auto-allocated egress IPs, all subnet ranges |
 | Static IP (regional, external) | `ingress-protected` | Traefik protected load balancer |
 | Static IP (regional, external) | `ingress-public` | Traefik public load balancer |
+| Private services access | `peered-services` | `10.40.0.0/20`, peered into the VPC for Google-managed services (Cloud SQL) |
+| Private DNS zone | `hub-internal` | `hub.internal.`, visible to VPC `hub` only: `postgres.hub.internal` → the Cloud SQL instance's private IP |
 
 ## GKE
 
@@ -73,6 +75,16 @@ Tekton runs land on the `ci` pool through Tekton's default pod template (node se
 
 Public URLs (`arikkfir-claude` only) are `https://storage.googleapis.com/<bucket>/<path>`.
 
+## Cloud SQL
+
+| Item | Value |
+| --- | --- |
+| Instance | `hub`: PostgreSQL 18, Enterprise edition, `db-f1-micro`, zonal in `me-west1-a`, 10GB SSD growing on demand; deletion protection on |
+| Network | Private IP only, from `peered-services`; TLS required (`ENCRYPTED_ONLY`). Pods connect to `postgres.hub.internal:5432` |
+| Backups and maintenance | Daily backup at 01:00 UTC, seven kept; maintenance on Sundays at 02:00 UTC |
+| Databases | `grafana` (Terraform) |
+| Users | `grafana`, created by hand with its password; the password is also in Secret Manager `grafana-db-password` |
+
 ## Secret Manager
 
 Terraform creates the secret containers; values are added by hand (`gcloud secrets versions add`). External Secrets
@@ -85,6 +97,7 @@ Operator is the only reader.
 | `octomaton-github-webhook-secret` | GitHub App webhook secret | `octomaton/octomaton-github` key `webhook-secret` |
 | `oidc-client-secret` | Descope access key (OIDC client secret) | `auth/oauth2-proxy` key `client-secret`; `argocd/argocd-oidc` key `clientSecret` |
 | `oauth2-proxy-cookie-secret` | 32 random bytes, base64 | `auth/oauth2-proxy` key `cookie-secret` |
+| `grafana-db-password` | Password of PostgreSQL user `grafana` on instance `hub` | `grafana/grafana-db` key `password` |
 
 ## GCP identities and permissions
 
@@ -134,11 +147,12 @@ to GKE and are not managed here.
 NATS clients, NACK included, connect to `nats://nats.nats.svc.cluster.local:4222`. JetStream streams may keep up to
 three replicas. The servers spread across system-pool nodes when there are several, but don't make the pool grow.
 
-Availability ([design](designs/disruption-budgets.md)): Traefik, oauth2-proxy, the docs site, Octomaton, `go-import`
-and KEDA's operator, metrics server and webhooks run two replicas each. NATS runs three servers. Each has a
+Availability ([design](designs/disruption-budgets.md)): Traefik, oauth2-proxy, the docs site, Grafana, Octomaton,
+`go-import` and KEDA's operator, metrics server and webhooks run two replicas each. NATS runs three servers. Each has a
 PodDisruptionBudget of `maxUnavailable: 1` and spreads its pods over nodes when the pool has several
-(`whenUnsatisfiable: ScheduleAnyway`). Grafana runs one replica with no budget: its database is on a `ReadWriteOnce`
-volume.
+(`whenUnsatisfiable: ScheduleAnyway`). Grafana keeps its state in database `grafana` on the [Cloud SQL](#cloud-sql)
+instance (password from ExternalSecret `grafana/grafana-db`), and its replicas share alert state through Service
+`grafana-headless` on port 9094.
 
 ## Ingress
 
