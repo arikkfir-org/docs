@@ -107,6 +107,11 @@ Closes DEV-123
 - A red check is fixed, never bypassed: no skipped tests, no disabled checks, no empty commits to re-trigger. A flaky
   test is a bug; fix it or file it with a Linear issue.
 - Pin every version: container images, Helm charts, Terraform providers, Go modules, tool versions.
+- Every PipelineRun declares what each of its tasks needs, in `spec.taskRunSpecs[].computeResources`: CPU and memory
+  requests and a memory limit, sized from real runs. Runs then land where there is room and the CI pool grows, instead
+  of runs starving each other on one node. Set them on the task, not on its steps: the steps run one at a time in one
+  pod, and Tekton reserves a task-level request once, while step requests add up. Leave CPU unlimited, so steps can
+  use idle CPU.
 
 ## Design documents
 

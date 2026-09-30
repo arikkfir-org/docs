@@ -10,6 +10,15 @@ spec:
     pipeline: 20m
   taskRunTemplate:
     serviceAccountName: pipeline
+  # Reserved once for all of the task's steps (step-level requests would add up as if the steps ran at once).
+  taskRunSpecs:
+    - pipelineTaskName: publish
+      computeResources:
+        requests:
+          cpu: "1"
+          memory: 1Gi
+        limits:
+          memory: 2Gi
   workspaces:
     - name: work
       emptyDir: {}
