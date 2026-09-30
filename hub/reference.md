@@ -310,7 +310,8 @@ pipelines:
                                        # trigger reads definitions from the default branch (comment, review_request,
                                        # schedule)
     timeout: 1h                        # optional, sets spec.timeouts.pipeline
-    concurrency:                       # optional; default for pull_request: group "pr-<number>", policy supersede
+    concurrency:                       # optional; default for pull_request and review_request:
+                                       # group "pr-<number>", policy supersede
       group: "publish"                 # Go template, scoped to the repository
       policy: latest                   # supersede | queue | latest
     taskChecks: false                  # optional: also report each pipeline task as "<check> / <task>"
@@ -323,8 +324,8 @@ pipelines:
 | `latest` | One run at a time; only the newest waiting run survives, older waiting runs are cancelled |
 
 Groups are scoped to the repository: pipelines naming the same group share it (include `{{ .Pipeline }}` to keep them
-apart). Without `concurrency`, pull request runs of the same pipeline and pull request supersede each other; other runs
-are unconstrained.
+apart). Without `concurrency`, pull request and review request runs of the same pipeline and pull request supersede each
+other; other runs are unconstrained.
 
 Where definitions are read: pull requests, merge groups and pushes read `.octomaton.yaml` and the PipelineRun file
 at the commit under test. Comment commands, review requests and schedules read them from the default branch (comment
@@ -332,8 +333,9 @@ commands and review requests still run against the pull request's head commit). 
 is always read at that repository's default branch.
 
 A review request runs pipelines whose `review_request.reviewers` include the requested user (team requests are
-ignored), on open pull requests, drafts included. Only people with write access can request reviews, so the request is
-the permission check.
+ignored), on open pull requests, drafts included. Each request gets its own run. Requesting a review takes triage or
+write access, so the request is the permission check. `review_requested` is not a `pull_request` type, and an invalid
+configuration is not reported on review requests: most are for people.
 
 Forks are ignored: every event from a repository that is itself a fork, and every pull request whose head branch lives
 in another repository (or in one that no longer exists), whoever opened it. They get no check run and no run; comment

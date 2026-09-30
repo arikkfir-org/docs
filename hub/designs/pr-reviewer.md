@@ -62,6 +62,7 @@ sequenceDiagram
 | `secrets` | Names Secrets the run may mount besides its token. Allowed only when every trigger is `comment`, `review_request` or `schedule` |
 | Remote references refused | A PipelineRun with `pipelineRef`, a `taskRef`, a step `ref`, a `resolver` or a `bundle` is refused, so the Secret guard sees every definition |
 | Default concurrency | As for pull requests: runs of one pipeline on one pull request supersede each other |
+| Configuration errors | Not reported on review requests: most requests are for people, and each would add a failed check |
 
 ### Tasks
 
