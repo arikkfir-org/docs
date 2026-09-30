@@ -26,11 +26,9 @@ sequenceDiagram
   GH->>SB: webhook (push, pull_request, merge_group, check_run, check_suite)
   SB->>SB: verify HMAC signature, dedupe delivery, 202
   SB->>GH: read .octomaton.yaml at the commit under test
-  SB->>SB: match events, branches, tags and paths, then apply trust rules
+  SB->>SB: ignore forks, then match events, branches, tags and paths
   alt paths don't match
     SB->>GH: check run "completed / skipped"
-  else untrusted fork pull request
-    SB->>GH: check run "action_required" + "Approve and run" button
   else run
     SB->>GH: read the PipelineRun file at the same commit
     SB->>K8s: create the PipelineRun held (PipelineRunPending) in the repository's ci- namespace
@@ -74,7 +72,7 @@ and the Octomaton README.
 | Invalid `.octomaton.yaml` | One failed check run named `octomaton` explaining the error |
 | Event matches, paths don't | Check run reported as `skipped`, which satisfies required checks |
 | Changed files can't be determined | Treated as matching (runs rather than silently skipping) |
-| Pull request from outside the org (fork) | `action_required` check with an "Approve and run" button for users with write access |
+| Pull request from a fork (whoever opened it), or any event from a repository that is a fork | Ignored: no check run and no run; comment commands on it get no reaction or reply, and its stored reports are never re-run |
 | Repository namespace missing | Failed check: "repository not onboarded" |
 | Newer commit on the same pull request or branch | Concurrency groups decide: `supersede` cancels older runs (the default for pull requests), `queue` runs one at a time, `latest` keeps only the newest waiting run |
 | `/command` comment on a pull request | Pipelines with a matching `on.comment.pattern` run (definitions from the default branch, code from the pull request); the commenter needs write access; 👀 when started, a reply with the result when done |
@@ -143,7 +141,8 @@ flowchart LR
 
 | Decision | Why | Rejected |
 | --- | --- | --- |
-| Check runs (Checks API) rather than commit statuses | Rich output, re-run buttons, requested actions, required-check integration | Commit statuses |
+| Check runs (Checks API) rather than commit statuses | Rich output, re-run buttons, required-check integration | Commit statuses |
+| Ignore forks entirely, even members' | The repositories are public: anyone can fork one and open a pull request, and its code must never run in the cluster, nor be one click away from it | An "Approve and run" button for fork pull requests; trusting forks of owners, members and collaborators |
 | Params and a token workspace instead of templating inside PipelineRun files | Files stay valid Tekton; no templating collisions with scripts | Pipelines-as-Code style `{{ }}` substitution in YAML |
 | Runs are created held, then released | The check run and token Secret exist before anything executes; a restart mid-dispatch is resumed; concurrency queues need held runs anyway | Creating Secrets first, `generateName` |
 | Deterministic run names with attempts (`<repo>-<pipeline>-<sha7>-<n>`) | Redeliveries and duplicate events find the existing run; re-runs are new attempts | Random names (duplicates on redelivery) |
@@ -158,11 +157,12 @@ flowchart LR
 ## Security
 
 - Webhooks are verified (HMAC-SHA256) before anything else; the webhook route is the only public path.
-- Fork pull requests never run without approval from someone with write access.
+- Forks are never acted on: pull requests from them, comment commands on those, re-runs of their reports and every
+  event from a repository that is a fork are ignored, without a check run or a reply.
 - Installation tokens are minted per run with least permissions (contents read), expire within an hour and are
   garbage-collected with the run.
-- Trusted pull requests can change their own pipeline files, so they can use their namespace's permissions; that is
-  why namespaces, not pipelines, are the isolation boundary.
+- Pull requests can change their own pipeline files, so they can use their namespace's permissions; that is why
+  namespaces, not pipelines, are the isolation boundary.
 
 ## Rollout
 
