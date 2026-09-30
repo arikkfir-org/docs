@@ -47,7 +47,7 @@ flowchart LR
 | --- | --- | --- |
 | `gcp` | APIs, network, static IPs, cluster and node pools, node service account, IAM bindings, secret containers, Artifact Registry, buckets, DNS zones (imported) and records | Secret values are added by hand |
 | `argocd` | Argo CD release and the `root` Application | Connects through the cluster's DNS endpoint with the caller's Google credentials |
-| `github` | The six hub repositories (imported) and their default-branch rulesets | Applied last: rulesets require the Octomaton `ci` check |
+| `github` | The six hub repositories (imported) and their default-branch rulesets | Applied last: rulesets require the Octomaton `Continuous Integration` check |
 
 Existing resources (the six repositories, the `kfirs-com` and `kfirfamily-com` DNS zones) are adopted with `import`
 blocks and protected with `prevent_destroy`.

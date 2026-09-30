@@ -59,8 +59,8 @@ would hold `delivery`'s commit.
 ## Security and failure modes
 
 - A merge to octomaton's `main` changes the cluster, as a merge to `delivery`'s does. Both repositories have the same
-  ruleset (pull request, `ci`, merge queue; organization admins may bypass), and the Application stays in project
-  `default`, like every other.
+  ruleset (pull request, the `Continuous Integration` check, merge queue; organization admins may bypass), and the
+  Application stays in project `default`, like every other.
 - Argo CD hears of a commit (Octomaton relays the push) minutes before `release` has published its image. The new pod
   waits in `ImagePullBackOff` while the old one keeps serving: with one replica, the rolling update starts the new pod
   before it stops the old one. The Application shows `Progressing`, and `Degraded` once the Deployment's 10-minute

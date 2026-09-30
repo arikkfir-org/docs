@@ -22,8 +22,8 @@ flowchart LR
 3. **Write or update the design doc** in `arikkfir-org/docs` for every meaningful unit of work (see
    [Design documents](#design-documents)).
 4. **Open a pull request** early; mark it ready once CI is green and the description is complete.
-5. **Merge through the merge queue**. Default branches accept squash merges only, after one approval, resolved
-   conversations and a green `ci` check. Nobody pushes directly to a protected default branch.
+5. **Merge through the merge queue**. Default branches accept merge commits only, after one approval, resolved
+   conversations and a green `Continuous Integration` check. Nobody pushes directly to a protected default branch.
 
 This holds for `docs` too. Direct pushes to its `main` are reserved for automation: publishing the site, and syncing
 other repositories' branch and pull-request docs into a directory per repository and branch.
@@ -102,8 +102,8 @@ Closes DEV-123
 
 - CI is [Octomaton](https://github.com/arikkfir-org/octomaton) running Tekton pipelines declared in each
   repository's root `.octomaton.yaml`. There are no GitHub Actions workflows.
-- Protected repositories require a check named `ci` on pull requests and in the merge queue. Pipelines that run on
-  both must list `pull_request` and `merge_group` in their triggers.
+- Protected repositories require a check named `Continuous Integration` on pull requests and in the merge queue: the
+  pipeline `ci` with that `displayName`. It must list `pull_request` and `merge_group` in its triggers.
 - A red check is fixed, never bypassed: no skipped tests, no disabled checks, no empty commits to re-trigger. A flaky
   test is a bug; fix it or file it with a Linear issue.
 - Pin every version: container images, Helm charts, Terraform providers, Go modules, tool versions.

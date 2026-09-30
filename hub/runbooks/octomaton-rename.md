@@ -117,7 +117,7 @@ App settings, General:
 
 | Field | Value |
 | --- | --- |
-| GitHub App name | `Octomaton` |
+| GitHub App name | `octomaton-dev` (`Octomaton` is taken on GitHub) |
 | Homepage URL | `https://github.com/arikkfir-org/octomaton` |
 | Webhook URL | `https://octomaton.dev/github/hooks` |
 | Webhook secret | A new one: `openssl rand -hex 32` |
