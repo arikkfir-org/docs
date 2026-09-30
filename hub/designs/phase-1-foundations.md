@@ -56,7 +56,7 @@ blocks and protected with `prevent_destroy`.
 
 | Repository | Rules on the default branch |
 | --- | --- |
-| `.github`, `docs`, `infra`, `delivery`, `octomaton`, `tooling` | Pull request with 1 approval, stale approvals dismissed, last push approved, conversations resolved; required check `ci` from the Octomaton App; merge queue (merge commits, all-green grouping); no deletion; no force-push |
+| `.github`, `docs`, `infra`, `delivery`, `octomaton`, `tooling` | Pull request with 1 approval, stale approvals dismissed, last push approved, conversations resolved; required check `Continuous Integration` from the Octomaton App; merge queue (merge commits, all-green grouping); no deletion; no force-push |
 
 Organization admins may bypass on pull requests only, so a solo maintainer can merge without a second reviewer while
 nobody can push around the queue.
