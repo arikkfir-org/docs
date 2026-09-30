@@ -39,7 +39,7 @@ sequenceDiagram
 | --- | --- | --- |
 | Manifests | `octomaton`: `deploy/` (Kustomize) | Everything in namespace `octomaton`, the ClusterRoles `octomaton` and `octomaton-tenant`, and the ClusterRoleBinding `octomaton`. The Deployment's image has no tag |
 | Application | `delivery`: `apps/octomaton.yaml` | Source `arikkfir-org/octomaton` at `main`, path `deploy`; `kustomize.images` sets `…/octomaton:${ARGOCD_APP_REVISION_SHORT}`; the namespace label `kfirs.com/public-ingress` |
-| Image | `octomaton`: `release` | Runs on every push to `main`, with no path filter, and tags the image with the commit's first 7 characters, as many as `ARGOCD_APP_REVISION_SHORT` has |
+| Image | `octomaton`: `release` | Runs on every push to `main`, with no path filter, and retries twice when its Spot node is preempted. Tags the image with the commit's first 7 characters, as many as `ARGOCD_APP_REVISION_SHORT` has |
 | Validation | `octomaton`: `ci` | Renders `deploy/` and checks it with kubeconform, as `delivery`'s CI checks its own manifests |
 | What stays | `delivery` | The Application; the tenant namespaces (`ci-tenants`); the `octomaton-dev` certificate and Gateway listener; Argo CD's NetworkPolicy admitting Octomaton's relay |
 
@@ -66,7 +66,7 @@ would hold `delivery`'s commit.
   before it stops the old one. The Application shows `Progressing`, and `Degraded` once the Deployment's 10-minute
   progress deadline passes, until the image arrives.
 - If `release` fails, the new pod keeps waiting and the old one keeps serving until a later commit publishes an image.
-  Re-run `release`, or merge a fix.
+  Re-run `release`, or merge a fix. CI runs on Spot VMs, and preemption was the usual cause, hence the two retries.
 - A commit that breaks Octomaton breaks CI for every repository, its own fix included. Merge the revert with the admin
   bypass; Argo CD deploys it like any other commit.
 
