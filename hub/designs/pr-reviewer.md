@@ -162,11 +162,12 @@ tokens, mostly cached across its turns, costs cents.
 ```json
 {
   "summary": "What the pull request does and the review's overall take, in a few sentences. No findings.",
-  "pullRequestFindings": ["The description doesn't say how to roll back the ruleset change."],
   "findings": {
     "IAM-3": {
       "title": "One line",
-      "severity": "blocking",
+      "priority": "blocking",
+      "severity": "high",
+      "likelihood": "medium",
       "path": "terraform/gcp/iam.tf",
       "line": 42,
       "startLine": 40,
@@ -180,42 +181,36 @@ tokens, mostly cached across its turns, costs cents.
 | Field | Rule |
 | --- | --- |
 | Code (the key) | `^[A-Z][A-Z0-9]{0,15}-[1-9][0-9]{0,3}$`. A code already in `codes` means the same finding; a new finding takes a code not in `codes` |
-| `severity` | `blocking` or `nit` |
-| `path`, `line`, `startLine`, `side` | New codes only: a file of the diff and a range within its `commentable` lines on `side` (default `RIGHT`). Without `line`, a file-level thread. Ignored for existing codes, whose thread stays where it is |
+| `priority` | 🔴 `blocking` (must fix), 🟡 `non-blocking` (should fix) or 🔵 `nit` (could fix) |
+| `severity` | The harm if it goes wrong: `low`, `medium`, `high` or `urgent` |
+| `likelihood` | How likely it is to go wrong: `low`, `medium` or `high` |
+| `path`, `line`, `startLine`, `side` | New codes only: a file of the diff and a range within its `commentable` lines on `side` (default `RIGHT`). Without `line`, a file-level thread. Without `path`, a finding about the pull request as a whole (its description, its scope): a file-level thread on the first changed file, marked as such. Ignored for existing codes, whose thread stays where it is |
 | `summary` | At most 1,500 characters; never a finding |
-| `pullRequestFindings` | Findings about the pull request as a whole (its description, its scope). They go into the review's body and always request changes |
 
 ### What the prompt asks
 
-`reviewer/prompt.md` sets how the review runs; `reviewer/guidelines.md` sets what a good change looks like. Both are
-drafts to refine with real reviews. The prompt:
+`reviewer/prompt.md` is a draft, to be refined with real reviews. It asks the reviewer to:
 
-- Read the rules first: each repository's `CLAUDE.md` and `README.md`, `docs/CONTRIBUTING.md` and the contract,
-  `docs/hub/reference.md`. Then `reviewer/guidelines.md`.
-- Review the change (`pr.diff`, `pr.log`). Check it against the other repositories wherever it names something they
-  define or use.
+- Read the shared house rules first: `docs/CONTRIBUTING.md` (the conventions, including the code guidelines below) and
+  the contract, `docs/hub/reference.md`.
+- Then read the rules of the pull request's repository: its `CLAUDE.md`, `README.md` and any contributing notes. Where
+  they conflict with the house rules, the repository's rules win.
+- Review the change (`pr.diff`, `pr.log`). Where it interacts with code in other repositories or with the
+  infrastructure (Terraform in `infra`, manifests in `delivery`, Octomaton's contract), use those repositories to
+  check its claims, its feasibility and its robustness.
 - Look for correctness and security problems, breaks of a repository's rules or of the contract, missing tests or
   docs the rules require, and a description that doesn't match the change. Leave style to linters.
 - Carry earlier rounds forward. Read every thread and reply in `pr.json`. Raise a finding again under its code only if
   it still holds, answering the author's reply when there is one. Drop it when the author fixed it or answered it
   convincingly.
 - One problem per finding, with a new code for a new problem. Anchor it on the changed line that causes it or should
-  fix it. `nit` is only for what shouldn't block a merge.
+  fix it. Give it a priority, a severity and a likelihood.
+- Write plainly: simple English, short and concise; no praise, no filler.
 - Write `findings.json`, and nothing else: the repositories are read-only.
 
-The guidelines, from the owner:
-
-1. Comments are plain: simple English, short and concise.
-2. Less is more. Expect reuse over duplication, unless there is a good reason not to reuse.
-3. Expect authors to refactor when things need to align, rather than build abstractions or scaffolding around
-   existing code to avoid the risk of changing it.
-4. Expect the right thing, not the easy thing, with some slack for urgency, or when the effort far outweighs the value.
-5. Go:
-   1. Every error is checked, without exception. Logging an error isn't handling it, except at the top of the call
-      stack, where the error is either logged or actually handled (another route taken).
-   2. Programs are configured with `envconfig`, not command-line flags.
-   3. Significant methods start an OpenTelemetry span.
-   4. Logs go through `log/slog` only.
+The code guidelines (reuse over duplication, refactoring over scaffolding, the right thing over the easy one, and the
+Go rules for errors, configuration, spans and logs) are house rules, in `CONTRIBUTING.md`, for people and the reviewer
+alike.
 
 ### From findings to GitHub
 
@@ -226,9 +221,20 @@ word):
 | Code in `findings.json` | Thread with that code | Action, all in one review |
 | --- | --- | --- |
 | New | None | A new thread at `path`/`line` |
-| Raised again | Open or resolved | A reply with the finding's `body`; a resolved thread is unresolved |
+| Raised again | Open, or resolved by the reviewer | A reply with the finding's `body`; a resolved thread is unresolved |
+| Raised again as a `nit` | Resolved by someone else | Nothing: the author resolved it as won't fix, and that stands |
+| Raised again, `non-blocking` or `blocking` | Resolved by someone else | A reply, and the thread is unresolved |
 | Not raised | Open | A reply "No longer found at `<commit>`", then the thread is resolved |
 | Not raised | Resolved | Nothing |
+
+Every finding is a thread, whose first comment reads:
+
+```text
+🔴 IAM-3: <title>
+Blocking · high severity · medium likelihood
+
+<body>
+```
 
 Threads other users started are left alone. The review is created pending on the reviewed commit, filled, then
 submitted. A pending review left by an interrupted `report` is deleted first. A marker with the PipelineRun's name in
@@ -236,11 +242,13 @@ the body keeps a retried `report` from submitting twice.
 
 | Findings | Review |
 | --- | --- |
-| Any `pullRequestFindings`, or any `blocking` finding | Request changes |
-| `nit` findings only | Approve, with the nits as threads |
+| Any `blocking` or `non-blocking` finding | Request changes |
+| `nit` findings only | Approve, with the nits as open threads |
 | None | Approve |
 
-The body holds the summary, the pull-request-wide findings and the counts. It never repeats an inline finding.
+A nit's thread stays open. The author either fixes it and requests another review, or resolves it to say it won't be
+fixed, and the approval stands. The body holds the summary and one line of counts (🔴 blocking, 🟡 non-blocking,
+🔵 nits, resolved). It never repeats a finding.
 
 ## Decisions
 
@@ -255,7 +263,8 @@ The body holds the summary, the pull-request-wide findings and the counts. It ne
 | Octomaton refuses remote Tekton references (`pipelineRef`, resolvers, bundles) | The guard only sees inline definitions; a remote one would slip past it. No repository uses them | Resolving them first (Octomaton would fetch and trust what Tekton fetches) |
 | Every reviewer pod is sandboxed, not just `review` | None of them needs the cluster; each holds one credential | `setup` and `report` on the CI default network |
 | Codes as keys, one thread per code | A finding keeps its conversation across rounds; the author's replies are the next round's input | A list matched by location or text (moves with the code, breaks on rewording) |
-| The model sets severity; `report` derives the verdict | Every verdict follows from what the review shows | A model-chosen verdict |
+| The model sets each finding's priority (with severity and likelihood); `report` derives the verdict | Every verdict follows from what the review shows. Only nits leave an approval | A model-chosen verdict |
+| Every finding is a thread, a pull-request-wide one too | Each finding keeps its code, its conversation and its resolution | Pull-request-wide findings in the review's body, which can't be tracked or resolved |
 | Setup lists the commentable lines, and `findings.py` checks against them, with one correction round | Line anchors are where model output goes wrong; GitHub rejects the whole review for one bad anchor | Posting and falling back when GitHub refuses |
 
 ## Security and failure modes
