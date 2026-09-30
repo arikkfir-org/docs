@@ -104,9 +104,9 @@ flowchart LR
 | Image | `ghcr.io/anomalyco/opencode:1.18.33` pinned by digest (Alpine; `opencode` and `ripgrep`, no git) | The official image of the current v1 release. v2 is days old. Without git, the model reads `pr.diff` and `pr.log` |
 | Model | `deepseek/deepseek-v4-pro` in `reviewer/opencode.json`; `enabled_providers: ["deepseek"]` | DeepSeek's strongest released model. V4.1 Pro, once released, is a one-line change |
 | Permissions | `"permission": "allow"`, `experimental.continue_loop_on_deny: true` | `opencode run` rejects any "ask" and stops. The sandbox is the boundary, not opencode's prompts |
-| Isolation from the repositories | `OPENCODE_DISABLE_PROJECT_CONFIG=1`, `OPENCODE_CONFIG=/workspace/.review/opencode.json`, `--pure` | No `AGENTS.md`, `opencode.json` or plugin from a reviewed repository configures the reviewer; the model reads each `CLAUDE.md` as material, not as its instructions |
-| No uploads, no updates | `"share": "disabled"`, `OPENCODE_DISABLE_SHARE=1`, `OPENCODE_DISABLE_MODELS_FETCH=1` (the bundled model list), `"snapshot": false` | Sessions stay in the pod; nothing but DeepSeek's API is called on opencode's own account |
-| State | `HOME` and `XDG_*` under `/workspace/.review/home` | `fix` continues `review`'s session, and the steps share only volumes |
+| Isolation from the repositories | `OPENCODE_DISABLE_PROJECT_CONFIG=1`, `OPENCODE_CONFIG=/workspace/shared/.review/opencode.json`, `--pure` | No `AGENTS.md`, `opencode.json` or plugin from a reviewed repository configures the reviewer; the model reads each `CLAUDE.md` as material, not as its instructions |
+| No uploads, no updates | `"share": "disabled"`, `OPENCODE_DISABLE_SHARE=1`, `OPENCODE_DISABLE_MODELS_FETCH=1` (the bundled model list), `OPENCODE_DISABLE_AUTOUPDATE=1`, `"snapshot": false`; an empty `node_modules` and a `package-lock.json` listing `@opencode-ai/plugin` in opencode's config directory | Sessions stay in the pod. Nothing but DeepSeek's API is called on opencode's own account, and opencode doesn't install its plugin package from npm at start (it skips the install only when both exist) |
+| State | `HOME` and `XDG_*` under `/workspace/shared/.review/home` | `fix` continues `review`'s session, and the steps share only volumes |
 
 DeepSeek V4 Pro costs, per million tokens, $0.022 for cached input, $0.66 for other input and $1.98 for output, twice as
 much in DeepSeek's weekday peak hours (01:00–04:00 and 06:00–10:00 UTC). A review that reads a few hundred thousand
@@ -115,7 +115,7 @@ tokens, mostly cached across its turns, costs cents.
 ### The volume
 
 ```text
-/workspace/
+/workspace/shared/  the workspace shared (Tekton's mount path; scripts use $(workspaces.shared.path))
 ├── pr.json         setup: the pull request's state
 ├── pr.diff         setup: git diff <base>...<head> of the pull request's repository
 ├── pr.log          setup: git log <base>..<head>, with each commit's changed files
@@ -132,6 +132,7 @@ tokens, mostly cached across its turns, costs cents.
   "repository": "arikkfir-org/infra",
   "number": 14,
   "revision": "head commit under review",
+  "baseRef": "main",
   "reviewer": "arikkfir-reviewer",
   "pr": {"the pull request, as GitHub's REST API returns it": "..."},
   "files": [
@@ -185,7 +186,7 @@ tokens, mostly cached across its turns, costs cents.
 | `priority` | 🔴 `blocking` (must fix), 🟡 `non-blocking` (should fix) or 🔵 `nit` (could fix) |
 | `severity` | The harm if it goes wrong: `low`, `medium`, `high` or `urgent` |
 | `likelihood` | How likely it is to go wrong: `low`, `medium` or `high` |
-| `path`, `line`, `startLine`, `side` | New codes only: a file of the diff and a range within its `commentable` lines on `side` (default `RIGHT`). Without `line`, a file-level thread. Without `path`, a finding about the pull request as a whole (its description, its scope): a file-level thread on the first changed file, marked as such. Ignored for existing codes, whose thread stays where it is |
+| `path`, `line`, `startLine`, `side` | New codes only: a file of the diff and a range within its `commentable` lines on `side` (default `RIGHT`). Without `line`, a file-level thread. Without `path`, a finding about the pull request as a whole (its description, its scope): a file-level thread on the first changed file, marked as such (in the review's body only when the pull request changes no files). Ignored for existing codes, whose thread stays where it is |
 | `summary` | At most 1,500 characters; never a finding |
 
 ### What the prompt asks
@@ -216,8 +217,7 @@ alike.
 ### From findings to GitHub
 
 `report` asks GitHub for the threads again with `arikkfir-reviewer`'s token, rather than trusting the volume, and reads
-each code from a marker in the first comment (`<!-- reviewer:IAM-3 -->`, with the code shown as the comment's first
-word):
+each code from the marker that starts the thread's first comment (`<!-- reviewer:IAM-3 -->`):
 
 | Code in `findings.json` | Thread with that code | Action, all in one review |
 | --- | --- | --- |
@@ -225,17 +225,21 @@ word):
 | Raised again | Open, or resolved by the reviewer | A reply with the finding's `body`; a resolved thread is unresolved |
 | Raised again as a `nit` | Resolved by someone else | Nothing: the author resolved it as won't fix, and that stands |
 | Raised again, `non-blocking` or `blocking` | Resolved by someone else | A reply, and the thread is unresolved |
-| Not raised | Open | A reply "No longer found at `<commit>`", then the thread is resolved |
+| Not raised | Open | A reply "**IAM-3**: no longer found at `<commit>`.", then the thread is resolved |
 | Not raised | Resolved | Nothing |
 
 Every finding is a thread, whose first comment reads:
 
 ```text
-🔴 IAM-3: <title>
+<!-- reviewer:IAM-3 -->
+🔴 **IAM-3: <title>**
 Blocking · high severity · medium likelihood
 
 <body>
 ```
+
+A reply repeats the heading without the marker. The reply to a finding that is no longer raised reads
+"**IAM-3**: no longer found at `<commit>`."
 
 Threads other users started are left alone. The review is created pending on the reviewed commit, filled, then
 submitted. A pending review left by an interrupted `report` is deleted first. A marker with the PipelineRun's name in
