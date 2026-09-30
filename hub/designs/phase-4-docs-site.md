@@ -25,6 +25,26 @@ flowchart LR
 | `render` | `pandoc/core:3.11.0` | Runs `.site/render.sh`: GitHub-flavoured Markdown to standalone HTML with `.site/template.html` and `.site/site.lua` |
 | `sync` | `google-cloud-cli:587.0.0-slim` | Runs `.site/sync.sh`: `gcloud storage rsync` twice, then writes `.published-revision` |
 
+## Pull request checks
+
+Octomaton runs [`.tekton/ci.yaml`](https://github.com/arikkfir-org/docs/blob/main/.tekton/ci.yaml) as the required `ci`
+check on every pull request into `main` and every merge queue group, in namespace `ci-docs` as service account
+`default` (no Google Cloud access). It validates only the Markdown and HTML files the change adds or modifies since its
+merge base (`.ci/changed.sh`):
+
+```mermaid
+flowchart LR
+  C["checkout<br/>(git)<br/>blobless clone at the commit;<br/>changed.sh: changed .md and .html"] --> V["validate<br/>(pandoc)<br/>validate.sh: render changed .md;<br/>links.lua: resolve relative links"]
+```
+
+| Check | Fails when |
+| --- | --- |
+| Markdown renders (`.ci/validate.sh`) | pandoc reports an error or a warning while rendering the page with `.site/template.html` and `.site/site.lua`, e.g. for text that is not UTF-8 |
+| Relative links resolve (`.ci/links.lua`) | A link in a changed Markdown or HTML file points at a missing file, a directory, a hidden path or outside the repository. A `.html` link resolves when its `.md` page exists; external URLs, in-page anchors and fragments are not checked |
+
+Deleting or renaming a page does not check the pages that still link to it. Run the checks locally with
+`sh .ci/changed.sh origin/main HEAD > /tmp/changed.txt && sh .ci/validate.sh /tmp/changed.txt`.
+
 ## What gets rendered
 
 ```mermaid
@@ -88,6 +108,7 @@ A publication shows up within about a minute (Cloud Storage FUSE caches object m
 
 | Principal | Role | On |
 | --- | --- | --- |
+| `ci-docs/default` (pull request checks) | None: no Workload Identity binding | — |
 | Descope users | Sign-in at the protected gateway (OIDC interceptor) | `https://docs.dev.kfirs.com` |
 | `docs/docs` (Workload Identity) | `roles/storage.objectViewer` | `arikkfir-docs` |
 | `ci-docs/pipeline` (Workload Identity) | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | `arikkfir-docs` |
@@ -104,6 +125,9 @@ The bucket enforces public access prevention; nothing reads it anonymously.
 | Record the published revision in the bucket | Makes incremental rendering self-healing after failures | Trusting each push's `before` SHA |
 | `latest` concurrency for publications | One publication at a time; the newest waiting one covers everything since the last success, older waiting ones are dropped | Parallel publications (an older one could finish last and roll back newer content) |
 | A committed `x.html` next to `x.md` fails the pipeline | The rendered page would silently overwrite the hand-written one | Last writer wins |
+| Pull request checks validate only what a change adds or modifies | Fast, and a change is never blocked by an unrelated page | Validating the whole site on every pull request |
+| Links are read with pandoc's own Markdown parser (`pandoc lua`) | Checks exactly the links the site renders, in the image the pipeline already pins | A separate link checker and image |
+| Checks run as `default`, without Google Cloud access | A pull request's pipeline can't touch the bucket | The `pipeline` account, which can write it |
 
 ## Operations
 

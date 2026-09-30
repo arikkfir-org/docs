@@ -44,7 +44,7 @@ In `arikkfir-org` → Settings → Developer settings → GitHub Apps → New Gi
 
 | Field | Value |
 | --- | --- |
-| Name | `Octomaton` |
+| Name | `octomaton-dev` (`Octomaton` is taken on GitHub) |
 | Homepage URL | `https://github.com/arikkfir-org/octomaton` |
 | Webhook URL | `https://octomaton.dev/github/hooks` |
 | Webhook secret | `openssl rand -hex 32` (keep it for step 5) |
@@ -102,7 +102,8 @@ git clone https://github.com/arikkfir-org/octomaton && cd octomaton
 make image    # tags the image with HEAD's short SHA
 ```
 
-`delivery` must pin that tag in `platform/octomaton/manifests/deployment.yaml`.
+Build it from the head of `main`: Argo CD deploys that commit, with the image tagged with its short SHA
+([Octomaton deployment](../designs/octomaton-deployment.md)).
 
 ## 7. Argo CD
 
@@ -127,8 +128,8 @@ kubectl -n argocd get applications -w     # everything converges to Synced / Hea
 
 ## 9. Verify CI
 
-Open a pull request in any hub repository; a `ci` check run from Octomaton appears and links to the
-Tekton Dashboard.
+Open a pull request in any hub repository; a `Continuous Integration` check run from Octomaton appears and links to
+the Tekton Dashboard.
 
 Pushes made before Octomaton ran were never delivered, so nothing is published yet. Merge a pull request (any change)
 into `docs` and into `tooling` to trigger the first publish, then check
@@ -136,7 +137,7 @@ into `docs` and into `tooling` to trigger the first publish, then check
 
 ## 10. GitHub repositories and rulesets
 
-Only once `ci` checks work, since the rulesets require them:
+Only once `Continuous Integration` checks work, since the rulesets require them:
 
 ```bash
 cd infra

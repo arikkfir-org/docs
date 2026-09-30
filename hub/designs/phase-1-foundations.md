@@ -47,7 +47,7 @@ flowchart LR
 | --- | --- | --- |
 | `gcp` | APIs, network, static IPs, cluster and node pools, node service account, IAM bindings, secret containers, Artifact Registry, buckets, DNS zones (imported) and records | Secret values are added by hand |
 | `argocd` | Argo CD release and the `root` Application | Connects through the cluster's DNS endpoint with the caller's Google credentials |
-| `github` | The six hub repositories (imported) and their default-branch rulesets | Applied last: rulesets require the Octomaton `ci` check |
+| `github` | The six hub repositories (imported) and their default-branch rulesets | Applied last: rulesets require the Octomaton `Continuous Integration` check |
 
 Existing resources (the six repositories, the `kfirs-com` and `kfirfamily-com` DNS zones) are adopted with `import`
 blocks and protected with `prevent_destroy`.
@@ -56,8 +56,7 @@ blocks and protected with `prevent_destroy`.
 
 | Repository | Rules on the default branch |
 | --- | --- |
-| `.github`, `infra`, `delivery`, `octomaton`, `tooling` | Pull request with 1 approval, stale approvals dismissed, conversations resolved; required check `ci` from the Octomaton App; merge queue (squash, all-green grouping); no deletion; no force-push |
-| `docs` | No deletion; no force-push (direct pushes allowed) |
+| `.github`, `docs`, `infra`, `delivery`, `octomaton`, `tooling` | Pull request with 1 approval, stale approvals dismissed, last push approved, conversations resolved; required check `ci` from the Octomaton App; merge queue (merge commits, all-green grouping); no deletion; no force-push |
 
 Organization admins may bypass on pull requests only, so a solo maintainer can merge without a second reviewer while
 nobody can push around the queue.

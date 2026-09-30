@@ -22,5 +22,8 @@ Knowledge base of the `arikkfir-org` hub, published to `https://docs.dev.kfirs.c
 - `.site/template.html` + `.site/site.lua` (pandoc) render Markdown; `.site/plan.sh`, `.site/render.sh` and
   `.site/sync.sh` are the publish steps run by `.tekton/publish.yaml`, triggered by Octomaton (`.octomaton.yaml`).
 - Any change under `.site/` re-renders every page on the next publish.
+- `.tekton/ci.yaml` is the required `ci` check on pull requests and merge groups: Markdown files a change adds or
+  modifies must render, and relative links in its Markdown and HTML files must resolve (`.ci/`). Run it before pushing:
+  `sh .ci/changed.sh origin/main HEAD > /tmp/changed.txt && sh .ci/validate.sh /tmp/changed.txt`
 - Preview a page locally:
   `pandoc --from=gfm --standalone --template=.site/template.html --lua-filter=.site/site.lua --syntax-highlighting=none -o /tmp/page.html page.md`

@@ -20,20 +20,20 @@ repository's CI configuration must agree with this page. Change it here first, t
 
 | Repository | Purpose | Default-branch rules | Required checks |
 | --- | --- | --- | --- |
-| `.github` | Org profile, org-wide GitHub defaults | PR + 1 approval + merge queue | `ci` |
-| `docs` | Knowledge base, published to `arikkfir-docs` and served at `docs.dev.kfirs.com` | PR + 1 approval + merge queue; direct pushes to `main` only from automation | `ci` |
-| `infra` | Terraform: GitHub, GCP, Argo CD bootstrap | PR + 1 approval + merge queue | `ci` |
-| `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `ci` |
-| `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `ci` |
-| `tooling` | Claude Code web bundle | PR + 1 approval + merge queue | `ci` |
+| `.github` | Org profile, org-wide GitHub defaults | PR + 1 approval + merge queue | `Continuous Integration` |
+| `docs` | Knowledge base, published to `arikkfir-docs` and served at `docs.dev.kfirs.com` | PR + 1 approval + merge queue; direct pushes to `main` only from automation | `Continuous Integration` |
+| `infra` | Terraform: GitHub, GCP, Argo CD bootstrap | PR + 1 approval + merge queue | `Continuous Integration` |
+| `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `Continuous Integration` |
+| `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `Continuous Integration` |
+| `tooling` | Claude Code web bundle | PR + 1 approval + merge queue | `Continuous Integration` |
 
 Every repository gets the same `default-branch` ruleset: no deletion, no force-push, pull requests with one approval
 (stale approvals dismissed, last push approved, conversations resolved), merge commits only, through the merge queue.
-Organization admins may bypass it (`bypass_mode = always`). Required checks are pinned to the Octomaton GitHub App
-(`integration_id`). In `docs`, direct pushes to `main` are reserved for automation: publishing the site and syncing
-other repositories' branch and pull-request docs into a directory per repository and branch. Every repository also has
-Dependabot alerts and Dependabot security updates on; version updates would need a `.github/dependabot.yml` in the
-repository.
+Organization admins may bypass it (`bypass_mode = always`). The required check, `Continuous Integration`, is each
+repository's `ci` pipeline under its `displayName`, pinned to the Octomaton GitHub App (`integration_id`). In `docs`,
+direct pushes to `main` are reserved for automation: publishing the site and syncing other repositories' branch and
+pull-request docs into a directory per repository and branch. Every repository also has Dependabot alerts and Dependabot
+security updates on; version updates would need a `.github/dependabot.yml` in the repository.
 
 ## Network
 
@@ -126,7 +126,7 @@ to GKE and are not managed here.
 | `grafana` | Grafana | `https://grafana-community.github.io/helm-charts` `grafana` | `13.2.7` (Grafana 13.2.3) |
 | `tekton-operator` | Tekton Operator | `tektoncd/operator` release manifest from `infra.tekton.dev` (Tekton's release host since v0.78) | `v0.81.1` |
 | `tekton-pipelines` | Pipelines, Triggers, Dashboard (via `TektonConfig`; Results, Chains, Pipelines-as-Code and the operator's NetworkPolicies off) | operator-managed | operator default |
-| `octomaton` | Octomaton | `me-west1-docker.pkg.dev/arikkfir/images/octomaton` | `2356e2e`: the short SHA of a `main` commit. There are no version tags; every push to `main` publishes one, which is also the version the binary and its telemetry report |
+| `octomaton` | Octomaton | `me-west1-docker.pkg.dev/arikkfir/images/octomaton` | The short SHA of the `main` commit Argo CD deploys (`${ARGOCD_APP_REVISION_SHORT}`, see [Octomaton](#octomaton)). There are no version tags; every push to `main` publishes one, which is also the version the binary and its telemetry report |
 | `octomaton` | `go-import`: Caddy answering for `octomaton.dev` | `docker.io/library/caddy` | `2.11.4-alpine` |
 | `docs` | Docs site: Caddy serving `arikkfir-docs` (Cloud Storage FUSE mount) | `docker.io/library/caddy` | `2.11.4-alpine` |
 | `ci-<repo>` | CI tenants (one per repository) | `delivery` | n/a |
@@ -197,7 +197,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 
 | Item | Value |
 | --- | --- |
-| GitHub App | `Octomaton` (created by hand), homepage `https://github.com/arikkfir-org/octomaton`, installed on all `arikkfir-org` repositories. Octomaton and the `ci` ruleset identify it by its App ID, never by name |
+| GitHub App | `octomaton-dev` (created by hand; `Octomaton` is taken on GitHub), homepage `https://github.com/arikkfir-org/octomaton`, installed on all `arikkfir-org` repositories. Octomaton and the rulesets' required check identify it by its App ID, never by name |
 | App permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
 | App events | `push`, `pull_request`, `issue_comment`, `check_suite`, `check_run`, `merge_group` |
 | Webhook URL | `https://octomaton.dev/github/hooks` |
@@ -205,6 +205,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 | Commands | `octomaton`, the server (no arguments); `octomaton-lint [-render] PATH...` validates `.octomaton.yaml` (`go install octomaton.dev/cmd/octomaton-lint@latest`; `-version`) |
 | Go import page | `https://octomaton.dev/<path>?go-get=1` returns `<meta name="go-import" content="octomaton.dev git https://github.com/arikkfir-org/octomaton">`; any other request is redirected (302) to the repository |
 | Kubernetes | namespace `octomaton`, Deployment/ServiceAccount/Service `octomaton` (Service port 80 → container 8080); Deployment/Service/ConfigMap `go-import` for the import page (Service port 80 → container 8080) |
+| Deployment | `deploy/` in `arikkfir-org/octomaton` (Kustomize), applied by the Argo CD Application `octomaton` (defined in `delivery`) from `main`, with the image tagged `${ARGOCD_APP_REVISION_SHORT}`: the synced commit's short SHA ([design](designs/octomaton-deployment.md)) |
 | Config | Environment variables only ([server configuration](#server-configuration)): ConfigMap `octomaton` through `envFrom`; `OCTOMATON_POD_NAME` and `OCTOMATON_POD_NAMESPACE` from the downward API; `OTEL_RESOURCE_ATTRIBUTES` with the pod, namespace and container names; `enableServiceLinks: false` |
 | GitHub secret | Secret `octomaton-github`: keys `app-id`, `private-key`, `webhook-secret` as `OCTOMATON_GITHUB_APP_ID`, `OCTOMATON_GITHUB_PRIVATE_KEY`, `OCTOMATON_GITHUB_WEBHOOK_SECRET` |
 | Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz` (all on 8080) |
@@ -226,7 +227,7 @@ The server takes no arguments: environment variables configure it, and it exits 
 | `OCTOMATON_TEKTON_DASHBOARD_URL` | none | Tekton Dashboard base URL that check runs link to |
 | `OCTOMATON_NAMESPACE_TEMPLATE` | `ci-{{ .Repository.Name }}` | namespace of a repository's runs, rendered then sanitized |
 | `OCTOMATON_NAMESPACE_OVERRIDES` | none | `owner/name:namespace` pairs, comma-separated; they win over the template |
-| `OCTOMATON_RELAY_URLS` | none | URLs that receive verified `push` and `pull_request` deliveries, comma-separated |
+| `OCTOMATON_RELAY_URLS` | none | URLs that receive verified `push` and `ping` deliveries, comma-separated |
 | `OCTOMATON_RETENTION_FREE_PVCS_AFTER` | `1h` | delay after which the PVCs of finished runs are deleted; runs and pods stay |
 | `OCTOMATON_HTTP_ADDRESS` | `:8080` | address of `/github/hooks`, `/healthz` and `/readyz` |
 | `OCTOMATON_WEBHOOK_WORKERS`, `OCTOMATON_WEBHOOK_QUEUE_SIZE` | `8`, `256` | webhook worker pool |
@@ -268,7 +269,8 @@ repository. It is parsed as YAML 1.2, so the `on` key needs no quoting.
 ```yaml
 apiVersion: octomaton.dev/v1
 pipelines:
-  - name: ci                           # check-run name; unique; [a-z0-9][a-z0-9-]*
+  - name: ci                           # identifies the pipeline and its runs; unique; [a-z0-9][a-z0-9-]*
+    displayName: Continuous Integration  # optional: the check's name on GitHub (default: name); unique
     pipelineRun: .tekton/ci.yaml       # repository-relative file holding exactly one tekton.dev/v1 PipelineRun
     on:
       pull_request:
@@ -298,7 +300,7 @@ pipelines:
     concurrency:                       # optional; default for pull_request: group "pr-<number>", policy supersede
       group: "publish"                 # Go template, scoped to the repository
       policy: latest                   # supersede | queue | latest
-    taskChecks: false                  # optional: also report each pipeline task as "<name> / <task>"
+    taskChecks: false                  # optional: also report each pipeline task as "<check> / <task>"
 ```
 
 | Concurrency policy | Behaviour |
@@ -314,6 +316,11 @@ are unconstrained.
 Where definitions are read: pull requests, merge groups and pushes read `.octomaton.yaml` and the PipelineRun file
 at the commit under test; comment commands and schedules read them from the default branch (and comment commands still
 run against the pull request's head commit).
+
+Forks are ignored: every event from a repository that is itself a fork, and every pull request whose head branch lives
+in another repository (or in one that no longer exists), whoever opened it. They get no check run and no run; comment
+commands on them get no reaction or reply, and reports stored for them are never re-run. Pull requests from the
+repository's own branches run automatically.
 
 Template context: `.Event` (`push`, `pull_request`, `merge_group`, `comment`, `schedule`), `.Action`, `.Repository`
 (`Owner`, `Name`, `FullName`, `CloneURL`, `HTMLURL`, `DefaultBranch`, `Private`), `.Revision` (SHA under test), `.Ref`,
