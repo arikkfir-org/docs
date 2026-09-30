@@ -29,11 +29,13 @@ repository's CI configuration must agree with this page. Change it here first, t
 
 Every repository gets the same `default-branch` ruleset: no deletion, no force-push, pull requests with one approval
 (stale approvals dismissed, last push approved, conversations resolved), merge commits only, through the merge queue.
-Organization admins may bypass it (`bypass_mode = always`). The required check, `Continuous Integration`, is each
-repository's `ci` pipeline under its `displayName`, pinned to the Octomaton GitHub App (`integration_id`). In `docs`,
-direct pushes to `main` are reserved for automation: publishing the site and syncing other repositories' branch and
-pull-request docs into a directory per repository and branch. Every repository also has Dependabot alerts and Dependabot
-security updates on; version updates would need a `.github/dependabot.yml` in the repository.
+Organization admins may bypass it (`bypass_mode = always`). An approval by `arikkfir-reviewer`, the [pull request
+reviewer](#pull-request-reviewer), counts: it has `push` on every repository. The required check, `Continuous
+Integration`, is each repository's `ci` pipeline under its `displayName`, pinned to the Octomaton GitHub App
+(`integration_id`). In `docs`, direct pushes to `main` are reserved for automation: publishing the site and syncing
+other repositories' branch and pull-request docs into a directory per repository and branch. Every repository also has
+Dependabot alerts and Dependabot security updates on; version updates would need a `.github/dependabot.yml` in the
+repository.
 
 ## Network
 
@@ -85,6 +87,8 @@ Operator is the only reader.
 | `octomaton-github-webhook-secret` | GitHub App webhook secret | `octomaton/octomaton-github` key `webhook-secret` |
 | `oidc-client-secret` | Descope access key (OIDC client secret) | `auth/oauth2-proxy` key `client-secret`; `argocd/argocd-oidc` key `clientSecret` |
 | `oauth2-proxy-cookie-secret` | 32 random bytes, base64 | `auth/oauth2-proxy` key `cookie-secret` |
+| `deepseek-api-key` | DeepSeek API key | `ci-*/deepseek-api-key` key `api-key` (the [reviewer](#pull-request-reviewer)'s `review` task) |
+| `reviewer-github-token` | `arikkfir-reviewer`'s fine-grained personal access token | `ci-*/reviewer-github-token` key `token` (the [reviewer](#pull-request-reviewer)'s `report` task) |
 
 ## GCP identities and permissions
 
@@ -211,7 +215,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 | Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz` (all on 8080) |
 | Telemetry | On GKE: JSON logs on stdout to Cloud Logging; metrics to Cloud Monitoring and traces to Cloud Trace through the Telemetry API (`telemetry.googleapis.com`), as `octomaton/octomaton`. Elsewhere: text logs, nothing exported |
 | Check links | `https://tekton.dev.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
-| Tenant namespaces | `ci-<repository>` (`.github` → `ci-github`); each has ServiceAccount `pipeline` and RoleBinding `octomaton` → ClusterRole `octomaton-tenant` |
+| Tenant namespaces | `ci-<repository>` (`.github` → `ci-github`); each has ServiceAccount `pipeline` and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer) |
 | Tenant permissions | `octomaton-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete) |
 
 ### Server configuration
@@ -272,6 +276,9 @@ pipelines:
   - name: ci                           # identifies the pipeline and its runs; unique; [a-z0-9][a-z0-9-]*
     displayName: Continuous Integration  # optional: the check's name on GitHub (default: name); unique
     pipelineRun: .tekton/ci.yaml       # repository-relative file holding exactly one tekton.dev/v1 PipelineRun
+    # pipelineRun:                     # or a file in another repository of the same owner, read at its default branch
+    #   repository: tooling
+    #   path: reviewer/pipelinerun.yaml
     on:
       pull_request:
         branches: [main]               # base-branch globs; omitted = all
@@ -288,6 +295,9 @@ pipelines:
       comment:                         # pull request comment command, e.g. "/deploy staging"
         pattern: "^/deploy\\b"         # regexp on the comment's first line; commenter needs write access
         branches: [main]               # optional pull request base-branch globs
+      review_request:                  # a review is requested from one of these users on a pull request
+        reviewers: [arikkfir-reviewer] # GitHub logins, case-insensitive; required
+        branches: [main]               # optional pull request base-branch globs
       schedule:                        # cron, 5 fields, UTC; runs at the default branch head
         - cron: "0 3 * * *"
     params:                            # set/override PipelineRun spec.params; values are Go templates
@@ -296,6 +306,9 @@ pipelines:
     githubToken:                       # optional installation token for this repository, refreshed while the run lives
       workspace: github-token          # bound as a Secret workspace (key: token)
       permissions: {contents: read}    # default
+    secrets: []                        # optional: Secrets in the run's namespace it may mount; only when every
+                                       # trigger reads definitions from the default branch (comment, review_request,
+                                       # schedule)
     timeout: 1h                        # optional, sets spec.timeouts.pipeline
     concurrency:                       # optional; default for pull_request: group "pr-<number>", policy supersede
       group: "publish"                 # Go template, scoped to the repository
@@ -314,20 +327,61 @@ apart). Without `concurrency`, pull request runs of the same pipeline and pull r
 are unconstrained.
 
 Where definitions are read: pull requests, merge groups and pushes read `.octomaton.yaml` and the PipelineRun file
-at the commit under test; comment commands and schedules read them from the default branch (and comment commands still
-run against the pull request's head commit).
+at the commit under test. Comment commands, review requests and schedules read them from the default branch (comment
+commands and review requests still run against the pull request's head commit). A `pipelineRun` in another repository
+is always read at that repository's default branch.
+
+A review request runs pipelines whose `review_request.reviewers` include the requested user (team requests are
+ignored), on open pull requests, drafts included. Only people with write access can request reviews, so the request is
+the permission check.
 
 Forks are ignored: every event from a repository that is itself a fork, and every pull request whose head branch lives
 in another repository (or in one that no longer exists), whoever opened it. They get no check run and no run; comment
 commands on them get no reaction or reply, and reports stored for them are never re-run. Pull requests from the
 repository's own branches run automatically.
 
-Template context: `.Event` (`push`, `pull_request`, `merge_group`, `comment`, `schedule`), `.Action`, `.Repository`
-(`Owner`, `Name`, `FullName`, `CloneURL`, `HTMLURL`, `DefaultBranch`, `Private`), `.Revision` (SHA under test), `.Ref`,
-`.Branch`, `.Tag`, `.Sender`, `.Pipeline`, `.Push` (`Before`, `After`), `.PullRequest` (`Number`, `HeadRef`,
-`HeadSHA`, `BaseRef`, `BaseSHA`), `.MergeGroup` (`HeadRef`, `HeadSHA`, `BaseRef`, `BaseSHA`), `.Comment` (`ID`,
-`Author`, `Command`, `Arguments`), `.Schedule` (`Cron`, `Slot`). Event-specific objects are nil for other events;
-referencing a missing value fails the check with the rendering error.
+Template context: `.Event` (`push`, `pull_request`, `merge_group`, `comment`, `review_request`, `schedule`), `.Action`,
+`.Repository` (`Owner`, `Name`, `FullName`, `CloneURL`, `HTMLURL`, `DefaultBranch`, `Private`), `.Revision` (SHA under
+test), `.Ref`, `.Branch`, `.Tag`, `.Sender`, `.Pipeline`, `.Push` (`Before`, `After`), `.PullRequest` (`Number`,
+`HeadRef`, `HeadSHA`, `BaseRef`, `BaseSHA`), `.MergeGroup` (`HeadRef`, `HeadSHA`, `BaseRef`, `BaseSHA`), `.Comment`
+(`ID`, `Author`, `Command`, `Arguments`), `.ReviewRequest` (`Reviewer`), `.Schedule` (`Cron`, `Slot`). Event-specific
+objects are nil for other events; referencing a missing value fails the check with the rendering error.
 
 Reporting conventions: a pipeline or task result named `check-title` or `check-summary` replaces the check run's title
-or Markdown summary. Runs may mount no Secret other than the token Octomaton binds.
+or Markdown summary.
+
+Secrets: a run may mount the token Octomaton binds and the Secrets its pipeline lists in `secrets`, nothing else. Only a
+pipeline whose every trigger reads definitions from the default branch may list any, so definitions at a pull request's
+head commit never reach a Secret. Remote Tekton references are refused (`pipelineRef`, `taskRef`, a step's `ref`, any
+`resolver` or `bundle`), because Octomaton can only check definitions it can see: a PipelineRun holds its whole
+`spec.pipelineSpec`, with a `taskSpec` per task.
+
+## Pull request reviewer
+
+Requesting a review from `arikkfir-reviewer` runs the reviewer on the pull request ([design](designs/pr-reviewer.md)).
+
+| Item | Value |
+| --- | --- |
+| GitHub user | `arikkfir-reviewer`, a member of `arikkfir-org` |
+| Team | `reviewers` (closed): `arikkfir-reviewer`, with `push` on every repository (resolving threads takes write access) |
+| Token | Fine-grained personal access token of `arikkfir-reviewer`: resource owner `arikkfir-org`, all repositories, pull requests read and write; expires within a year; Secret Manager `reviewer-github-token` |
+| Model | DeepSeek V4 Pro (`deepseek-v4-pro`, until V4.1 Pro is released), through opencode `1.18.33` (`ghcr.io/anomalyco/opencode`) as `deepseek/deepseek-v4-pro`; key in Secret Manager `deepseek-api-key` |
+| Definitions | `arikkfir-org/tooling`, `reviewer/`: the PipelineRun `reviewer/pipelinerun.yaml`, its scripts, `prompt.md` and `opencode.json`, all read at `tooling`'s default branch |
+| Trigger | Pipeline `review`, display name `AI Review`, in every repository's `.octomaton.yaml`: `on.review_request.reviewers: [arikkfir-reviewer]`, `secrets: [deepseek-api-key, reviewer-github-token]`, `githubToken` with contents and pull requests read |
+| Tasks | `setup` (clone, state), `review` (opencode, check, fix, recheck), `report`; all as ServiceAccount `reviewer`, all labelled `kfirs.com/sandbox=true` |
+| Volume | One per run: 50Gi, `ReadWriteOnce` (`volumeClaimTemplate`), deleted an hour after the run (`OCTOMATON_RETENTION_FREE_PVCS_AFTER`) |
+| Files on the volume | `pr.json`, `pr.diff`, `pr.log` (setup), `findings.json` (review), `repos/<repository>/`, `.review/` |
+| Markers | A thread's first comment: `<!-- reviewer:<code> -->`. The review body: `<!-- reviewer-run:<PipelineRun> -->` |
+| Check | `AI Review` on the reviewed commit; `report` sets its title and summary |
+
+Every `ci-<repository>` namespace has the reviewer's objects (the `ci-tenants` base in `delivery`):
+
+| Object | Spec |
+| --- | --- |
+| ServiceAccount `reviewer` | `automountServiceAccountToken: false`; no RoleBinding; no IAM role for its principal |
+| NetworkPolicy `sandbox` | Pods labelled `kfirs.com/sandbox=true`: no ingress; egress to `0.0.0.0/0` except `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `100.64.0.0/10` and `169.254.0.0/16` (pods, Services, nodes, the metadata server) |
+| ExternalSecret `deepseek-api-key` | Secret `deepseek-api-key`, key `api-key`, from Secret Manager `deepseek-api-key` |
+| ExternalSecret `reviewer-github-token` | Secret `reviewer-github-token`, key `token`, from Secret Manager `reviewer-github-token` |
+
+Sandboxed pods resolve names through public resolvers (`dnsPolicy: None`, nameservers `8.8.8.8` and `1.1.1.1`),
+because cluster DNS is inside the denied ranges.
