@@ -342,7 +342,9 @@ names a file of `.github`. Their runs belong to the repository: its namespace, c
 repository pipeline with the name or check name of an organization pipeline is a configuration error of that
 repository, so no repository can replace one. Organization pipelines can't use `schedule`, and `secrets` follows the
 same rule as for any pipeline. `organization` in any other repository is a configuration error. Without the file or the
-section in `.github`, there are no organization pipelines.
+section in `.github`, there are no organization pipelines. A repository without its own `.octomaton.yaml` still runs
+them, and an unreadable or invalid `.github` configuration stops every pipeline of the repository, reported on the
+`octomaton` check.
 
 A review request runs pipelines whose `review_request.reviewers` include the requested user (team requests are
 ignored), on open pull requests, drafts included. Each request gets its own run. Requesting a review takes triage or
