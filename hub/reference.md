@@ -85,7 +85,7 @@ Operator is the only reader.
 | `octomaton-github-webhook-secret` | GitHub App webhook secret | `octomaton/octomaton-github` key `webhook-secret` |
 | `oidc-client-secret` | Descope access key (OIDC client secret) | `auth/oauth2-proxy` key `client-secret`; `argocd/argocd-oidc` key `clientSecret` |
 | `oauth2-proxy-cookie-secret` | 32 random bytes, base64 | `auth/oauth2-proxy` key `cookie-secret` |
-| `grafana-db-password` | Password of role `grafana` on Grafana's PostgreSQL: 32 random bytes, hex (`openssl rand -hex 32`) | `grafana/grafana-db` key `password` |
+| `grafana-postgres-admin-password` | Password of the superuser `postgres` on Grafana's PostgreSQL, which people sign in with | `grafana/postgres-admin` key `password` |
 
 ## GCP identities and permissions
 
@@ -140,10 +140,12 @@ Availability ([design](designs/disruption-budgets.md)): Traefik, oauth2-proxy, t
 `go-import` and KEDA's operator, metrics server and webhooks run two replicas each. NATS runs three servers. Each has a
 PodDisruptionBudget of `maxUnavailable: 1` and spreads its pods over nodes when the pool has several
 (`whenUnsatisfiable: ScheduleAnyway`). Grafana keeps its state in database `grafana` on StatefulSet `postgres` in its
-namespace, at `postgres.grafana.svc.cluster.local:5432` without TLS: role `grafana`, password from ExternalSecret
-`grafana/grafana-db`, and NetworkPolicy `postgres` admits only Grafana's pods. The superuser `postgres` has no password
-and signs in over the local socket only. PostgreSQL runs one replica without a budget. Grafana's replicas share alert
-state through Service `grafana-headless` on port 9094.
+namespace, at `postgres.grafana.svc.cluster.local:5432` without TLS, and NetworkPolicy `postgres` admits only Grafana's
+pods. Role `grafana`'s password is generated in the cluster: an ESO `Password` generator with
+`refreshPolicy: CreatedOnce` creates Secret `grafana/grafana-db`. People sign in as the superuser `postgres` through
+`kubectl port-forward -n grafana svc/postgres 5432`, with the password from Secret Manager
+`grafana-postgres-admin-password`. Every TCP connection needs a password; only the local socket is trusted. PostgreSQL
+runs one replica without a budget. Grafana's replicas share alert state through Service `grafana-headless` on port 9094.
 
 ## Ingress
 

@@ -67,26 +67,33 @@ flowchart LR
   G1 -- "postgres:5432" --> PG[(StatefulSet postgres<br/>database grafana)]
   G2 --> PG
   PG --- V[(volume data-postgres-0<br/>10Gi)]
-  ESO[ExternalSecret grafana-db] -. password .-> G1
-  ESO -. password .-> G2
-  ESO -. password .-> PG
+  GEN[ESO Password generator] -. "Secret grafana-db" .-> G1
+  GEN -. "Secret grafana-db" .-> G2
+  GEN -. "Secret grafana-db" .-> PG
+  GSM[Secret Manager<br/>grafana-postgres-admin-password] -. "Secret postgres-admin" .-> PG
+  P[people] -- "port-forward, as postgres" --> PG
 ```
 
 - PostgreSQL 18 (the official image) runs as StatefulSet `postgres` in namespace `grafana`: one replica on a 10Gi
   volume. Grafana connects to `postgres.grafana.svc.cluster.local:5432` over plain TCP. NetworkPolicy `postgres` admits
   only Grafana's pods.
 - `grafana.sql` (ConfigMap `postgres`) creates role `grafana` and database `grafana` when they're missing. It also sets
-  the role's password from Secret `grafana-db`, so it is safe to run any number of times.
+  the passwords of `postgres` and `grafana` from their Secrets. It is safe to run any number of times.
 - The image runs `/docker-entrypoint-initdb.d` only when it creates the database. An init container runs it before
   every start instead. It uses the image's own functions, the way the image's `docker-ensure-initdb.sh` does, on a
   server that listens on its socket only. So clients connect only after the script has run, a new password applies on
   the next start, and a failed first start heals on the next one.
-- The owner puts a random password in Secret Manager `grafana-db-password`. ExternalSecret `grafana-db` hands it to
-  both PostgreSQL and Grafana. When it changes, Reloader restarts `postgres`, which sets it, and Grafana, which reads it.
-- The superuser `postgres` has no password. It signs in over the local socket only
-  (`kubectl exec -n grafana postgres-0 -- psql -U postgres`), so it needs no secret.
-- The database and its ExternalSecret are sync wave -1 in the `grafana` Application. Argo CD changes Grafana only once
-  they are healthy, so Grafana never starts without its database.
+- Role `grafana`'s password is generated in the cluster, and no person handles it. An ESO `Password` generator creates it
+  once (`refreshPolicy: CreatedOnce`, 32 letters and digits) into Secret `grafana-db`, which PostgreSQL and Grafana
+  both read. If that Secret is deleted, the generator makes a new password. Reloader then restarts `postgres`, which
+  sets it, and Grafana, which reads it.
+- People sign in as the superuser `postgres`. Its password is the one the owner sets in Secret Manager
+  `grafana-postgres-admin-password`, which ExternalSecret `postgres-admin` reads. A new value applies at the next start,
+  which Reloader also triggers. They connect with `kubectl port-forward -n grafana svc/postgres 5432`. Every TCP
+  connection needs a password, localhost included, since that's where port-forwarded connections arrive. Only the local
+  socket is trusted, for the init container and `kubectl exec`. Long-lived roles for people or Terraform can come later.
+- The database, the generator and both ExternalSecrets are sync wave -1 in the `grafana` Application. Argo CD changes
+  Grafana only once they are healthy, so Grafana never starts without its database.
 - The two replicas share sessions, users, dashboards and alert rules through the database. Their alert managers
   gossip over Service `grafana-headless` (port 9094), so an alert notifies once. The NetworkPolicy admits that gossip
   between Grafana's own pods only.
@@ -102,10 +109,11 @@ flowchart LR
 | KEDA made ready now, though nothing scales through it yet | It is the hub's autoscaler for workloads to come, and it is cheap | Waiting for the first ScaledObject |
 | Grafana on a PostgreSQL in its own namespace | Two replicas need a shared database. The owner chose one in the cluster, next to Grafana | Cloud SQL (the first proposal: about $12 a month, plus a VPC peering and a private zone); Grafana stateless with dashboards only as code (UI edits lost on restart); Grafana single, without a budget |
 | One PostgreSQL replica, no budget | Grafana is its only client, and a move takes about a minute | A replicated PostgreSQL (an operator, and more than Grafana needs); a budget on one pod (above) |
-| Migrations before every start | The image's init scripts run on an empty volume only. Running them on every start keeps them applied, new password included | The image's mechanism alone (a new password would need a manual `ALTER ROLE`); a Job (Grafana could connect before it ran) |
-| No superuser password | Nothing signs in as the superuser over the network; `kubectl exec` over the socket is enough | A second Secret Manager secret |
-| No TLS to PostgreSQL | Both ends are in one namespace, and the NetworkPolicy admits only Grafana | A cert-manager certificate for traffic that never leaves the namespace |
-| The password by hand | Like every secret value in the hub, so Terraform state never holds one | A Terraform-generated password (it would sit in state) |
+| Migrations before every start | The image's init scripts run on an empty volume only. Running them on every start keeps them applied, new passwords included | The image's mechanism alone (a new password would need a manual `ALTER ROLE`); a Job (Grafana could connect before it ran) |
+| Grafana's password generated in the cluster | Only the cluster uses it, so no person needs to see, store or rotate it | A Secret Manager value set by hand |
+| The superuser's password by hand, in Secret Manager | People sign in with it. As with every secret value in the hub, Terraform state never holds it | No superuser password (the socket only); a Terraform-generated password (it would sit in state) |
+| Passwords on localhost too | `kubectl port-forward` arrives on localhost, which the image trusts by default | The image's default trust on localhost |
+| No TLS to PostgreSQL | Both ends are in one namespace, the NetworkPolicy admits only Grafana, and port-forwards travel through the API server | A cert-manager certificate for traffic that never leaves the namespace |
 
 ## Security and failure modes
 
@@ -128,17 +136,17 @@ flowchart LR
    creates its budget. Nothing restarts except where a pod template changed (the spread constraint).
 3. Grafana, in order:
    1. Merge the `infra` pull request and apply `terraform/gcp`. It creates the secret container and its accessor grant.
-   2. Add the password:
+   2. Add the superuser's password (any value; this one is random):
 
       ```bash
-      openssl rand -hex 32 | tr -d '\n' | gcloud secrets versions add grafana-db-password --data-file=-
+      openssl rand -hex 32 | tr -d '\n' | gcloud secrets versions add grafana-postgres-admin-password --data-file=-
       ```
 
    3. Export anything made in Grafana's UI that you want to keep (dashboards as JSON, alert rules from Alerting's
       export). The SQLite data doesn't move: users come back on their first sign-in, and the data source is
       provisioned.
-   4. Merge the `delivery` Grafana pull request. Wave -1 starts `postgres`, and its init container creates the role
-      and the database. Then the new Grafana replicas start on it. The old pod keeps serving until they are ready, then
+   4. Merge the `delivery` Grafana pull request. Wave -1 generates Grafana's password and starts `postgres`, and its
+      init container creates the role and the database. Then the new Grafana replicas start on it. The old pod keeps serving until they are ready, then
       goes, and Argo CD deletes its volume.
    5. Import what you exported.
 4. Check: `kubectl get pdb -A` lists `traefik`, `auth-oauth2-proxy`, `docs`, `grafana`, `octomaton`, `go-import`, the
