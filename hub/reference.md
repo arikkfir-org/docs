@@ -85,7 +85,6 @@ Operator is the only reader.
 | `octomaton-github-webhook-secret` | GitHub App webhook secret | `octomaton/octomaton-github` key `webhook-secret` |
 | `oidc-client-secret` | Descope access key (OIDC client secret) | `auth/oauth2-proxy` key `client-secret`; `argocd/argocd-oidc` key `clientSecret` |
 | `oauth2-proxy-cookie-secret` | 32 random bytes, base64 | `auth/oauth2-proxy` key `cookie-secret` |
-| `hub-authorized-emails` | Newline-separated emails allowed through the auth interceptor | `auth/oauth2-proxy-emails` key `emails` |
 
 ## GCP identities and permissions
 
@@ -170,11 +169,12 @@ of zone `octomaton-dev` for `octomaton.dev`.
 
 ## Authentication
 
-- Descope authenticates users with Google social login through a sign-in-only flow; only users pre-created in Descope
-  can complete it.
+- Descope decides who signs in: every user of the project, and nobody else. Users sign in with Google through a
+  sign-in-only flow, and the project blocks self-registration, so users can't register themselves. The project must
+  have no SSO tenant or tenant self-provisioning domain: either would admit users by domain.
 - oauth2-proxy (`auth` namespace) is the OIDC client (`client_id` = Descope project ID, `client_secret` = Descope access
-  key), keeps a session cookie on `.kfirs.com`, and additionally requires the user's email to be listed in
-  `hub-authorized-emails`.
+  key), keeps a session cookie on `.kfirs.com`, and admits every user Descope authenticates (`emailDomains: ["*"]`, no
+  email list).
 - Traefik's `oidc` ForwardAuth middleware calls `http://oauth2-proxy.auth.svc.cluster.local/` (static `202` upstream)
   for every request on the protected entry point, and copies `X-Auth-Request-User`, `X-Auth-Request-Email` and
   `X-Auth-Request-Preferred-Username` to the upstream request. `strip-auth-headers` removes client-supplied copies first.
@@ -189,7 +189,6 @@ of zone `octomaton-dev` for `octomaton.dev`.
   refuses request headers over 4 KiB, which oauth2-proxy's session cookies on `.kfirs.com` can exceed.
 - Protected backends accept traffic only from the `traefik` namespace (NetworkPolicy); Argo CD's server also admits
   its own namespace and Octomaton, which relays GitHub webhooks to `/api/webhook`.
-- oauth2-proxy sets `emailDomains: []`: any domain rule would be OR-ed with the allowlist and bypass it.
 
 ## Octomaton
 

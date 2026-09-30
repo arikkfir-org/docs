@@ -1,7 +1,7 @@
 # Phase 3: Ingress and authentication
 
 **Goal**: expose cluster applications through Traefik on L4 (passthrough network) load balancers, and make OpenID
-authentication against a strict allowlist the default for everything, so an internal application can't be exposed
+authentication of a closed set of users the default for everything, so an internal application can't be exposed
 unauthenticated by forgetting a setting. Hosts, IPs and names: [reference](../reference.md#ingress).
 
 ## Design
@@ -60,7 +60,6 @@ sequenceDiagram
   D-->>B: 302 https://auth.kfirs.com/oauth2/callback?code=...
   B->>O: callback (via public gateway)
   O->>D: exchange code, validate ID token
-  O->>O: email in allowlist?
   O-->>B: session cookie on .kfirs.com, 302 back to grafana
   B->>T: GET with cookie
   T->>O: ForwardAuth
@@ -68,16 +67,23 @@ sequenceDiagram
   T->>B: Grafana (signed in as that email)
 ```
 
-## Allowlist
+## Who can sign in
 
-Two independent gates, both required:
+Descope's user list is the only gate: every user of the Descope project can sign in to every hub application, and
+nobody else can. oauth2-proxy admits every user Descope authenticates. Two independent Descope settings keep the list
+closed:
 
-1. **Descope** authenticates. Its flow is sign-in only (template "Sign in, allow social login when sign-ups are not
-   allowed"), so only users created in Descope can finish it; Google is the login method.
-2. **oauth2-proxy** authorizes. It accepts only emails listed in the Secret Manager secret `hub-authorized-emails`.
+1. The flow is sign-in only (template "Sign in, allow social login when sign-ups are not allowed"), so only existing
+   users can finish it; Google is the login method.
+2. The project blocks self-registration (Project Settings → "Block self-registration sign up"), so users can't
+   register themselves through any flow, including Descope's default sign-up-or-in.
 
-A mistake in either one (for example Descope reverting to its default sign-up-or-in flow) does not open the hub.
-Granting access means adding the user in Descope and their email to the allowlist.
+A mistake in either one (for example the OIDC application's login page reverting to sign-up-or-in) does not open the
+hub. The project must have no SSO tenant or tenant self-provisioning domain: either would admit users by domain.
+
+Granting access means creating the user in Descope (Descope calls it inviting; sending the invitation is optional).
+Revoking it means disabling or deleting the user there. oauth2-proxy refreshes sessions older than 5 minutes; once
+Descope refuses a refresh, the session ends, at the latest when its current Descope token expires.
 
 ## Applications behind the interceptor
 
@@ -101,8 +107,7 @@ relay), so the interceptor can't be bypassed from inside the cluster.
 | Two load balancers, interceptor on the entry point | Authentication by default, no per-route opt-in | One load balancer with a per-route auth filter (easy to forget) |
 | Descope as identity provider | Users are managed individually, not by email domain; Google login included | Google OAuth directly (domain-oriented, no user management) |
 | Default Descope OIDC application | Available on the free plan; Argo CD and oauth2-proxy share it | Separate applications per client (paid feature) |
-| Allowlist also in oauth2-proxy | Defence in depth against identity-provider misconfiguration | Descope alone |
-| Allowlist in Secret Manager | Keeps personal emails out of public Git | A ConfigMap in `delivery` |
+| Descope alone decides who signs in | One user list, managed in Descope's console; two independent Descope settings keep sign-up closed | An email allowlist in oauth2-proxy as well (a second list to keep in step, edited in Secret Manager) |
 | One `.kfirs.com` session cookie | One login covers every hub application | Per-application logins |
 
 ## Manual setup
@@ -116,16 +121,13 @@ configured:
 - The default OIDC application's login page uses `hub-sign-in` (was `sign-up-or-in`).
 - User `arikkfir@gmail.com` exists.
 
-Still manual: create an access key (Access keys → create); store it as Secret Manager secret `oidc-client-secret`.
-Recommended: restrict the OIDC application's approved redirect URLs to `https://auth.kfirs.com/oauth2/callback` and
-`https://argocd.dev.kfirs.com/auth/callback`. To
-admit someone else, create their user in Descope with their Google email as the login ID, and add the email to
-`hub-authorized-emails`.
+Still manual: turn on Project Settings → "Block self-registration sign up", and create an access key (Access keys →
+create); store it as Secret Manager secret `oidc-client-secret`. Recommended: restrict the OIDC application's approved
+redirect URLs to `https://auth.kfirs.com/oauth2/callback` and `https://argocd.dev.kfirs.com/auth/callback`. To admit
+someone else, create their user in Descope with their Google email as the login ID.
 
-Secret Manager: `oauth2-proxy-cookie-secret` (`openssl rand -base64 32 | tr -- '+/' '-_'`) and
-`hub-authorized-emails` (one email per line).
+Secret Manager: `oauth2-proxy-cookie-secret` (`openssl rand -base64 32 | tr -- '+/' '-_'`).
 
 ## Open questions
 
-- Replacing the email allowlist with a Descope role claim once the ID token's role claim shape is verified.
 - Short-lived access for non-browser clients (the Argo CD CLI uses `--port-forward` today).
