@@ -7,7 +7,9 @@ state from a SQLite file on its own volume to a shared PostgreSQL database (Clou
 Facts:
 [reference](../reference.md#kubernetes-platform). Pull requests:
 [delivery#12](https://github.com/arikkfir-org/delivery/pull/12),
-[octomaton#11](https://github.com/arikkfir-org/octomaton/pull/11).
+[octomaton#11](https://github.com/arikkfir-org/octomaton/pull/11); Grafana:
+[infra#14](https://github.com/arikkfir-org/infra/pull/14),
+[delivery#13](https://github.com/arikkfir-org/delivery/pull/13).
 
 ## Context
 
