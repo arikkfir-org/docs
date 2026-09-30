@@ -87,6 +87,7 @@ Operator is the only reader.
 | `octomaton-github-webhook-secret` | GitHub App webhook secret | `octomaton/octomaton-github` key `webhook-secret` |
 | `oidc-client-secret` | Descope access key (OIDC client secret) | `auth/oauth2-proxy` key `client-secret`; `argocd/argocd-oidc` key `clientSecret` |
 | `oauth2-proxy-cookie-secret` | 32 random bytes, base64 | `auth/oauth2-proxy` key `cookie-secret` |
+| `grafana-postgres-admin-password` | Password of the superuser `postgres` on Grafana's PostgreSQL, which people sign in with | `grafana/postgres-admin` key `password` |
 | `reviewer-deepseek-api-key` | DeepSeek API key | `ci-*/reviewer-deepseek-api-key` key `api-key` (the [reviewer](#pull-request-reviewer)'s `review` task) |
 | `reviewer-github-pat` | `arikkfir-reviewer`'s fine-grained personal access token | `ci-*/reviewer-github-pat` key `token` (the [reviewer](#pull-request-reviewer)'s `report` task) |
 
@@ -128,6 +129,7 @@ to GKE and are not managed here.
 | `traefik` | Traefik | `https://traefik.github.io/charts` `traefik` | `41.6.0` (Traefik v3.7) |
 | `auth` | oauth2-proxy (auth interceptor) | `https://oauth2-proxy.github.io/manifests` `oauth2-proxy` | `10.7.0` |
 | `grafana` | Grafana | `https://grafana-community.github.io/helm-charts` `grafana` | `13.2.7` (Grafana 13.2.3) |
+| `grafana` | PostgreSQL for Grafana: StatefulSet `postgres`, one replica, a 10Gi volume | `docker.io/library/postgres` | `18.6-trixie` |
 | `tekton-operator` | Tekton Operator | `tektoncd/operator` release manifest from `infra.tekton.dev` (Tekton's release host since v0.78) | `v0.81.1` |
 | `tekton-pipelines` | Pipelines, Triggers, Dashboard (via `TektonConfig`; Results, Chains, Pipelines-as-Code and the operator's NetworkPolicies off) | operator-managed | operator default |
 | `octomaton` | Octomaton | `me-west1-docker.pkg.dev/arikkfir/images/octomaton` | The short SHA of the `main` commit Argo CD deploys (`${ARGOCD_APP_REVISION_SHORT}`, see [Octomaton](#octomaton)). There are no version tags; every push to `main` publishes one, which is also the version the binary and its telemetry report |
@@ -137,6 +139,17 @@ to GKE and are not managed here.
 
 NATS clients, NACK included, connect to `nats://nats.nats.svc.cluster.local:4222`. JetStream streams may keep up to
 three replicas. The servers spread across system-pool nodes when there are several, but don't make the pool grow.
+
+Availability ([design](designs/disruption-budgets.md)): Traefik, oauth2-proxy, the docs site, Grafana, Octomaton,
+`go-import` and KEDA's operator, metrics server and webhooks run two replicas each. NATS runs three servers. Each has a
+PodDisruptionBudget of `maxUnavailable: 1` and spreads its pods over nodes when the pool has several
+(`whenUnsatisfiable: ScheduleAnyway`). Grafana keeps its state in database `grafana` on StatefulSet `postgres` in its
+namespace, at `postgres.grafana.svc.cluster.local:5432` without TLS, and NetworkPolicy `postgres` admits only Grafana's
+pods. Role `grafana`'s password is generated in the cluster: an ESO `Password` generator with
+`refreshPolicy: CreatedOnce` creates Secret `grafana/grafana-db`. People sign in as the superuser `postgres` through
+`kubectl port-forward -n grafana svc/postgres 5432`, with the password from Secret Manager
+`grafana-postgres-admin-password`. Every TCP connection needs a password; only the local socket is trusted. PostgreSQL
+runs one replica without a budget. Grafana's replicas share alert state through Service `grafana-headless` on port 9094.
 
 ## Ingress
 
@@ -208,7 +221,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 | Go module | `octomaton.dev`; repository `arikkfir-org/octomaton` |
 | Commands | `octomaton`, the server (no arguments); `octomaton-lint [-render] PATH...` validates `.octomaton.yaml` (`go install octomaton.dev/cmd/octomaton-lint@latest`; `-version`) |
 | Go import page | `https://octomaton.dev/<path>?go-get=1` returns `<meta name="go-import" content="octomaton.dev git https://github.com/arikkfir-org/octomaton">`; any other request is redirected (302) to the repository |
-| Kubernetes | namespace `octomaton`, Deployment/ServiceAccount/Service `octomaton` (Service port 80 → container 8080); Deployment/Service/ConfigMap `go-import` for the import page (Service port 80 → container 8080) |
+| Kubernetes | namespace `octomaton`, Deployment/ServiceAccount/Service `octomaton` (Service port 80 → container 8080); Deployment/Service/ConfigMap `go-import` for the import page (Service port 80 → container 8080); two replicas of each Deployment, with PodDisruptionBudgets `octomaton` and `go-import` (`maxUnavailable: 1`) |
 | Deployment | `deploy/` in `arikkfir-org/octomaton` (Kustomize), applied by the Argo CD Application `octomaton` (defined in `delivery`) from `main`, with the image tagged `${ARGOCD_APP_REVISION_SHORT}`: the synced commit's short SHA ([design](designs/octomaton-deployment.md)) |
 | Config | Environment variables only ([server configuration](#server-configuration)): ConfigMap `octomaton` through `envFrom`; `OCTOMATON_POD_NAME` and `OCTOMATON_POD_NAMESPACE` from the downward API; `OTEL_RESOURCE_ATTRIBUTES` with the pod, namespace and container names; `enableServiceLinks: false` |
 | GitHub secret | Secret `octomaton-github`: keys `app-id`, `private-key`, `webhook-secret` as `OCTOMATON_GITHUB_APP_ID`, `OCTOMATON_GITHUB_PRIVATE_KEY`, `OCTOMATON_GITHUB_WEBHOOK_SECRET` |
