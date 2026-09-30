@@ -48,8 +48,8 @@ sequenceDiagram
 | Pipeline | `tooling`: `reviewer/pipelinerun.yaml` | The PipelineRun: tasks `setup`, `review`, `report`; the 50Gi volume; ServiceAccount, sandbox label, DNS and resources per task. Octomaton reads it at `tooling`'s default branch for every repository |
 | Scripts and prompt | `tooling`: `reviewer/` | `state.py` writes `pr.json`, `findings.py` checks `findings.json`, `report.py` posts the review. Also `prompt.md` and `opencode.json`. Standard-library Python, tested in `tooling`'s CI. `report` runs its own fresh copy, never the volume's |
 | Octomaton | `octomaton` | The `review_request` trigger; `pipelineRun` in another repository; `secrets` a pipeline may mount; remote Tekton references refused |
-| Tenant objects | `delivery`: the `ci-tenants` base | ServiceAccount `reviewer`, NetworkPolicy `sandbox`, ExternalSecrets `deepseek-api-key` and `reviewer-github-token` in every `ci-<repository>` namespace |
-| Identity and secrets | `infra` | Secret Manager `deepseek-api-key` and `reviewer-github-token`; team `reviewers` (`arikkfir-reviewer`, `push` on every repository) |
+| Tenant objects | `delivery`: the `ci-tenants` base | ServiceAccount `reviewer`, NetworkPolicy `sandbox`, ExternalSecrets `reviewer-deepseek-api-key` and `reviewer-github-pat` in every `ci-<repository>` namespace |
+| Identity and secrets | `infra` | Secret Manager `reviewer-deepseek-api-key` and `reviewer-github-pat`; team `reviewers` (`arikkfir-reviewer`, `push` on every repository) |
 
 ### Octomaton
 
@@ -69,8 +69,8 @@ sequenceDiagram
 | Task | Identity and credentials | Network | Steps |
 | --- | --- | --- | --- |
 | `setup` | ServiceAccount `reviewer`; the installation token (contents and pull requests: read) as workspace `github-token` | Internet only | `clone`: the five repositories at their default branch and the pull request's repository at the head commit; `pr.diff` and `pr.log` from it; `reviewer/` from `tooling`'s default branch into `.review/`. `state`: `pr.json` from GitHub's REST and GraphQL APIs |
-| `review` | ServiceAccount `reviewer`; `DEEPSEEK_API_KEY` from Secret `deepseek-api-key` and nothing else | Internet only | `review`: `opencode run` with `prompt.md` ([opencode](#opencode)). `check`: `findings.py`. `fix`: `opencode run --continue` with the errors, only when `check` found any. `recheck`: `findings.py` again, failing the task if anything is still wrong |
-| `report` | ServiceAccount `reviewer`; `GITHUB_TOKEN` from Secret `reviewer-github-token` (`arikkfir-reviewer`'s token) | Internet only | `fetch`: `reviewer/` from `tooling`'s default branch into the task's own `emptyDir`. `report`: that copy of `report.py` reads `findings.json` from the volume, posts the review, resolves threads and writes the `check-title` and `check-summary` results |
+| `review` | ServiceAccount `reviewer`; `DEEPSEEK_API_KEY` from Secret `reviewer-deepseek-api-key` and nothing else | Internet only | `review`: `opencode run` with `prompt.md` ([opencode](#opencode)). `check`: `findings.py`. `fix`: `opencode run --continue` with the errors, only when `check` found any. `recheck`: `findings.py` again, failing the task if anything is still wrong |
+| `report` | ServiceAccount `reviewer`; `GITHUB_TOKEN` from Secret `reviewer-github-pat` (`arikkfir-reviewer`'s token) | Internet only | `fetch`: `reviewer/` from `tooling`'s default branch into the task's own `emptyDir`. `report`: that copy of `report.py` reads `findings.json` from the volume, posts the review, resolves threads and writes the `check-title` and `check-summary` results |
 
 The ServiceAccount has no RoleBinding and doesn't mount its token, and its Workload Identity principal has no IAM
 role. Every pod carries `kfirs.com/sandbox=true`, which NetworkPolicy `sandbox` confines to public addresses. The pods
@@ -279,7 +279,7 @@ fixed, and the approval stands. The body holds the summary and one line of count
   schema, sizes, codes and anchors again against the diff and threads it fetches itself, and never follows
   instructions from the file. `setup` runs before the model does. The worst a steered model can do is post
   a wrong review, and a human reads it before merging.
-- `arikkfir-reviewer`'s token lives only in the `ci-*` namespaces as Secret `reviewer-github-token`. Octomaton lets
+- `arikkfir-reviewer`'s token lives only in the `ci-*` namespaces as Secret `reviewer-github-pat`. Octomaton lets
   only `review` mount it. It expires within a year; renewing it is a manual step.
 - DeepSeek unreachable, a timeout or a second invalid `findings.json` fails `review` and the check, and no review is
   posted. Re-run the check, or re-request the review.
@@ -298,8 +298,8 @@ fixed, and the approval stands. The body holds the summary and one line of count
      request under the organization's settings, Personal access tokens, Pending requests.
 
    ```bash
-   gcloud secrets versions add deepseek-api-key --data-file=-
-   gcloud secrets versions add reviewer-github-token --data-file=-
+   gcloud secrets versions add reviewer-deepseek-api-key --data-file=-
+   gcloud secrets versions add reviewer-github-pat --data-file=-
    ```
 
 3. delivery: the tenant objects. The ExternalSecrets turn ready once the values exist.

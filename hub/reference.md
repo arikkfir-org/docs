@@ -87,8 +87,8 @@ Operator is the only reader.
 | `octomaton-github-webhook-secret` | GitHub App webhook secret | `octomaton/octomaton-github` key `webhook-secret` |
 | `oidc-client-secret` | Descope access key (OIDC client secret) | `auth/oauth2-proxy` key `client-secret`; `argocd/argocd-oidc` key `clientSecret` |
 | `oauth2-proxy-cookie-secret` | 32 random bytes, base64 | `auth/oauth2-proxy` key `cookie-secret` |
-| `deepseek-api-key` | DeepSeek API key | `ci-*/deepseek-api-key` key `api-key` (the [reviewer](#pull-request-reviewer)'s `review` task) |
-| `reviewer-github-token` | `arikkfir-reviewer`'s fine-grained personal access token | `ci-*/reviewer-github-token` key `token` (the [reviewer](#pull-request-reviewer)'s `report` task) |
+| `reviewer-deepseek-api-key` | DeepSeek API key | `ci-*/reviewer-deepseek-api-key` key `api-key` (the [reviewer](#pull-request-reviewer)'s `review` task) |
+| `reviewer-github-pat` | `arikkfir-reviewer`'s fine-grained personal access token | `ci-*/reviewer-github-pat` key `token` (the [reviewer](#pull-request-reviewer)'s `report` task) |
 
 ## GCP identities and permissions
 
@@ -366,11 +366,11 @@ Requesting a review from `arikkfir-reviewer` runs the reviewer on the pull reque
 | --- | --- |
 | GitHub user | `arikkfir-reviewer`, a member of `arikkfir-org` |
 | Team | `reviewers` (closed): `arikkfir-reviewer`, with `push` on every repository (resolving threads takes write access) |
-| Token | Fine-grained personal access token of `arikkfir-reviewer`: resource owner `arikkfir-org`, all repositories, pull requests read and write; expires within a year; Secret Manager `reviewer-github-token` |
-| Model | DeepSeek V4 Pro (`deepseek-v4-pro`), through opencode `1.18.33` (`ghcr.io/anomalyco/opencode`) as `deepseek/deepseek-v4-pro`; key in Secret Manager `deepseek-api-key` |
+| Token | Fine-grained personal access token of `arikkfir-reviewer`: resource owner `arikkfir-org`, all repositories, pull requests read and write; expires within a year; Secret Manager `reviewer-github-pat` |
+| Model | DeepSeek V4 Pro (`deepseek-v4-pro`), through opencode `1.18.33` (`ghcr.io/anomalyco/opencode`) as `deepseek/deepseek-v4-pro`; key in Secret Manager `reviewer-deepseek-api-key` |
 | Definitions | `arikkfir-org/tooling`, `reviewer/`: the PipelineRun `reviewer/pipelinerun.yaml`, its scripts, the prompt and `opencode.json`, all read at `tooling`'s default branch |
 | Findings | Each a thread, marked 🔴 blocking (must fix), 🟡 non-blocking (should fix) or 🔵 nit (could fix), with a severity (`low`, `medium`, `high`, `urgent`) and a likelihood (`low`, `medium`, `high`). The review approves when there are none or only nits, and requests changes otherwise |
-| Trigger | Pipeline `review`, display name `AI Review`, in every repository's `.octomaton.yaml`: `on.review_request.reviewers: [arikkfir-reviewer]`, `secrets: [deepseek-api-key, reviewer-github-token]`, `githubToken` with contents and pull requests read |
+| Trigger | Pipeline `review`, display name `AI Review`, in every repository's `.octomaton.yaml`: `on.review_request.reviewers: [arikkfir-reviewer]`, `secrets: [reviewer-deepseek-api-key, reviewer-github-pat]`, `githubToken` with contents and pull requests read |
 | Tasks | `setup` (clone, state), `review` (opencode, check, fix, recheck), `report`; all as ServiceAccount `reviewer`, all labelled `kfirs.com/sandbox=true` |
 | Volume | One per run: 50Gi, `ReadWriteOnce` (`volumeClaimTemplate`), deleted an hour after the run (`OCTOMATON_RETENTION_FREE_PVCS_AFTER`) |
 | Files on the volume | `pr.json`, `pr.diff`, `pr.log` (setup), `findings.json` (review), `repos/<repository>/`, `.review/` |
@@ -383,8 +383,8 @@ Every `ci-<repository>` namespace has the reviewer's objects (the `ci-tenants` b
 | --- | --- |
 | ServiceAccount `reviewer` | `automountServiceAccountToken: false`; no RoleBinding; no IAM role for its principal |
 | NetworkPolicy `sandbox` | Pods labelled `kfirs.com/sandbox=true`: no ingress; egress to `0.0.0.0/0` except `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `100.64.0.0/10` and `169.254.0.0/16` (pods, Services, nodes, the metadata server) |
-| ExternalSecret `deepseek-api-key` | Secret `deepseek-api-key`, key `api-key`, from Secret Manager `deepseek-api-key` |
-| ExternalSecret `reviewer-github-token` | Secret `reviewer-github-token`, key `token`, from Secret Manager `reviewer-github-token` |
+| ExternalSecret `reviewer-deepseek-api-key` | Secret `reviewer-deepseek-api-key`, key `api-key`, from Secret Manager `reviewer-deepseek-api-key` |
+| ExternalSecret `reviewer-github-pat` | Secret `reviewer-github-pat`, key `token`, from Secret Manager `reviewer-github-pat` |
 
 Sandboxed pods resolve names through public resolvers (`dnsPolicy: None`, nameservers `8.8.8.8` and `1.1.1.1`),
 because cluster DNS is inside the denied ranges.
