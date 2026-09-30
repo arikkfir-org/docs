@@ -4,7 +4,9 @@
 a PodDisruptionBudget of `maxUnavailable: 1`. That covers Traefik, oauth2-proxy, the docs site, Octomaton and its
 `go-import` page, and KEDA's three components. NATS keeps its chart's budget over three servers. Grafana stays a single
 replica with no budget, because its database lives on a `ReadWriteOnce` volume. Facts:
-[reference](../reference.md#kubernetes-platform).
+[reference](../reference.md#kubernetes-platform). Pull requests:
+[delivery#12](https://github.com/arikkfir-org/delivery/pull/12),
+[octomaton#11](https://github.com/arikkfir-org/octomaton/pull/11).
 
 ## Context
 
