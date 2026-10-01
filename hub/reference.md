@@ -75,7 +75,7 @@ syncing other repositories' branch and pull-request docs into a directory per re
 | Add-ons | Cloud Storage FUSE CSI driver (docs site). HTTP load balancing (GKE Ingress) is disabled |
 | Node service account | `gke-hub-nodes@arikkfir.iam.gserviceaccount.com` |
 | Node pool `system` | `e2-standard-4`, on-demand, `me-west1-a`, autoscaling 1-3, label `kfirs.com/pool=system` |
-| Node pool `ci` | `e2-standard-4`, on-demand from arikkfir-org/infra#20 on (Spot before it: preemptions failed most runs on 2026-10-01), `me-west1-a` (the cluster's zone) from arikkfir-org/infra#21 on (`me-west1-a/b/c` before it), autoscaling 0-4, label `kfirs.com/pool=ci`, taint `kfirs.com/pool=ci:NoSchedule` |
+| Node pool `ci` | `e2-standard-4`, on-demand from arikkfir-org/infra#20 on (Spot before it: preemptions failed most runs on 2026-10-01), `me-west1-a` (the cluster's zone) from arikkfir-org/infra#21 on (`me-west1-a/b/c` before it: a run's zonal disk mounts only on nodes in its own zone), autoscaling 0-4, label `kfirs.com/pool=ci`, taint `kfirs.com/pool=ci:NoSchedule` |
 
 Tekton runs land on the `ci` pool through Tekton's default pod template (node selector plus toleration).
 
