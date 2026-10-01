@@ -1,8 +1,8 @@
 # CI ServiceAccounts
 
-Tekton's default ServiceAccount, `pipeline`, has no Google Cloud access in any CI tenant. A pipeline that needs Google
-Cloud names a ServiceAccount of its own, whose Workload Identity principal holds the roles. A ServiceAccount that
-publishes can be used only from `main`. Tracked in ENG-50; the docs site's publishing moves with ENG-49.
+Tekton's default ServiceAccount, `pipeline`, has no Google Cloud access in any CI tenant (in `ci-docs`, once ENG-49
+moves the docs site's publishing). A pipeline that needs Google Cloud names a ServiceAccount of its own, whose Workload
+Identity principal holds the roles. A ServiceAccount that publishes can be used only from `main`. Tracked in ENG-50.
 
 ## Why
 
