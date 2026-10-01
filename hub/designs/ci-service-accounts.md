@@ -7,9 +7,10 @@ publishes can be used only from `main`. Tracked in ENG-50; the docs site's publi
 ## Why
 
 A PipelineRun that names no ServiceAccount runs as `pipeline` (the TektonConfig's `default-service-account`), and the
-pull request pipelines of `tooling` and `octomaton` name it outright. Its write roles were therefore open to every
-branch: to anyone who can push one, and to every Dependabot pull request, whose dependency code runs in CI. Forks never
-run.
+pull request pipelines of `tooling` and `octomaton` name it outright. Octomaton reads a pull request's PipelineRun files
+from the pull request itself, so a pull request in `docs`, whose `ci` names `default`, can still name `pipeline` or
+none. Its write roles were therefore open to every branch: to anyone who can push one, and to every Dependabot pull
+request, whose dependency code runs in CI. Forks never run.
 
 | Tenant | `pipeline` could | Worst case |
 | --- | --- | --- |
