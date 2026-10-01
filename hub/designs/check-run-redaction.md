@@ -3,8 +3,8 @@
 **Decision**: Octomaton removes a run's secrets from what it passes from the run to GitHub. From failed steps' log
 tails, the `check-title` and `check-summary` results and task failure messages, it removes every value of every Secret
 the PipelineRun references, also inside base64, and anything shaped like a well-known credential. From the run's own
-failure message it removes credential shapes only. When it can't read a Secret, it withholds the logs instead of
-posting them unredacted. Ticket:
+failure message it removes credential shapes only. When it can't read a Secret, it withholds the logs, results and
+task messages instead of posting them unredacted, and still concludes the check. Ticket:
 [ENG-47](https://linear.app/arikkfir/issue/ENG-47). Pull request:
 [octomaton#17](https://github.com/arikkfir-org/octomaton/pull/17).
 
@@ -62,7 +62,7 @@ The [AI reviewer](pr-reviewer.md) adds its own boundary: only organization membe
 | --- | --- | --- |
 | Redact in the Tekton adapter | It knows which Secrets a run references and can read them; services stay free of Kubernetes | Redacting in the reports service (it can't see Secrets), or in the GitHub adapter (too late to know the run's Secrets) |
 | Values first, then base64, then shapes | Exact values are certain; base64 and shapes catch what values can't | Shapes only (miss arbitrary passwords and API keys) |
-| Withhold logs when a Secret can't be read | Unredacted logs on a public check are the failure this prevents | Posting them anyway, or failing the whole report |
+| Withhold logs, results and task messages when a Secret can't be read, and still conclude | Unredacted text on a public check is the failure this prevents; the task table and conclusion hold no output, and a check that never concludes stalls a required check | Posting them anyway, or failing the whole report |
 | 8-character minimum | Shorter values would erase ordinary words and numbers from logs | Redacting every value (unreadable logs) |
 | Keep posting log tails on public repositories | They make failures readable without the dashboard, and the net plus the rule is enough for today's pipelines | Logs only behind sign-in, in the Tekton Dashboard |
 
