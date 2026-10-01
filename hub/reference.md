@@ -166,9 +166,9 @@ to GKE and are not managed here.
 | Item | Value |
 | --- | --- |
 | Pull requests and merge queue | Pipeline `ci` (`Continuous Integration`) as `ci-infra/ci-infra-plan`: `fmt`, `validate` in every root, `plan -lock=false` in `gcp` and `github` |
-| Merge to `main` | Pipeline `apply` (`Apply`) as `ci-infra/ci-infra-apply`: plans `gcp` and `github`; stops if either plan deletes or replaces anything; otherwise applies both, `gcp` first |
+| Merge to `main` | Pipeline `apply` (`Apply`) as `ci-infra/ci-infra-apply`: plans `gcp` and `github` and applies both in full, deletions and replacements included, `gcp` first |
 | Concurrency | The merge queue's `ci` runs and `apply` share the group `terraform` (policy `queue`) |
-| By hand (`make terraform <root>`) | `argocd` (bootstrap only), applies the pipeline stopped, and the first apply of new roles or tokens |
+| By hand (`make terraform <root>`) | `argocd` (bootstrap only) and the first apply of new roles or tokens |
 | `infra-plan-github-pat` | Fine-grained, resource owner `arikkfir-org`, all repositories: repository Administration and Metadata read, Contents read and write; organization Administration and Members read |
 | `infra-apply-github-pat` | Fine-grained, resource owner `arikkfir-org`, all repositories: repository Administration and Contents read and write, Metadata read; organization Administration and Members read and write |
 

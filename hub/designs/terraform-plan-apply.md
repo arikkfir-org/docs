@@ -1,10 +1,10 @@
 # Terraform plan on pull requests, apply on merge
 
-**Decision**: `infra` plans `gcp` and `github` on every pull request and in the merge queue, and applies them when a
-change merges to `main`. Two Kubernetes ServiceAccounts in `ci-infra` hold the GCP roles: `ci-infra-plan` (read-only
-roles) and `ci-infra-apply`. `ci-infra-apply` carries the annotation `octomaton.dev/branches: main`, and Octomaton
-refuses any run that names it unless the run's branch is `main`. Names and wiring:
-[reference](../reference.md#terraform-applies).
+**Decision**: `infra` plans `gcp` and `github` on every pull request and in the merge queue, and applies whatever the
+plans say when a change merges to `main`. Two Kubernetes ServiceAccounts in `ci-infra` hold the GCP roles:
+`ci-infra-plan` (read-only roles) and `ci-infra-apply`. `ci-infra-apply` carries the annotation
+`octomaton.dev/branches: main`, and Octomaton refuses any run that names it unless the run's branch is `main`. Names
+and wiring: [reference](../reference.md#terraform-applies).
 
 ## Context
 
@@ -24,9 +24,7 @@ flowchart LR
   MQ --> M[main]
   M -->|apply| AP[ci-infra-apply]
   O[Octomaton] -. refuses unless the branch is main .-> AP
-  AP --> G{deletes or<br/>replacements?}
-  G -->|none| A[apply gcp, then github]
-  G -->|any| S[stop: the owner applies by hand]
+  AP --> A[plan and apply gcp, then github]
 ```
 
 ### Octomaton: ServiceAccount branches
@@ -79,8 +77,8 @@ Secret holds it: Octomaton never lets a `push` pipeline mount one. The owner cre
 
 | Pipeline | Triggers | ServiceAccount | Steps |
 | --- | --- | --- | --- |
-| `ci` (`Continuous Integration`) | `pull_request` to `main`, `merge_group` | `ci-infra-plan` | `fmt -check`; `init -backend=false` and `validate` in every root; then in `gcp` and `github`, a full `init` (it reads the state in `arikkfir-devops`) and `plan -lock=false`. The plans go into the check's summary |
-| `apply` (`Apply`) | `push` to `main` | `ci-infra-apply` | A full `init` and `plan -out` in `gcp` and `github`. If either plan deletes or replaces anything, stop with the plans in the summary. Otherwise apply both saved plans, `gcp` first |
+| `ci` (`Continuous Integration`) | `pull_request` to `main`, `merge_group` | `ci-infra-plan` | `fmt -check`; `init -backend=false` and `validate` in every root; then in `gcp` and `github`, a full `init` (it reads the state in `arikkfir-devops`) and `plan -lock=false`. The plans go into the check's summary, deletions and replacements first |
+| `apply` (`Apply`) | `push` to `main` | `ci-infra-apply` | A full `init` and `plan -out` in `gcp` and `github`, then apply both saved plans in full, deletions and replacements included, `gcp` first. The plans go into the check's summary |
 
 - `argocd` is never planned or applied by a pipeline. It bootstraps Argo CD, which manages itself afterwards, so
   applying it again would fight Argo CD.
@@ -97,7 +95,7 @@ Secret holds it: Octomaton never lets a `push` pipeline mount one. The owner cre
 | Two identities, plan and apply | Pull requests still get plans, which can't change GCP or any GitHub setting | Plans only after merging |
 | Predefined roles | `roles/owner` can't be granted to a federated principal | `roles/owner` |
 | Tokens read from Secret Manager at run time | Octomaton refuses Secrets in `push` pipelines | Kubernetes Secrets, which would need that rule relaxed |
-| A plan that deletes or replaces anything stops the apply | Nothing is destroyed without the owner reading the plan | Applying every plan |
+| Apply every plan in full, deletions and replacements included | Pull requests plan, merges apply: the pull request's plan is the review, and merging approves it. `prevent_destroy` still fails any plan that would destroy a DNS zone, the organization's settings or a repository | Stopping on any deletion or replacement for the owner to apply by hand, the first version (until arikkfir-org/infra#28). It stopped even on IAM bindings a reviewed pull request removed |
 | Merge queue of one, sharing a concurrency group with `apply` | The plan of each merge is the plan that is applied | Groups of up to five |
 | Contents read and write on both tokens | GitHub shows merge settings only to such tokens, and pull request plans still refresh, so they show drift | A plan token without it and `-refresh=false` for `github` in `ci` (no drift in pull request plans); `ignore_changes` on the merge settings (Terraform would set them only at creation) |
 
@@ -112,8 +110,10 @@ Secret holds it: Octomaton never lets a `push` pipeline mount one. The owner cre
   itself more: the review and the merge are the gate.
 - Octomaton is the only workload that creates pods in `ci-infra` (RoleBinding `octomaton`), so it is the only path to
   `ci-infra-apply`. Cluster admins can always bypass it.
+- A merge applies its plan in full, deletions and replacements included. The pull request's `Continuous Integration`
+  check lists them first: read it before merging.
 - An apply that fails part-way leaves what it applied; the next merge, or the owner, finishes. A refused run (wrong
-  branch) and a stopped apply (deletes) fail the `Apply` check with the reason.
+  branch) fails the `Apply` check with the reason.
 - Missing roles show up as a failed plan or apply, never as a wrong change.
 
 ## Rollout
