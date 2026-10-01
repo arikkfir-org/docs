@@ -73,8 +73,8 @@ Secret holds it: Octomaton never lets a `push` pipeline mount one. The owner cre
 
 | Pipeline | Triggers | ServiceAccount | Steps |
 | --- | --- | --- | --- |
-| `ci` (`Continuous Integration`) | `pull_request` to `main`, `merge_group` | `ci-infra-plan` | `fmt -check`; `init -backend=false` and `validate` in every root; `plan -lock=false` in `gcp` and `github`. The plans go into the check's summary |
-| `apply` (`Apply`) | `push` to `main` | `ci-infra-apply` | `plan -out` in `gcp` and `github`. If either plan deletes or replaces anything, stop with the plans in the summary. Otherwise apply both saved plans, `gcp` first |
+| `ci` (`Continuous Integration`) | `pull_request` to `main`, `merge_group` | `ci-infra-plan` | `fmt -check`; `init -backend=false` and `validate` in every root; then in `gcp` and `github`, a full `init` (it reads the state in `arikkfir-devops`) and `plan -lock=false`. The plans go into the check's summary |
+| `apply` (`Apply`) | `push` to `main` | `ci-infra-apply` | A full `init` and `plan -out` in `gcp` and `github`. If either plan deletes or replaces anything, stop with the plans in the summary. Otherwise apply both saved plans, `gcp` first |
 
 - `argocd` is never planned or applied by a pipeline. It bootstraps Argo CD, which manages itself afterwards, so
   applying it again would fight Argo CD.
@@ -109,7 +109,9 @@ Secret holds it: Octomaton never lets a `push` pipeline mount one. The owner cre
 ## Rollout
 
 1. `docs`: this design and the reference.
-2. `octomaton`: the annotation check and the ClusterRole permission. Argo CD deploys `main`.
+2. `octomaton` (arikkfir-org/octomaton#15): the annotation check; `get` on ServiceAccounts in ClusterRole
+   `octomaton-tenant` (`deploy/rbac.yaml`); README and CLAUDE.md name the annotation as the one exception to
+   "configuration lives only in `.octomaton.yaml`". Argo CD deploys `main`.
 3. `delivery`: the two ServiceAccounts in `ci-infra`, `ci-infra-apply` annotated. The guard is live before the
    ServiceAccount gets any role.
 4. `infra`: the identities' roles and the two secrets (`terraform/gcp`), and the merge queue of one
