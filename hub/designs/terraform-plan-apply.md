@@ -34,6 +34,7 @@ flowchart LR
 | --- | --- |
 | Annotation | `octomaton.dev/branches` on a ServiceAccount in a tenant namespace: comma-separated branch globs, as in `on.push.branches`. Without it, every branch may use the ServiceAccount |
 | Check | Before creating a run, Octomaton gets each ServiceAccount its PipelineRun names (`spec.taskRunTemplate.serviceAccountName`, `spec.taskRunSpecs[].serviceAccountName`). When one carries the annotation and the run's branch matches none of its globs, the run is refused: no PipelineRun, and its check fails with the reason |
+| Fails closed | Apart from a ServiceAccount that doesn't exist (below), a named ServiceAccount Octomaton can't read (a missing permission, an API error) refuses the run the same way, as do an empty or invalid annotation and a name that isn't a string. A run goes through only when every named ServiceAccount was read and is unannotated or matches |
 | Run's branch | The branch whose code runs: the pushed branch (`push`); the head branch (`pull_request`, `comment`, `review_request`); the merge group's branch, `gh-readonly-queue/…` (`merge_group`); the default branch (`schedule`). A tag push has no branch and matches nothing |
 | Not checked | A PipelineRun that names no ServiceAccount: it runs as Tekton's default, which must never carry the annotation. A ServiceAccount that doesn't exist: Tekton fails the run |
 | Permission | ClusterRole `octomaton-tenant` gets `get` on `serviceaccounts` |

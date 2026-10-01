@@ -450,9 +450,11 @@ as in `on.push.branches`. Before creating a run, Octomaton gets each ServiceAcco
 and the run's branch matches none of its globs, the run is refused: no PipelineRun, and its check fails with the
 reason. The run's branch is the branch whose code runs: the pushed branch (`push`), the head branch (`pull_request`,
 `comment`, `review_request`), the merge group's branch (`merge_group`) or the default branch (`schedule`); a tag push
-has none and matches nothing. Without the annotation, every branch may use the ServiceAccount. A PipelineRun that names
-no ServiceAccount runs as Tekton's default, which is never checked and must never carry the annotation. This is the one
-Octomaton setting outside `.octomaton.yaml`: it sits on the identity, which the repository can't change
+has none and matches nothing. Without the annotation, every branch may use the ServiceAccount. The check fails closed:
+a named ServiceAccount Octomaton can't read (other than one that doesn't exist, which Tekton fails), an empty or
+invalid annotation, or a name that isn't a string refuses the run too. A PipelineRun that names no ServiceAccount runs
+as Tekton's default, which is never checked and must never carry the annotation. This is the one Octomaton setting
+outside `.octomaton.yaml`: it sits on the identity, which the repository can't change
 ([design](designs/terraform-plan-apply.md)).
 
 ## Pull request reviewer
