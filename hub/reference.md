@@ -13,7 +13,7 @@ repository's CI configuration must agree with this page. Change it here first, t
 | Region / cluster zone | `me-west1` / `me-west1-a` |
 | DNS domain | `kfirs.com` (Cloud DNS zone `kfirs-com`): hub tools under `dev.kfirs.com`, sign-in at `auth.kfirs.com`. `octomaton.dev` (zone `octomaton-dev`): Octomaton's webhook and Go module path. `kfirfamily.com` (zone `kfirfamily-com`) is imported but unused. |
 | Identity provider | Descope company `KFIRS`, project `development` (`P3JyPV2qsSrMLUpVPTGcBNRHlSkv`), issuer `https://api.descope.com/P3JyPV2qsSrMLUpVPTGcBNRHlSkv` |
-| Label/annotation prefix | `kfirs.com/` for hub-wide labels, `octomaton.dev/` for Octomaton bookkeeping |
+| Label/annotation prefix | `kfirs.com/` for hub-wide labels, `octomaton.dev/` for Octomaton bookkeeping and the [ServiceAccount branch restriction](#serviceaccount-branches) |
 | Terraform state | GCS bucket `arikkfir-devops` (created by hand, versioned), prefixes `github`, `gcp`, `argocd` |
 
 ## Repositories
@@ -22,7 +22,7 @@ repository's CI configuration must agree with this page. Change it here first, t
 | --- | --- | --- | --- |
 | `.github` | The organization's welcome page on GitHub: `profile/README.md`, nothing else | PR + 1 approval + merge queue | `Continuous Integration` (none runs: merged with the admin bypass) |
 | `docs` | Knowledge base, published to `arikkfir-docs` and served at `docs.dev.kfirs.com` | PR + 1 approval + merge queue; direct pushes to `main` only from automation | `Continuous Integration` |
-| `infra` | Terraform: GitHub, GCP, Argo CD bootstrap | PR + 1 approval + merge queue | `Continuous Integration` |
+| `infra` | Terraform: GitHub, GCP, Argo CD bootstrap; [plans and applies](#terraform-applies) `gcp` and `github` | PR + 1 approval + merge queue of one | `Continuous Integration` (fmt, validate, plans) |
 | `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `Continuous Integration` |
 | `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `Continuous Integration` |
 | `tooling` | Org-wide tooling: the Claude Code web bundle, the [pull request reviewer](#pull-request-reviewer), and the organization pipelines every repository runs (`.octomaton.yaml`) | PR + 1 approval + merge queue | `Continuous Integration` |
@@ -38,7 +38,7 @@ all but the last two rows:
 | Features | Discussions on; issues, wiki and projects off |
 | Merging | Merge commits, squash and rebase allowed (the ruleset narrows pull requests to merge commits); default commit message: the pull request's title and description; always suggest updating branches; auto-merge on; head branches deleted after merge |
 | Autolink | `ENG-<num>` (alphanumeric) links to `https://linear.app/arikkfir/issue/ENG-<num>` |
-| Ruleset `Default branch` | Targets the default branch. No deletion, no force-push. Pull request: one approval, stale approvals dismissed, last push approved by someone else, conversations resolved, merge commits only. Required checks: `Continuous Integration` from the Octomaton App only (`integration_id`), plus any the repository adds (`checks` in `local.repositories`), from any source. Merge queue: merge commits, at most 5 entries building, 1 to 5 pull requests per group, a 3-minute wait for the minimum, every entry passing the required checks (`ALLGREEN`), 60-minute check timeout. Off: restricted creations and updates, linear history, deployments, signed commits, code owner and team reviews, up-to-date branches, skipping checks on creation |
+| Ruleset `Default branch` | Targets the default branch. No deletion, no force-push. Pull request: one approval, stale approvals dismissed, last push approved by someone else, conversations resolved, merge commits only. Required checks: `Continuous Integration` from the Octomaton App only (`integration_id`), plus any the repository adds (`checks` in `local.repositories`), from any source. Merge queue: merge commits, at most 5 entries building, 1 to 5 pull requests per group, a 3-minute wait for the minimum, every entry passing the required checks (`ALLGREEN`), 60-minute check timeout; in `infra`, one entry building and groups of exactly one, so each merge is planned alone. Off: restricted creations and updates, linear history, deployments, signed commits, code owner and team reviews, up-to-date branches, skipping checks on creation |
 | Ruleset bypass | Organization admins and repository admins, always |
 | Dependabot | Alerts and security updates on; version updates would need a `.github/dependabot.yml` in the repository |
 | Set by hand | Sponsorships on and Preserve this repository (GitHub Archive Program) off, in each repository's settings: the provider has no argument for them |
@@ -110,7 +110,7 @@ Public URLs (`arikkfir-claude` only) are `https://storage.googleapis.com/<bucket
 ## Secret Manager
 
 Terraform creates the secret containers; values are added by hand (`gcloud secrets versions add`). External Secrets
-Operator is the only reader.
+Operator reads them all; `infra`'s pipelines also read their own GitHub token directly.
 
 | Secret | Content | Consumed by |
 | --- | --- | --- |
@@ -122,6 +122,8 @@ Operator is the only reader.
 | `grafana-postgres-admin-password` | Password of the superuser `postgres` on Grafana's PostgreSQL, which people sign in with | `grafana/postgres-admin` key `password` |
 | `reviewer-deepseek-api-key` | DeepSeek API key | `ci-*/reviewer-deepseek-api-key` key `api-key` (the [reviewer](#pull-request-reviewer)'s `review` task) |
 | `reviewer-github-pat` | `arikkfir-reviewer`'s fine-grained personal access token | `ci-*/reviewer-github-pat` key `token` (the [reviewer](#pull-request-reviewer)'s `report` task) |
+| `infra-plan-github-pat` | Fine-grained personal access token, read only (see [Terraform applies](#terraform-applies)) | `ci-infra/ci-infra-plan`, read at run time by `infra`'s `ci` pipeline |
+| `infra-apply-github-pat` | Fine-grained personal access token that administers the organization's repositories and settings (see [Terraform applies](#terraform-applies)) | `ci-infra/ci-infra-apply`, read at run time by `infra`'s `apply` pipeline |
 
 ## GCP identities and permissions
 
@@ -138,12 +140,33 @@ Kubernetes workloads use GKE Workload Identity Federation with direct principal 
 | `ci-docs/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
 | `ci-tooling/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-claude` |
 | `ci-octomaton/pipeline` | `roles/artifactregistry.writer` | repository `images` |
+| `ci-infra/ci-infra-plan` | `roles/iam.securityReviewer`, `roles/serviceusage.serviceUsageViewer`, `roles/compute.networkViewer`, `roles/container.clusterViewer`, `roles/artifactregistry.reader`, `roles/secretmanager.viewer`, `roles/dns.reader`, `roles/iam.serviceAccountViewer` | project |
+| `ci-infra/ci-infra-plan` | `roles/storage.legacyBucketReader` | each bucket `terraform/gcp` manages |
+| `ci-infra/ci-infra-plan` | `roles/storage.objectViewer` | bucket `arikkfir-devops` |
+| `ci-infra/ci-infra-plan` | `roles/secretmanager.secretAccessor` | secret `infra-plan-github-pat` |
+| `ci-infra/ci-infra-apply` | `roles/serviceusage.serviceUsageAdmin`, `roles/compute.networkAdmin`, `roles/container.admin`, `roles/artifactregistry.admin`, `roles/storage.admin`, `roles/secretmanager.admin`, `roles/dns.admin`, `roles/iam.serviceAccountAdmin`, `roles/iam.securityAdmin` | project |
+| `ci-infra/ci-infra-apply` | `roles/iam.serviceAccountUser` | service account `gke-hub-nodes@` |
 | `gke-hub-nodes@` (GSA) | `roles/container.defaultNodeServiceAccount` | project |
 | `gke-hub-nodes@` (GSA) | `roles/artifactregistry.reader` | repository `images` |
 
 There is no Workload Identity Federation pool for workloads outside GCP: no GitHub Actions run, and CI runs in the
 cluster. The pre-existing `github-actions`, `greenstar` and `arikkfir.svc.id.goog` pools belong to other projects or
 to GKE and are not managed here.
+
+## Terraform applies
+
+`infra` plans and applies through Octomaton ([design](designs/terraform-plan-apply.md)):
+
+| Item | Value |
+| --- | --- |
+| Pull requests and merge queue | Pipeline `ci` (`Continuous Integration`) as `ci-infra/ci-infra-plan`: `fmt`, `validate` in every root, `plan -lock=false` in `gcp` and `github` |
+| Merge to `main` | Pipeline `apply` (`Apply`) as `ci-infra/ci-infra-apply`: plans `gcp` and `github`; stops if either plan deletes or replaces anything; otherwise applies both, `gcp` first |
+| Concurrency | The merge queue's `ci` runs and `apply` share the group `terraform` (policy `queue`) |
+| By hand (`make terraform <root>`) | `argocd` (bootstrap only), applies the pipeline stopped, and the first apply of new roles or tokens |
+| `infra-plan-github-pat` | Fine-grained, resource owner `arikkfir-org`, all repositories: repository Administration and Metadata read; organization Administration and Members read |
+| `infra-apply-github-pat` | Fine-grained, resource owner `arikkfir-org`, all repositories: repository Administration read and write, Metadata read; organization Administration and Members read and write |
+
+The owner creates both tokens, adds them with `gcloud secrets versions add` and renews them within a year.
 
 ## Kubernetes platform
 
@@ -260,8 +283,8 @@ of zone `octomaton-dev` for `octomaton.dev`.
 | Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz` (all on 8080) |
 | Telemetry | On GKE: JSON logs on stdout to Cloud Logging; metrics to Cloud Monitoring and traces to Cloud Trace through the Telemetry API (`telemetry.googleapis.com`), as `octomaton/octomaton`. Elsewhere: text logs, nothing exported |
 | Check links | `https://tekton.dev.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
-| Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccount `pipeline` and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer) |
-| Tenant permissions | `octomaton-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete) |
+| Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccount `pipeline` and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer). `ci-infra` also has ServiceAccounts `ci-infra-plan` and `ci-infra-apply` (annotated `octomaton.dev/branches: main`) |
+| Tenant permissions | `octomaton-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete); ServiceAccounts (get) |
 
 ### Server configuration
 
@@ -418,6 +441,19 @@ pipeline whose every trigger reads definitions from the default branch may list 
 head commit never reach a Secret. Remote Tekton references are refused (`pipelineRef`, `taskRef`, a step's `ref`, any
 `resolver` or `bundle`), because Octomaton can only check definitions it can see: a PipelineRun holds its whole
 `spec.pipelineSpec`, with a `taskSpec` per task.
+
+#### ServiceAccount branches
+
+A ServiceAccount in a tenant namespace may carry the annotation `octomaton.dev/branches`: comma-separated branch globs,
+as in `on.push.branches`. Before creating a run, Octomaton gets each ServiceAccount its PipelineRun names
+(`spec.taskRunTemplate.serviceAccountName`, `spec.taskRunSpecs[].serviceAccountName`). When one carries the annotation
+and the run's branch matches none of its globs, the run is refused: no PipelineRun, and its check fails with the
+reason. The run's branch is the branch whose code runs: the pushed branch (`push`), the head branch (`pull_request`,
+`comment`, `review_request`), the merge group's branch (`merge_group`) or the default branch (`schedule`); a tag push
+has none and matches nothing. Without the annotation, every branch may use the ServiceAccount. A PipelineRun that names
+no ServiceAccount runs as Tekton's default, which is never checked and must never carry the annotation. This is the one
+Octomaton setting outside `.octomaton.yaml`: it sits on the identity, which the repository can't change
+([design](designs/terraform-plan-apply.md)).
 
 ## Pull request reviewer
 
