@@ -16,9 +16,9 @@ publishing of [phase 4](phase-4-docs-site.md).
 | any repository: `x.html`, `x.png`, … | `/x.html`, `/x.png`, … | unchanged |
 | | `/old.html`, when no file `old.html` exists | a redirect to `/old.md.html`, so phase 4's links keep working |
 
-Hidden paths (`.tekton/`, dotfiles, `.github/`) are never published, and a source named `*.md.html` is refused, since
-that name belongs to a rendered page. There are no listings, index pages or navigation. Directories are shared, so
-`dir1/` above holds files from two repositories.
+A path with any file or directory name that starts with `.` is hidden and never published: `.github/`, `.tekton/`,
+`.ci/`, `.site/` and dotfiles. A source named `*.md.html` is refused, since that name belongs to a rendered page. There
+are no listings, index pages or navigation. Directories are shared, so `dir1/` above holds files from two repositories.
 
 ## Design
 
@@ -116,8 +116,9 @@ pipeline or render scripts of its own, and nothing pushes to its `main` directly
 
 - **Publishing:** a layer is written only by its own repository's `docs-publisher`, only from `main`, and only inside
   its prefix.
-- **Pull requests:** a run can list the bucket's object names as `docs-reader`, but can't read or write objects. That is
-  the only Google Cloud access a branch other than `main` gets in any tenant
+- **Pull requests:** the `Docs` check runs as `docs-reader`, which can list the bucket's object names but can't read or
+  write objects. That is all this design gives a branch other than `main`. Access that other pull request pipelines
+  already have, such as `infra`'s `ci-infra-plan`, is unchanged
   ([GCP identities](../reference.md#gcp-identities-and-permissions)).
 - **Rendering:** documents can contain raw HTML, which is rendered as written, as pandoc did. The site stays behind the
   hub's sign-in, and only organization repositories publish.

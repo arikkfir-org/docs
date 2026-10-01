@@ -494,11 +494,12 @@ because cluster DNS is inside the denied ranges.
 
 ## Docs site
 
-One URL space at `https://docs.dev.kfirs.com`, composed from every repository ([design](designs/docs-site-composition.md)).
+One URL space at `https://docs.dev.kfirs.com`, composed from every repository
+([design](designs/docs-site-composition.md)).
 
 | Item | Value |
 | --- | --- |
-| Sources | `docs`: its whole tree. Every other repository: its `docs/` directory, at the site root. Hidden paths are never published; a source named `*.md.html` is refused |
+| Sources | `docs`: its whole tree. Every other repository: its `docs/` directory, at the site root. Hidden paths (any file or directory name starting with `.`) are never published; a source named `*.md.html` is refused |
 | Layers | `gs://arikkfir-docs/.layers/<repository>/`, mirrored from the repository's `main` on every push |
 | URLs | `X.md`: the Markdown (`text/markdown; charset=utf-8`). `X.md.html`: rendered on request. Other files: as they are. A missing `X.html` redirects to `X.md.html`. Hidden paths and directories: 404 |
 | Overlay order | `docs`, then every other repository alphabetically; Caddy serves a path from the first layer that has it |
