@@ -446,7 +446,8 @@ head commit never reach a Secret. Remote Tekton references are refused (`pipelin
 
 A ServiceAccount in a tenant namespace may carry the annotation `octomaton.dev/branches`: comma-separated branch globs,
 as in `on.push.branches`. Before creating a run, Octomaton gets each ServiceAccount its PipelineRun names
-(`spec.taskRunTemplate.serviceAccountName`, `spec.taskRunSpecs[].serviceAccountName`). When one carries the annotation
+(`spec.taskRunTemplate.serviceAccountName`, `spec.taskRunSpecs[].serviceAccountName`: the only fields that name one in a
+`tekton.dev/v1` PipelineRun, the one version Octomaton accepts). When one carries the annotation
 and the run's branch matches none of its globs, the run is refused: no PipelineRun, and its check fails with the
 reason. The run's branch is the branch whose code runs: the pushed branch (`push`), the head branch (`pull_request`,
 `comment`, `review_request`), the merge group's branch (`merge_group`) or the default branch (`schedule`); a tag push
