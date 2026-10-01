@@ -26,14 +26,13 @@ flowchart LR
   repo -- page.md on GitHub --> AG[Agents]
 ```
 
-| Source in Git | Served as | Consumer |
-| --- | --- | --- |
-| `path/page.md` | `path/page.md.html` (rendered) and `path/page.md` (original) | browsers |
-| `path/page.html` | `path/page.html` (unchanged) | browsers |
-| `path/image.svg` | `path/image.svg` | pages |
+| Source in Git    | Served as                                                    | Consumer |
+|------------------|--------------------------------------------------------------|----------|
+| `path/page.md`   | `path/page.md.html` (rendered) and `path/page.md` (original) | browsers |
+| `path/page.html` | `path/page.html` (unchanged)                                 | browsers |
+| `path/image.svg` | `path/image.svg`                                             | pages    |
 
-Every other repository's `docs/` joins this tree in the same URL space, each published to its own layer
-([Docs site composition](docs-site-composition.md), ENG-49).
+Every other repository's `docs/` joins this tree in the same URL space, each published to its own layer ([Docs site composition](docs-site-composition.md), ENG-49).
 
 URLs are `https://docs.dev.kfirs.com/<path>`, behind the hub's sign-in. Agents read the repository itself.
 

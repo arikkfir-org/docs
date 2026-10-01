@@ -26,17 +26,14 @@ Designs:
 
 ## Formats
 
-| Format | Use for | Published as |
-| --- | --- | --- |
-| Markdown (`.md`) | Designs, runbooks, conventions | `page.md.html` (rendered) and `page.md` (original, for agents) |
-| HTML (`.html`) | Rich, self-contained pages such as generated architecture views | `page.html`, unchanged |
-| Images (`.svg`, `.png`, …) | Diagrams referenced from pages | unchanged |
+| Format                     | Use for                                                         | Published as                                                   |
+|----------------------------|-----------------------------------------------------------------|----------------------------------------------------------------|
+| Markdown (`.md`)           | Designs, runbooks, conventions                                  | `page.md.html` (rendered) and `page.md` (original, for agents) |
+| HTML (`.html`)             | Rich, self-contained pages such as generated architecture views | `page.html`, unchanged                                         |
+| Images (`.svg`, `.png`, …) | Diagrams referenced from pages                                  | unchanged                                                      |
 
 Diagrams in Markdown are Mermaid code blocks; GitHub and the site both render them.
 
 ## Publishing
 
-Every merge to `main` publishes this repository to `https://docs.dev.kfirs.com/<path>` (behind the hub's sign-in),
-in one URL space with every other repository's `docs/`, so this page is at
-[README.md.html](https://docs.dev.kfirs.com/README.md.html). There are no menus or index pages; link to pages
-directly. How it works: [docs site composition](hub/designs/docs-site-composition.md).
+Every push to `main` publishes this repository to `https://docs.dev.kfirs.com/<path>` (behind the hub's sign-in), in one URL space with every other repository's `docs/`, so this page is at [README.md.html](https://docs.dev.kfirs.com/README.md.html). There are no menus or index pages; link to pages directly. How it works: [docs site composition](hub/designs/docs-site-composition.md).

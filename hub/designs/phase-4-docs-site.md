@@ -1,7 +1,6 @@
 # Phase 4: Docs site
 
-> Replaced by [Docs site composition](docs-site-composition.md) (ENG-49): one URL space from every
-> repository, rendered on request, published by organization pipelines.
+> Replaced by [Docs site composition](docs-site-composition.md) (ENG-49): one URL space from every repository, rendered on request, published by organization pipelines.
 
 **Goal**: every push to `docs/main` publishes the repository to the private bucket `arikkfir-docs`, which the docs site
 serves at `https://docs.dev.kfirs.com` behind the hub's sign-in. Markdown changed since the last publication is

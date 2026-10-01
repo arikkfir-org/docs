@@ -133,9 +133,7 @@ kubectl -n argocd get applications -w     # everything converges to Synced / Hea
 Open a pull request in any hub repository; a `Continuous Integration` check run from Octomaton appears and links to
 the Tekton Dashboard.
 
-Pushes made before Octomaton ran were never delivered, so nothing is published yet. Merge a pull request (any change)
-into `docs` and into `tooling` to trigger the first publish, then check
-`https://docs.dev.kfirs.com/README.md.html` (after signing in) and `https://storage.googleapis.com/arikkfir-claude/setup.sh`.
+Pushes made before Octomaton ran were never delivered, so nothing is published yet. Merge a pull request (any change) into `docs` and into `tooling` to trigger the first publish, then check `https://docs.dev.kfirs.com/README.md.html` (after signing in) and `https://storage.googleapis.com/arikkfir-claude/setup.sh`.
 
 ## 10. GitHub repositories and rulesets
 
