@@ -12,7 +12,7 @@ flowchart TB
     subgraph vpc[VPC hub: subnet 10.10.0.0/20, pods 10.20.0.0/16, services 10.30.0.0/20]
       subgraph gke[GKE hub: zonal me-west1-a, private nodes, Dataplane V2]
         SYS[pool system<br/>e2-standard-4, 1-3]
-        CI[pool ci<br/>e2-standard-4 Spot, 0-4<br/>tainted for Tekton]
+        CI[pool ci<br/>e2-standard-4 on-demand, 0-4<br/>tainted for Tekton]
       end
       NAT[Cloud NAT] 
     end
