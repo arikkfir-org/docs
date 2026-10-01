@@ -128,4 +128,5 @@ Secret holds it: Octomaton never lets a `push` pipeline mount one. The owner cre
    (`terraform/github`). The owner applies both by hand, then creates the tokens and adds them.
 5. `infra`: `ci` plans, the `apply` pipeline, README and CLAUDE.md. Its first merge applies (no changes expected).
 6. Later: the same restriction for the push pipelines of `docs`, `tooling` and `octomaton`, whose `pipeline`
-   ServiceAccounts hold write roles that their pull requests can use today.
+   ServiceAccounts hold write roles that their pull requests can use today
+   ([CI ServiceAccounts](ci-service-accounts.md)).

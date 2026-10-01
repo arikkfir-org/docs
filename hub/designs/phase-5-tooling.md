@@ -70,7 +70,7 @@ Bundles are immutable (`Cache-Control: immutable`); `setup.sh` is `no-cache`. Bo
 | Principal | Role | On |
 | --- | --- | --- |
 | `allUsers` | `roles/storage.legacyObjectReader` (no listing) | `arikkfir-claude` |
-| `ci-tooling/pipeline` (Workload Identity) | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | `arikkfir-claude` |
+| `ci-tooling/ci-tooling-publish` (Workload Identity; `main` only, see [CI ServiceAccounts](ci-service-accounts.md)) | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | `arikkfir-claude` |
 
 ## Decisions
 
