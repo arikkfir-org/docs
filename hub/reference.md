@@ -110,7 +110,8 @@ Public URLs (`arikkfir-claude` only) are `https://storage.googleapis.com/<bucket
 ## Secret Manager
 
 Terraform creates the secret containers; values are added by hand (`gcloud secrets versions add`). External Secrets
-Operator reads them all; `infra`'s pipelines also read their own GitHub token directly.
+Operator reads all but `infra`'s two GitHub tokens, which only `infra`'s pipelines read, so no Kubernetes Secret ever
+holds them.
 
 | Secret | Content | Consumed by |
 | --- | --- | --- |
@@ -132,7 +133,7 @@ Kubernetes workloads use GKE Workload Identity Federation with direct principal 
 
 | Principal (namespace/KSA) | Role | Scope |
 | --- | --- | --- |
-| `external-secrets/external-secrets` | `roles/secretmanager.secretAccessor` | each secret above |
+| `external-secrets/external-secrets` | `roles/secretmanager.secretAccessor` | each secret above but `infra-plan-github-pat` and `infra-apply-github-pat` |
 | `cert-manager/cert-manager` | `roles/dns.admin` | managed zones `kfirs-com` and `octomaton-dev` |
 | `grafana/grafana` | `roles/monitoring.viewer` | project |
 | `octomaton/octomaton` | `roles/telemetry.metricsWriter`, `roles/telemetry.tracesWriter`, `roles/serviceusage.serviceUsageConsumer` | project |
