@@ -34,6 +34,7 @@ all but the last two rows:
 | Item | Value |
 | --- | --- |
 | Visibility | Public, except `fin` (internal) |
+| Forking | Public repositories only: the organization forbids forking private and internal ones, so `fin` can't be forked |
 | Features | Discussions on; issues, wiki and projects off |
 | Merging | Merge commits, squash and rebase allowed (the ruleset narrows pull requests to merge commits); default commit message: the pull request's title and description; always suggest updating branches; auto-merge on; head branches deleted after merge |
 | Autolink | `ENG-<num>` (alphanumeric) links to `https://linear.app/arikkfir/issue/ENG-<num>` |
