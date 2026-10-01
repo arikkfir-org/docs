@@ -20,13 +20,13 @@ repository's CI configuration must agree with this page. Change it here first, t
 
 | Repository | Purpose | Default-branch rules | Required checks |
 | --- | --- | --- | --- |
-| `.github` | The organization's welcome page on GitHub: `profile/README.md`, nothing else | PR + 1 approval + merge queue | `Continuous Integration` (none runs: merged with the admin bypass) |
-| `docs` | Hub-wide knowledge base; with every repository's `docs/`, served at `docs.dev.kfirs.com` ([docs site](#docs-site)) | PR + 1 approval + merge queue | `Continuous Integration` |
-| `infra` | Terraform: GitHub, GCP, Argo CD bootstrap; [plans and applies](#terraform-applies) `gcp` and `github` | PR + 1 approval + merge queue of one | `Continuous Integration` (fmt, validate, plans) |
-| `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `Continuous Integration` |
-| `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `Continuous Integration` |
-| `tooling` | Org-wide tooling: the Claude Code web bundle, the [pull request reviewer](#pull-request-reviewer), and the organization pipelines every repository runs (`.octomaton.yaml`) | PR + 1 approval + merge queue | `Continuous Integration` |
-| `fin` | Personal finance manager and assistant. Internal: visible only to members of the organization's enterprise | PR + 1 approval + merge queue | `Continuous Integration` (none runs until `fin` has a `ci` pipeline: until then, merged with the admin bypass) |
+| `.github` | The organization's welcome page on GitHub: `profile/README.md`, nothing else | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` (neither runs, since `.github` has no CI tenant: merged with the admin bypass) |
+| `docs` | Hub-wide knowledge base; with every repository's `docs/`, served at `docs.dev.kfirs.com` ([docs site](#docs-site)) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
+| `infra` | Terraform: GitHub, GCP, Argo CD bootstrap; [plans and applies](#terraform-applies) `gcp` and `github` | PR + 1 approval + merge queue of one | `Continuous Integration` (fmt, validate, plans), `Docs` |
+| `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
+| `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
+| `tooling` | Org-wide tooling: the Claude Code web bundle, the [pull request reviewer](#pull-request-reviewer), and the organization pipelines every repository runs (`.octomaton.yaml`) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
+| `fin` | Personal finance manager and assistant. Internal: visible only to members of the organization's enterprise | PR + 1 approval + merge queue | `Continuous Integration` (none runs until `fin` has a `ci` pipeline: until then, merged with the admin bypass), `Docs` |
 
 Every repository gets the same settings and the same `Default branch` ruleset. `terraform/github` in `infra` applies
 all but the last two rows:
@@ -286,7 +286,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 | Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz` (all on 8080) |
 | Telemetry | On GKE: JSON logs on stdout to Cloud Logging; metrics to Cloud Monitoring and traces to Cloud Trace through the Telemetry API (`telemetry.googleapis.com`), as `octomaton/octomaton`. Elsewhere: text logs, nothing exported |
 | Check links | `https://tekton.dev.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
-| Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccounts `pipeline`, `docs-reader` and `docs-publisher` (annotated `octomaton.dev/branches: main`, see [docs site](#docs-site)) and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer). `ci-infra` also has ServiceAccounts `ci-infra-plan` and `ci-infra-apply` (annotated `octomaton.dev/branches: main`) |
+| Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccounts `pipeline`, `docs-reader` and `docs-publisher` (only `docs-publisher` is annotated `octomaton.dev/branches: main`; see [docs site](#docs-site)) and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer). `ci-infra` also has ServiceAccounts `ci-infra-plan` and `ci-infra-apply` (annotated `octomaton.dev/branches: main`) |
 | Tenant permissions | `octomaton-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete); ServiceAccounts (get) |
 
 ### Server configuration

@@ -121,6 +121,9 @@ pipeline or render scripts of its own, and nothing pushes to its `main` directly
   ([GCP identities](../reference.md#gcp-identities-and-permissions)).
 - **Rendering:** documents can contain raw HTML, which is rendered as written, as pandoc did. The site stays behind the
   hub's sign-in, and only organization repositories publish.
+- **Internal repositories:** every repository takes part, `fin` (internal) included. Its pages are served behind the
+  hub's sign-in, whose users the owner manages, like every other hub tool. The names of its files, but not their
+  content, are visible to every tenant's `docs-reader`, since listing can't be limited to a prefix.
 
 ## Failure modes
 
