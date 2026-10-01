@@ -100,7 +100,7 @@ flowchart LR
   Identity, so one repository's pipelines can never use another's permissions.
 - Octomaton's own identity can create `PipelineRun`s and token Secrets only in tenant namespaces
   (`ClusterRole octomaton-tenant`, bound per namespace), and watch runs cluster-wide.
-- Tekton's default pod template schedules runs onto the Spot `ci` node pool.
+- Tekton's default pod template schedules runs onto the `ci` node pool.
 
 ## Process
 
