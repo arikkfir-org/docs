@@ -26,17 +26,29 @@ repository's CI configuration must agree with this page. Change it here first, t
 | `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `Continuous Integration` |
 | `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `Continuous Integration` |
 | `tooling` | Org-wide tooling: the Claude Code web bundle, the [pull request reviewer](#pull-request-reviewer), and the organization pipelines every repository runs (`.octomaton.yaml`) | PR + 1 approval + merge queue | `Continuous Integration` |
+| `fin` | Personal finance manager and assistant. Internal: visible only to members of the organization's enterprise | PR + 1 approval + merge queue | `Continuous Integration` |
 
-Every repository gets the same `default-branch` ruleset: no deletion, no force-push, pull requests with one approval
-(stale approvals dismissed, last push approved, conversations resolved), merge commits only, through the merge queue.
-Organization admins may bypass it (`bypass_mode = always`). An approval by `arikkfir-reviewer`, the [pull request
-reviewer](#pull-request-reviewer), counts: it has `push` on every repository. The required check, `Continuous
-Integration`, is each repository's `ci` pipeline under its `displayName`, pinned to the Octomaton GitHub App
-(`integration_id`). `.github` has no CI (Claude Code can't clone a repository whose name starts with a dot, so nothing
-else lives there), and an organization admin merges its rare pull requests with the bypass. In `docs`, direct pushes to `main` are reserved for automation: publishing the site and syncing
-other repositories' branch and pull-request docs into a directory per repository and branch. Every repository also has
-Dependabot alerts and Dependabot security updates on; version updates would need a `.github/dependabot.yml` in the
-repository.
+Every repository gets the same settings and the same `Default branch` ruleset. `terraform/github` in `infra` applies
+all but the last two rows:
+
+| Item | Value |
+| --- | --- |
+| Visibility | Public, except `fin` (internal) |
+| Features | Discussions on; issues, wiki and projects off |
+| Merging | Merge commits, squash and rebase allowed (the ruleset narrows pull requests to merge commits); default commit message: the pull request's title and description; always suggest updating branches; auto-merge on; head branches deleted after merge |
+| Autolink | `ENG-<num>` (alphanumeric) links to `https://linear.app/arikkfir/issue/ENG-<num>` |
+| Ruleset `Default branch` | Targets the default branch. No deletion, no force-push. Pull request: one approval, stale approvals dismissed, last push approved by someone else, conversations resolved, merge commits only. Required checks: `Continuous Integration` from the Octomaton App only (`integration_id`), plus any the repository adds (`checks` in `local.repositories`), from any source. Merge queue: merge commits, at most 5 entries building, 1 to 5 pull requests per group, a 3-minute wait for the minimum, every entry passing the required checks (`ALLGREEN`), 60-minute check timeout. Off: restricted creations and updates, linear history, deployments, signed commits, code owner and team reviews, up-to-date branches, skipping checks on creation |
+| Ruleset bypass | Organization admins and repository admins, always |
+| Dependabot | Alerts and security updates on; version updates would need a `.github/dependabot.yml` in the repository |
+| Set by hand | Sponsorships on and Preserve this repository (GitHub Archive Program) off, in each repository's settings: the provider has no argument for them |
+| GitHub's defaults | Outside Terraform, as GitHub sets them: pull requests open to all users, comments on individual commits allowed, review dismissal unrestricted, an additional approval for unattributed Copilot pull requests |
+
+An approval by `arikkfir-reviewer`, the [pull request reviewer](#pull-request-reviewer), counts: it has `push` on every
+repository. `Continuous Integration` is each repository's `ci` pipeline under its `displayName`; the ruleset pins it to
+the Octomaton App's ID, so a check of that name from any other App counts for nothing. `.github` has no CI (Claude
+Code can't clone a repository whose name starts with a dot, so nothing else lives there), and an admin merges its rare
+pull requests with the bypass. In `docs`, direct pushes to `main` are reserved for automation: publishing the site and
+syncing other repositories' branch and pull-request docs into a directory per repository and branch.
 
 ## Network
 
@@ -215,7 +227,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 
 | Item | Value |
 | --- | --- |
-| GitHub App | `octomaton-dev` (created by hand; `Octomaton` is taken on GitHub), homepage `https://github.com/arikkfir-org/octomaton`, installed on all `arikkfir-org` repositories. Octomaton and the rulesets' required check identify it by its App ID, never by name |
+| GitHub App | `octomaton-dev`, App ID `5114814` (created by hand; `Octomaton` is taken on GitHub), homepage `https://github.com/arikkfir-org/octomaton`, installed on all `arikkfir-org` repositories. Octomaton and the rulesets' required check identify it by its App ID, never by name |
 | App permissions | Checks: read and write; Contents: read; Metadata: read; Pull requests: read and write; Merge queues: read |
 | App events | `push`, `pull_request`, `issue_comment`, `check_suite`, `check_run`, `merge_group`; also `pull_request_review`, `pull_request_review_comment` and `pull_request_review_thread`, which Octomaton ignores |
 | Webhook URL | `https://octomaton.dev/github/hooks` |
@@ -396,7 +408,7 @@ Requesting a review from `arikkfir-reviewer` runs the reviewer on the pull reque
 | --- | --- |
 | GitHub user | `arikkfir-reviewer`, a member of `arikkfir-org` |
 | Team | `reviewers` (closed): `arikkfir-reviewer`, with `push` on every repository (resolving threads takes write access) |
-| Token | Fine-grained personal access token of `arikkfir-reviewer`: resource owner `arikkfir-org`, all repositories, pull requests read and write; expires within a year; Secret Manager `reviewer-github-pat` |
+| Token | Fine-grained personal access token of `arikkfir-reviewer`: resource owner `arikkfir-org`, all repositories, contents and pull requests read and write (GitHub resolves a review thread only for a token with contents write); expires within a year; Secret Manager `reviewer-github-pat` |
 | Model | DeepSeek V4 Pro (`deepseek-v4-pro`), through opencode `1.18.33` (`ghcr.io/anomalyco/opencode`) as `deepseek/deepseek-v4-pro`; key in Secret Manager `reviewer-deepseek-api-key` |
 | Definitions | `arikkfir-org/tooling`, `reviewer/`: the PipelineRun `reviewer/pipelinerun.yaml`, its scripts, the prompt and `opencode.json`, all read at `tooling`'s default branch |
 | Findings | Each a thread, marked 🔴 blocking (must fix), 🟡 non-blocking (should fix) or 🔵 nit (could fix), with a severity (`low`, `medium`, `high`, `urgent`) and a likelihood (`low`, `medium`, `high`). The review approves when there are none or only nits, and requests changes otherwise |
