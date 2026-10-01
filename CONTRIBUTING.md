@@ -25,8 +25,7 @@ flowchart LR
 5. **Merge through the merge queue**. Default branches accept merge commits only, after one approval, resolved
    conversations and a green `Continuous Integration` check. Nobody pushes directly to a protected default branch.
 
-This holds for `docs` too. Direct pushes to its `main` are reserved for automation: publishing the site, and syncing
-other repositories' branch and pull-request docs into a directory per repository and branch.
+This holds for `docs` too: nothing pushes to its `main` directly.
 
 ## Linear
 
