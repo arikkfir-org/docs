@@ -32,6 +32,9 @@ flowchart LR
 | `path/page.html` | `path/page.html` (unchanged) | browsers |
 | `path/image.svg` | `path/image.svg` | pages |
 
+Since [Docs site composition](docs-site-composition.md) (ENG-49), every repository publishes its own layer, and a
+Markdown page renders at `path/page.md.html`.
+
 URLs are `https://docs.dev.kfirs.com/<path>`, behind the hub's sign-in. Agents read the repository itself.
 
 ## Decisions

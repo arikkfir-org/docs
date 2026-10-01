@@ -1,7 +1,7 @@
 apiVersion: octomaton.dev/v1
 pipelines:
-  # Validate every pull request into main and every merge queue group: the Markdown files a change adds or modifies
-  # must render, and the relative links in its Markdown and HTML files must resolve.
+  # Checks nothing: the organization pipeline docs (check Docs, from tooling) checks this repository's links and paths,
+  # and docs-publish publishes it. This reports the required Continuous Integration check.
   - name: ci
     displayName: Continuous Integration
     pipelineRun: .tekton/ci.yaml
@@ -9,21 +9,3 @@ pipelines:
       pull_request:
         branches: [main]
       merge_group: {}
-    params:
-      repo-url: "{{ .Repository.CloneURL }}"
-      revision: "{{ .Revision }}"
-      base: "{{ if .PullRequest }}{{ .PullRequest.BaseSHA }}{{ else }}{{ .MergeGroup.BaseSHA }}{{ end }}"
-
-  - name: publish
-    pipelineRun: .tekton/publish.yaml
-    on:
-      push:
-        branches: [main]
-    params:
-      repo-url: "{{ .Repository.CloneURL }}"
-      revision: "{{ .Revision }}"
-    # One publication at a time; a newer push replaces any waiting one and renders everything changed since the
-    # last successful publication, so nothing is lost.
-    concurrency:
-      group: publish
-      policy: latest

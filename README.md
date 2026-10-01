@@ -20,7 +20,7 @@ Designs:
 | 2 | [Octomaton](hub/designs/phase-2-octomaton.md) |
 | 2 | [octomaton.dev: domain, webhook and Go module](hub/designs/octomaton-dev.md) |
 | 3 | [Ingress and authentication](hub/designs/phase-3-ingress-and-auth.md) |
-| 4 | [Docs site](hub/designs/phase-4-docs-site.md), being replaced by the composition below |
+| 4 | [Docs site](hub/designs/phase-4-docs-site.md), replaced by the composition below |
 | 4 | [Docs site composition: one URL space from every repository](hub/designs/docs-site-composition.md) |
 | 5 | [Claude Code tooling](hub/designs/phase-5-tooling.md) |
 
@@ -28,7 +28,7 @@ Designs:
 
 | Format | Use for | Published as |
 | --- | --- | --- |
-| Markdown (`.md`) | Designs, runbooks, conventions | `page.html` (rendered) and `page.md` (original, for agents) |
+| Markdown (`.md`) | Designs, runbooks, conventions | `page.md.html` (rendered) and `page.md` (original, for agents) |
 | HTML (`.html`) | Rich, self-contained pages such as generated architecture views | `page.html`, unchanged |
 | Images (`.svg`, `.png`, …) | Diagrams referenced from pages | unchanged |
 
@@ -36,7 +36,7 @@ Diagrams in Markdown are Mermaid code blocks; GitHub and the site both render th
 
 ## Publishing
 
-Every change to `main` (a merged pull request, or an automated push) publishes the repository to
-`https://docs.dev.kfirs.com/<path>` (behind the hub's sign-in), so this page is at
-[README.html](https://docs.dev.kfirs.com/README.html).
-There are no menus or index pages; link to pages directly. How it works: [phase 4](hub/designs/phase-4-docs-site.md).
+Every merge to `main` publishes this repository to `https://docs.dev.kfirs.com/<path>` (behind the hub's sign-in),
+in one URL space with every other repository's `docs/`, so this page is at
+[README.md.html](https://docs.dev.kfirs.com/README.md.html). There are no menus or index pages; link to pages
+directly. How it works: [docs site composition](hub/designs/docs-site-composition.md).
