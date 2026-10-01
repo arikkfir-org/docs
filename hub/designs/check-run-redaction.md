@@ -1,9 +1,10 @@
 # Check run redaction
 
-**Decision**: Octomaton removes a run's secrets from everything it passes from the run to GitHub: failed steps' log
-tails, the `check-title` and `check-summary` results, and Tekton's failure messages. It removes every value of every
-Secret the PipelineRun references, also inside base64, and anything shaped like a well-known credential. When it can't
-read a Secret, it withholds the logs instead of posting them unredacted. Ticket:
+**Decision**: Octomaton removes a run's secrets from what it passes from the run to GitHub. From failed steps' log
+tails, the `check-title` and `check-summary` results and task failure messages, it removes every value of every Secret
+the PipelineRun references, also inside base64, and anything shaped like a well-known credential. From the run's own
+failure message it removes credential shapes only. When it can't read a Secret, it withholds the logs instead of
+posting them unredacted. Ticket:
 [ENG-47](https://linear.app/arikkfir/issue/ENG-47). Pull request:
 [octomaton#17](https://github.com/arikkfir-org/octomaton/pull/17).
 
