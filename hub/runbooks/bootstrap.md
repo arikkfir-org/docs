@@ -53,7 +53,9 @@ In `arikkfir-org` → Settings → Developer settings → GitHub Apps → New Gi
 | Where can it be installed | Only on this account |
 
 Then: generate a private key (download the `.pem`), note the App ID, and install the App on all repositories of
-`arikkfir-org`.
+`arikkfir-org`. A new App gets a new ID: if it isn't the one the [hub reference](../reference.md#octomaton) records
+(Octomaton, GitHub App), change it there and in `infra`'s `terraform/github/rulesets.tf` (`local.octomaton_app_id`),
+whose rulesets accept `Continuous Integration` only from that App, before step 10.
 
 ## 3. Descope
 
@@ -137,7 +139,8 @@ into `docs` and into `tooling` to trigger the first publish, then check
 
 ## 10. GitHub repositories and rulesets
 
-Only once `Continuous Integration` checks work, since the rulesets require them:
+Only once `Continuous Integration` checks work, since the rulesets require them from the App ID in
+`terraform/github/rulesets.tf` (step 2):
 
 ```bash
 cd infra
