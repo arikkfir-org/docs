@@ -54,7 +54,7 @@ Redaction is a safety net, not a guarantee:
 
 For a secret the run reads with its own identity (infra's GitHub tokens from Secret Manager), the shape patterns are
 the only net, and they catch GitHub tokens. The guarantee remains the pipelines' own rule: **never print a secret**.
-The [AI reviewer](pr-reviewer.md) adds its own boundary: only organization members' words reach its model.
+The [AI reviewer](pr-reviewer.md) adds its own boundary: only the words of organization members and people with write access reach its model.
 
 ## Decisions
 
