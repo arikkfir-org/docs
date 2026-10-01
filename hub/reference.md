@@ -21,7 +21,7 @@ repository's CI configuration must agree with this page. Change it here first, t
 | Repository | Purpose | Default-branch rules | Required checks |
 | --- | --- | --- | --- |
 | `.github` | The organization's welcome page on GitHub: `profile/README.md`, nothing else | PR + 1 approval + merge queue | `Continuous Integration` (none runs: merged with the admin bypass) |
-| `docs` | Knowledge base, published to `arikkfir-docs` and served at `docs.dev.kfirs.com` | PR + 1 approval + merge queue; direct pushes to `main` only from automation | `Continuous Integration` |
+| `docs` | Hub-wide knowledge base; with every repository's `docs/`, served at `docs.dev.kfirs.com` ([docs site](#docs-site)) | PR + 1 approval + merge queue | `Continuous Integration` |
 | `infra` | Terraform: GitHub, GCP, Argo CD bootstrap; [plans and applies](#terraform-applies) `gcp` and `github` | PR + 1 approval + merge queue of one | `Continuous Integration` (fmt, validate, plans) |
 | `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `Continuous Integration` |
 | `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `Continuous Integration` |
@@ -38,7 +38,7 @@ all but the last two rows:
 | Features | Discussions on; issues, wiki and projects off |
 | Merging | Merge commits, squash and rebase allowed (the ruleset narrows pull requests to merge commits); default commit message: the pull request's title and description; always suggest updating branches; auto-merge on; head branches deleted after merge |
 | Autolink | `ENG-<num>` (alphanumeric) links to `https://linear.app/arikkfir/issue/ENG-<num>` |
-| Ruleset `Default branch` | Targets the default branch. No deletion, no force-push. Pull request: one approval, stale approvals dismissed, last push approved by someone else, conversations resolved, merge commits only. Required checks: `Continuous Integration` from the Octomaton App only (`integration_id`), plus any the repository adds (`checks` in `local.repositories`), from any source. Merge queue: merge commits, at most 5 entries building, 1 to 5 pull requests per group, a 3-minute wait for the minimum, every entry passing the required checks (`ALLGREEN`), 60-minute check timeout; in `infra`, one entry building and groups of exactly one, so each merge is planned alone. Off: restricted creations and updates, linear history, deployments, signed commits, code owner and team reviews, up-to-date branches, skipping checks on creation |
+| Ruleset `Default branch` | Targets the default branch. No deletion, no force-push. Pull request: one approval, stale approvals dismissed, last push approved by someone else, conversations resolved, merge commits only. Required checks: `Continuous Integration` and `Docs` from the Octomaton App only (`integration_id`), plus any the repository adds (`checks` in `local.repositories`), from any source. Merge queue: merge commits, at most 5 entries building, 1 to 5 pull requests per group, a 3-minute wait for the minimum, every entry passing the required checks (`ALLGREEN`), 60-minute check timeout; in `infra`, one entry building and groups of exactly one, so each merge is planned alone. Off: restricted creations and updates, linear history, deployments, signed commits, code owner and team reviews, up-to-date branches, skipping checks on creation |
 | Ruleset bypass | Organization admins and repository admins, always |
 | Dependabot | Alerts and security updates on; version updates would need a `.github/dependabot.yml` in the repository |
 | Set by hand | Sponsorships on and Preserve this repository (GitHub Archive Program) off, in each repository's settings: the provider has no argument for them |
@@ -48,8 +48,7 @@ An approval by `arikkfir-reviewer`, the [pull request reviewer](#pull-request-re
 repository. `Continuous Integration` is each repository's `ci` pipeline under its `displayName`; the ruleset pins it to
 the Octomaton App's ID, so a check of that name from any other App counts for nothing. `.github` has no CI (Claude
 Code can't clone a repository whose name starts with a dot, so nothing else lives there), and an admin merges its rare
-pull requests with the bypass. In `docs`, direct pushes to `main` are reserved for automation: publishing the site and
-syncing other repositories' branch and pull-request docs into a directory per repository and branch.
+pull requests with the bypass.
 
 ## Organization
 
@@ -102,7 +101,7 @@ Tekton runs land on the `ci` pool through Tekton's default pod template (node se
 | Resource | Name | Access |
 | --- | --- | --- |
 | Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomaton/pipeline` writes |
-| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private: `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; `ci-docs/pipeline` writes |
+| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private, one layer per repository under `.layers/<repository>/` ([docs site](#docs-site)): `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; each tenant's `docs-publisher` writes its own layer, and `docs-reader` lists names |
 | Bucket | `arikkfir-claude` (`ME-WEST1`, uniform access) | public object reads (no listing); `ci-tooling/pipeline` writes |
 
 Public URLs (`arikkfir-claude` only) are `https://storage.googleapis.com/<bucket>/<path>`.
@@ -138,7 +137,8 @@ Kubernetes workloads use GKE Workload Identity Federation with direct principal 
 | `grafana/grafana` | `roles/monitoring.viewer` | project |
 | `octomaton/octomaton` | `roles/telemetry.metricsWriter`, `roles/telemetry.tracesWriter`, `roles/serviceusage.serviceUsageConsumer` | project |
 | `docs/docs` | `roles/storage.objectViewer` | bucket `arikkfir-docs` |
-| `ci-docs/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
+| `ci-<repository>/docs-publisher` | `roles/storage.objectUser` on objects under `.layers/<repository>/` (IAM condition), `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
+| `ci-<repository>/docs-reader` | `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
 | `ci-tooling/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-claude` |
 | `ci-octomaton/pipeline` | `roles/artifactregistry.writer` | repository `images` |
 | `ci-infra/ci-infra-plan` | `roles/iam.securityReviewer`, `roles/serviceusage.serviceUsageViewer`, `roles/compute.networkViewer`, `roles/container.clusterViewer`, `roles/artifactregistry.reader`, `roles/secretmanager.viewer`, `roles/dns.reader`, `roles/iam.serviceAccountViewer` | project |
@@ -192,7 +192,7 @@ Both tokens have Contents read and write because GitHub shows a repository's mer
 | `tekton-pipelines` | Pipelines, Triggers, Dashboard (via `TektonConfig`; Results, Chains, Pipelines-as-Code and the operator's NetworkPolicies off) | operator-managed | operator default |
 | `octomaton` | Octomaton | `me-west1-docker.pkg.dev/arikkfir/images/octomaton` | The short SHA of the `main` commit Argo CD deploys (`${ARGOCD_APP_REVISION_SHORT}`, see [Octomaton](#octomaton)). There are no version tags; every push to `main` publishes one, which is also the version the binary and its telemetry report |
 | `octomaton` | `go-import`: Caddy answering for `octomaton.dev` | `docker.io/library/caddy` | `2.11.4-alpine` |
-| `docs` | Docs site: Caddy serving `arikkfir-docs` (Cloud Storage FUSE mount) | `docker.io/library/caddy` | `2.11.4-alpine` |
+| `docs` | Docs site: Caddy overlaying the layers of `arikkfir-docs` (Cloud Storage FUSE mount) and rendering Markdown ([docs site](#docs-site)) | `docker.io/library/caddy` | `2.11.4-alpine` |
 | `ci-<repo>` | CI tenants (one per repository) | `delivery` | n/a |
 
 NATS clients, NACK included, connect to `nats://nats.nats.svc.cluster.local:4222`. JetStream streams may keep up to
@@ -286,7 +286,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 | Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz` (all on 8080) |
 | Telemetry | On GKE: JSON logs on stdout to Cloud Logging; metrics to Cloud Monitoring and traces to Cloud Trace through the Telemetry API (`telemetry.googleapis.com`), as `octomaton/octomaton`. Elsewhere: text logs, nothing exported |
 | Check links | `https://tekton.dev.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
-| Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccount `pipeline` and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer). `ci-infra` also has ServiceAccounts `ci-infra-plan` and `ci-infra-apply` (annotated `octomaton.dev/branches: main`) |
+| Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccounts `pipeline`, `docs-reader` and `docs-publisher` (annotated `octomaton.dev/branches: main`, see [docs site](#docs-site)) and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer). `ci-infra` also has ServiceAccounts `ci-infra-plan` and `ci-infra-apply` (annotated `octomaton.dev/branches: main`) |
 | Tenant permissions | `octomaton-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete); ServiceAccounts (get) |
 
 ### Server configuration
@@ -491,3 +491,19 @@ Every `ci-<repository>` namespace has the reviewer's objects (the `ci-tenants` b
 
 Sandboxed pods resolve names through public resolvers (`dnsPolicy: None`, nameservers `8.8.8.8` and `1.1.1.1`),
 because cluster DNS is inside the denied ranges.
+
+## Docs site
+
+One URL space at `https://docs.dev.kfirs.com`, composed from every repository ([design](designs/docs-site-composition.md)).
+
+| Item | Value |
+| --- | --- |
+| Sources | `docs`: its whole tree. Every other repository: its `docs/` directory, at the site root. Hidden paths are never published; a source named `*.md.html` is refused |
+| Layers | `gs://arikkfir-docs/.layers/<repository>/`, mirrored from the repository's `main` on every push |
+| URLs | `X.md`: the Markdown (`text/markdown; charset=utf-8`). `X.md.html`: rendered on request. Other files: as they are. A missing `X.html` redirects to `X.md.html`. Hidden paths and directories: 404 |
+| Overlay order | `docs`, then every other repository alphabetically; Caddy serves a path from the first layer that has it |
+| Collisions | A file path belongs to the first repository that publishes it. The `Docs` check fails a change that publishes a path another layer has; after a race, both repositories' checks fail until one renames |
+| Check | Organization pipeline `docs`, check `Docs`, on pull requests and merge groups, as `docs-reader`: no `*.md.html` sources, relative links resolve against the composed site, no collisions |
+| Publish | Organization pipeline `docs-publish`, on pushes to `main`, as `docs-publisher`: mirror the layer, then the same checks |
+| Definitions | `tooling`: `.octomaton.yaml` (`organization.pipelines`) and `docs-site/` |
+| Serving | `delivery`, `platform/docs`: the Caddyfile and page template; its layer list is the overlay order |
