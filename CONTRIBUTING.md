@@ -158,9 +158,12 @@ The [pull request reviewer](hub/designs/pr-reviewer.md) applies both.
 
 ## Releases
 
-- Deployable applications are versioned with [SemVer](https://semver.org) tags `vX.Y.Z` on the default branch.
-- Release notes come from the merge commits since the previous tag, grouped by type.
-- Deploying a release is a pull request to `arikkfir-org/delivery` that bumps the pinned version.
+- Every push to an application's default branch releases it: the push publishes the application's image, tagged with
+  the commit's short SHA, which is also the version the application reports. There are no version tags.
+- A release's notes are its merge commit: the pull request's title and description.
+- Deploying a release is a pull request to `arikkfir-org/delivery` that bumps the pinned image tag. Octomaton is the
+  exception: Argo CD deploys its `main` with the image of the commit it syncs (see
+  [Octomaton](hub/reference.md#octomaton)).
 
 ## Coding agents
 
