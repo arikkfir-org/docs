@@ -7,7 +7,7 @@ live in each repository's `CLAUDE.md` and `README.md`; where they conflict with 
 
 ```mermaid
 flowchart LR
-  L[Linear issue<br/>DEV-123] --> B[Branch<br/>dev-123-short-slug]
+  L[Linear issue<br/>ENG-123] --> B[Branch<br/>eng-123-short-slug]
   B --> D[Design doc<br/>in docs, if meaningful]
   B --> P[Pull request<br/>Conventional title]
   P --> C[Octomaton ci check]
@@ -32,14 +32,14 @@ other repositories' branch and pull-request docs into a directory per repository
 
 | Team | Key | Scope |
 | --- | --- | --- |
-| Engineering | `DEV` | Code, infrastructure, CI |
+| Engineering | `ENG` | Code, infrastructure, CI |
 | Product | `PRD` | Product decisions and requirements |
 
-- Reference issues by key: `DEV-123`.
-- Branch names come from Linear ("copy git branch name"): `dev-123-short-slug`. The key in the branch name links the
+- Reference issues by key: `ENG-123`. In every repository, GitHub links `ENG-` keys to the issue in Linear.
+- Branch names come from Linear ("copy git branch name"): `eng-123-short-slug`. The key in the branch name links the
   pull request to the issue.
-- Put a magic word in the pull request description: `Closes DEV-123` (or `Fixes`, `Resolves`) moves the issue to done
-  when the pull request merges; `Part of DEV-123` or `Refs DEV-123` links without closing.
+- Put a magic word in the pull request description: `Closes ENG-123` (or `Fixes`, `Resolves`) moves the issue to done
+  when the pull request merges; `Part of ENG-123` or `Refs ENG-123` links without closing.
 - One pull request per issue where practical. Split large issues into sub-issues rather than sending one huge
   pull request.
 - Do not put issue keys in commit subjects or pull request titles; the description carries them into the squash
@@ -62,7 +62,7 @@ other repositories' branch and pull-request docs into a directory per repository
 - **summary**: imperative mood ("add", not "added"), lower case, no trailing period, at most 72 characters.
 - **body**: why the change is needed and what it does at a high level; not a list of files.
 - **breaking changes**: `!` after the type/scope and a `BREAKING CHANGE: …` footer explaining the migration.
-- **footers**: `Closes DEV-123`, `Co-authored-by: Name <email>` (also for AI pairing).
+- **footers**: `Closes ENG-123`, `Co-authored-by: Name <email>` (also for AI pairing).
 - Commits on a branch may be small and informal, since the squash commit is what lands on the default branch, but
   each should still build.
 
@@ -89,7 +89,7 @@ Link to the design doc in arikkfir-org/docs (for meaningful work).
 ## Risks and rollout
 What could break, how to roll back, manual steps (secrets, DNS, Terraform applies).
 
-Closes DEV-123
+Closes ENG-123
 ```
 
 - Keep pull requests small and focused; one concern per pull request.

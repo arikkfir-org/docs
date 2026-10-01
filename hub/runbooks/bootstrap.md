@@ -142,8 +142,11 @@ Only once `Continuous Integration` checks work, since the rulesets require them:
 ```bash
 cd infra
 terraform -chdir=terraform/github init
-terraform -chdir=terraform/github apply -var octomaton_app_id=<app id>
+terraform -chdir=terraform/github apply
 ```
+
+Then, in each repository's Settings → General → Features, turn Sponsorships on and Preserve this repository off:
+the provider can't set them.
 
 ## 11. Claude Code environment
 
