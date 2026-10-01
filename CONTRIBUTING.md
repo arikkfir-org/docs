@@ -12,7 +12,7 @@ flowchart LR
   B --> P[Pull request<br/>Conventional title]
   P --> C[Octomaton ci check]
   P --> R[1 approval]
-  C --> Q[Merge queue<br/>squash]
+  C --> Q[Merge queue<br/>merge commit]
   R --> Q
   Q --> M[main]
 ```
@@ -42,7 +42,7 @@ other repositories' branch and pull-request docs into a directory per repository
   when the pull request merges; `Part of ENG-123` or `Refs ENG-123` links without closing.
 - One pull request per issue where practical. Split large issues into sub-issues rather than sending one huge
   pull request.
-- Do not put issue keys in commit subjects or pull request titles; the description carries them into the squash
+- Do not put issue keys in commit subjects or pull request titles; the description carries them into the merge
   commit.
 
 ## Commit messages
@@ -63,15 +63,15 @@ other repositories' branch and pull-request docs into a directory per repository
 - **body**: why the change is needed and what it does at a high level; not a list of files.
 - **breaking changes**: `!` after the type/scope and a `BREAKING CHANGE: …` footer explaining the migration.
 - **footers**: `Closes ENG-123`, `Co-authored-by: Name <email>` (also for AI pairing).
-- Commits on a branch may be small and informal, since the squash commit is what lands on the default branch, but
-  each should still build.
+- Commits on a branch may be small, but they land on the default branch as they are, next to the merge commit, so
+  each follows these rules and builds.
 
 ## Pull requests
 
-**Title**: the squash commit's subject, so it follows the commit rules above, e.g.
+**Title**: the merge commit's subject, so it follows the commit rules above, e.g.
 `feat(octomaton): report skipped pipelines as skipped checks`.
 
-**Description**: the squash commit's body. Use this structure:
+**Description**: the merge commit's body. Use this structure:
 
 ```markdown
 ## Summary
@@ -158,9 +158,12 @@ The [pull request reviewer](hub/designs/pr-reviewer.md) applies both.
 
 ## Releases
 
-- Deployable applications are versioned with [SemVer](https://semver.org) tags `vX.Y.Z` on the default branch.
-- Release notes come from the squash commits since the previous tag, grouped by type.
-- Deploying a release is a pull request to `arikkfir-org/delivery` that bumps the pinned version.
+- Every push to an application's default branch releases it: the push publishes the application's image, tagged with
+  the commit's short SHA, which is also the version the application reports. There are no version tags.
+- A release's notes are its merge commit: the pull request's title and description.
+- Deploying a release is a pull request to `arikkfir-org/delivery` that bumps the pinned image tag. Octomaton is the
+  exception: Argo CD deploys its `main` with the image of the commit it syncs (see
+  [Octomaton](hub/reference.md#octomaton)).
 
 ## Coding agents
 

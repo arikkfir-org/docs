@@ -221,14 +221,14 @@ single sign-in. Facts and names: <a href="reference.html">reference</a>. Bring-u
     <h3>Change code</h3>
     <ol class="steps">
       <li>Linear issue</li><li>branch</li><li>pull request</li><li>Octomaton runs <code>ci</code></li>
-      <li>1 approval</li><li>merge queue runs <code>ci</code> again</li><li>squash into main</li>
+      <li>1 approval</li><li>merge queue runs <code>ci</code> again</li><li>merge commit into main</li>
     </ol>
   </section>
   <section class="flow">
     <h3>Release and deploy</h3>
     <ol class="steps">
-      <li>tag <code>vX.Y.Z</code></li><li>Octomaton <code>release</code></li><li>image in Artifact Registry</li>
-      <li>pull request to delivery</li><li>Argo CD syncs</li>
+      <li>merge to <code>main</code></li><li>Octomaton <code>release</code></li><li>image tagged with the short SHA</li>
+      <li>pull request to delivery (none for Octomaton, which follows <code>main</code>)</li><li>Argo CD syncs</li>
     </ol>
   </section>
   <section class="flow">
