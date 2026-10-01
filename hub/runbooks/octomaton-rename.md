@@ -5,6 +5,10 @@ labels and configuration API group ([design](../designs/octomaton-dev.md)). Each
 every change as a pull request; you merge, apply, and handle the GitHub App, secret values and the registrar. Once
 step 2 lands, the [reference](../reference.md) and the [bootstrap runbook](bootstrap.md) describe the new names.
 
+This migration is complete, and this page is its record. One thing has changed since: `terraform/github` no longer
+has the `octomaton_app_id` variable. The App ID is a constant, `local.octomaton_app_id` in `rulesets.tf`, so the
+`terraform/github` commands below pass no `-var`; at the time they passed `-var octomaton_app_id=<app id>`.
+
 ## What changes
 
 | | Before | After |
@@ -62,7 +66,7 @@ run until step 7. Then:
 
 ```bash
 cd infra && git pull
-terraform -chdir=terraform/github plan -var octomaton_app_id=<app id>
+terraform -chdir=terraform/github plan
 ```
 
 The plan must show only this: `github_repository.this` and `github_repository_ruleset.default-branch` moved from
@@ -71,7 +75,7 @@ The plan must show only this: `github_repository.this` and `github_repository_ru
 repositories. Nothing is destroyed. Apply it, then point your own clone at the new name:
 
 ```bash
-terraform -chdir=terraform/github apply -var octomaton_app_id=<app id>
+terraform -chdir=terraform/github apply
 git -C <your octomatron clone> remote set-url origin https://github.com/arikkfir-org/octomaton.git
 ```
 
