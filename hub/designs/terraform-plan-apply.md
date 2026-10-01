@@ -63,8 +63,12 @@ to a federated principal.
 
 | Secret Manager secret | Token (fine-grained, resource owner `arikkfir-org`, all repositories) | Read by |
 | --- | --- | --- |
-| `infra-plan-github-pat` | Repository Administration and Metadata: read; organization Administration and Members: read | `ci-infra-plan` |
-| `infra-apply-github-pat` | Repository Administration: read and write, Metadata: read; organization Administration and Members: read and write | `ci-infra-apply` (through `roles/secretmanager.admin`) |
+| `infra-plan-github-pat` | Repository Administration and Metadata: read, Contents: read and write; organization Administration and Members: read | `ci-infra-plan` |
+| `infra-apply-github-pat` | Repository Administration and Contents: read and write, Metadata: read; organization Administration and Members: read and write | `ci-infra-apply` (through `roles/secretmanager.admin`) |
+
+Both have Contents read and write because GitHub shows a repository's merge settings (merge methods, auto-merge,
+branch updates and deletion, commit titles and messages) only to tokens that have it. Without it, the provider reads
+them as unset, so every plan shows every repository changed, and an apply stores the wrong values.
 
 A step reads its token with `gcloud secrets versions access` into a volume only that task's steps share. No Kubernetes
 Secret holds it: Octomaton never lets a `push` pipeline mount one. The owner creates both tokens, adds them with
@@ -89,16 +93,20 @@ Secret holds it: Octomaton never lets a `push` pipeline mount one. The owner cre
 | Decision | Why | Rejected |
 | --- | --- | --- |
 | The branch restriction lives on the ServiceAccount, in `delivery` | Only Octomaton knows a run's branch, and a pull request to `infra` can't change `delivery` | A list in `.octomaton.yaml` (a pull request edits it); a branch condition on the principal (GKE identities carry none); a namespace for runs from `main` (Octomaton gives a repository one namespace); roles on the shared `pipeline` ServiceAccount (any pull request could apply) |
-| Two identities, plan and apply | Pull requests still get plans, with read access only | Plans only after merging |
+| Two identities, plan and apply | Pull requests still get plans, which can't change GCP or any GitHub setting | Plans only after merging |
 | Predefined roles | `roles/owner` can't be granted to a federated principal | `roles/owner` |
 | Tokens read from Secret Manager at run time | Octomaton refuses Secrets in `push` pipelines | Kubernetes Secrets, which would need that rule relaxed |
 | A plan that deletes or replaces anything stops the apply | Nothing is destroyed without the owner reading the plan | Applying every plan |
 | Merge queue of one, sharing a concurrency group with `apply` | The plan of each merge is the plan that is applied | Groups of up to five |
+| Contents read and write on both tokens | GitHub shows merge settings only to such tokens, and pull request plans still refresh, so they show drift | A plan token without it and `-refresh=false` for `github` in `ci` (no drift in pull request plans); `ignore_changes` on the merge settings (Terraform would set them only at creation) |
 
 ## Security and failure modes
 
 - A pull request can run any code as `ci-infra-plan`: it can read the project's configuration and IAM policies,
-  Terraform's state and what the read-only token can see. It can change nothing.
+  Terraform's state and the plan token. It can't change GCP or any GitHub setting, but the token's Contents write lets
+  it push branches and tags and manage releases in every repository. The `Default branch` ruleset keeps it off
+  default branches. Only `infra`'s own branches get pull request runs (Octomaton ignores forks), but Dependabot's are
+  among them, so a compromised provider version that a pull request installs could use the token too.
 - Only a merge to `main` runs as `ci-infra-apply`. Its roles include `roles/iam.securityAdmin`, so it could grant
   itself more: the review and the merge are the gate.
 - Octomaton is the only workload that creates pods in `ci-infra` (RoleBinding `octomaton`), so it is the only path to
