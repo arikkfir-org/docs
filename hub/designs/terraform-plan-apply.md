@@ -1,9 +1,10 @@
 # Terraform plan on pull requests, apply on merge
 
 **Decision**: `infra` plans `gcp` and `github` on every pull request and in the merge queue, and applies them when a
-change merges to `main`. Two Kubernetes ServiceAccounts in `ci-infra` hold the GCP roles: `ci-infra-plan` (read only)
-and `ci-infra-apply`. `ci-infra-apply` carries the annotation `octomaton.dev/branches: main`, and Octomaton refuses any
-run that names it unless the run's branch is `main`. Names and wiring: [reference](../reference.md#terraform-applies).
+change merges to `main`. Two Kubernetes ServiceAccounts in `ci-infra` hold the GCP roles: `ci-infra-plan` (read-only
+roles) and `ci-infra-apply`. `ci-infra-apply` carries the annotation `octomaton.dev/branches: main`, and Octomaton
+refuses any run that names it unless the run's branch is `main`. Names and wiring:
+[reference](../reference.md#terraform-applies).
 
 ## Context
 
@@ -17,7 +18,7 @@ run that names it unless the run's branch is `main`. Names and wiring: [referenc
 
 ```mermaid
 flowchart LR
-  PR[Pull request] -->|ci: fmt, validate, plan| PL[ci-infra-plan<br/>read only]
+  PR[Pull request] -->|ci: fmt, validate, plan| PL[ci-infra-plan<br/>read-only GCP roles]
   PR -->|merge queue, one at a time| MQ[ci: plan]
   MQ --> PL
   MQ --> M[main]
