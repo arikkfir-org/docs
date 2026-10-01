@@ -12,7 +12,7 @@ flowchart TB
     subgraph vpc[VPC hub: subnet 10.10.0.0/20, pods 10.20.0.0/16, services 10.30.0.0/20]
       subgraph gke[GKE hub: zonal me-west1-a, private nodes, Dataplane V2]
         SYS[pool system<br/>e2-standard-4, 1-3]
-        CI[pool ci<br/>e2-standard-4 Spot, 0-4<br/>tainted for Tekton]
+        CI[pool ci<br/>e2-standard-4 on-demand, 0-4<br/>tainted for Tekton]
       end
       NAT[Cloud NAT] 
     end
@@ -112,7 +112,7 @@ flowchart LR
 | Zonal cluster (`me-west1-a`) | The GKE free tier covers one zonal cluster's management fee; a personal hub doesn't need a regional control plane | Regional cluster (about $73/month more); switch `zone` to the region to change |
 | Private nodes, no external control-plane IP, DNS endpoint | No public node IPs; control plane reachable only with Google IAM credentials, from anywhere | Authorized networks (static IP allowlists), bastion hosts |
 | Direct Workload Identity principals, no Google service accounts | Fewer identities and keys; IAM binds straight to `namespace/serviceaccount` | One GSA per workload with impersonation |
-| Spot `ci` pool scaling from zero | CI is bursty and retryable; pay only while pipelines run | Running CI on the system pool |
+| Spot `ci` pool scaling from zero (reversed by arikkfir-org/infra#20: the pool runs on-demand, see the [reference](../reference.md#gke)) | CI is bursty and retryable; pay only while pipelines run | Running CI on the system pool |
 | Three clustered NATS servers, a 50Gi JetStream volume each, spread across nodes only when possible | Streams can keep three replicas and survive a server restart; a soft spread doesn't grow the system pool just for NATS | A single server (no replication; a restart stops messaging); a hard spread (forces three system nodes) |
 | Self-managed Gateway API CRDs, GKE Gateway disabled | Traefik implements the Gateway API; GKE's controller is not used | GKE Gateway controller (unreliable for this use) |
 | Three Terraform roots | Kubernetes providers can't be configured from a cluster created in the same apply; GitHub rules must come last | One root with `-target` applies |

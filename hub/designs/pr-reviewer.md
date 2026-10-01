@@ -298,7 +298,8 @@ fixed, and the approval stands. The body holds the summary and one line of count
   branch.
 - DeepSeek unreachable, a timeout or a second invalid `findings.json` fails `review` and the check, and no review is
   posted. Re-run the check, or re-request the review.
-- Spot preemption: `setup` and `report` retry twice (both can be repeated), `review` once.
+- A lost node (a Spot preemption until arikkfir-org/infra#20): `setup` and `report` retry twice (both can be
+  repeated), `review` once.
 - A new request for the same pull request supersedes the running review (Octomaton's default for pull requests).
 
 ## Rollout
