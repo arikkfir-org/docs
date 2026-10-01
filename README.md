@@ -20,7 +20,8 @@ Designs:
 | 2 | [Octomaton](hub/designs/phase-2-octomaton.md) |
 | 2 | [octomaton.dev: domain, webhook and Go module](hub/designs/octomaton-dev.md) |
 | 3 | [Ingress and authentication](hub/designs/phase-3-ingress-and-auth.md) |
-| 4 | [Docs site](hub/designs/phase-4-docs-site.md) |
+| 4 | [Docs site](hub/designs/phase-4-docs-site.md), being replaced by the composition below |
+| 4 | [Docs site composition: one URL space from every repository](hub/designs/docs-site-composition.md) |
 | 5 | [Claude Code tooling](hub/designs/phase-5-tooling.md) |
 
 ## Formats
