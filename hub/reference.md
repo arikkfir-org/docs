@@ -64,7 +64,7 @@ From arikkfir-org/infra#19 on, `terraform/github` also manages the `arikkfir-org
 | Base permission | Read |
 | Repository creation by members | Off (public, private and internal): `terraform/github` creates repositories |
 | Pages sites by members | Off |
-| Forking private and internal repositories | Off |
+| Forking private and internal repositories | Off: `members_can_fork_private_repositories`, which GitHub applies to internal repositories too (it refused `fin`'s `allow_forking` with "This organization does not allow private repository forking"). Each repository's `allow_forking` is public-only as well (see Repositories) |
 | Web commit sign-off | Not required |
 | Set by hand | The rest of the profile: links, company, location, public email |
 | Left as they are | Security defaults for new repositories: GitHub replaced them with code security configurations, and `terraform/github` turns on Dependabot alerts and security updates per repository |
