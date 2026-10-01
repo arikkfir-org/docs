@@ -111,6 +111,7 @@ pipeline or render scripts of its own, and nothing pushes to its `main` directly
 | Organization pipelines in `tooling` | Every repository gets them without configuration, and none can change them | A copy in each repository's `.octomaton.yaml` |
 | Pull request checks list names as `docs-reader` | Collisions and cross-repository links need the other layers, including internal repositories' | GitHub's API: Octomaton's token covers only the run's own repository |
 | Only default branches publish | The site documents what is merged | Branch previews: not needed now |
+| `docs-publish` mirrors first, then checks | What is merged is published. A problem found only after merging, such as a race collision or a link another repository broke, shows on `main` without holding back the rest of the layer | Checking first: one problem would freeze the whole layer |
 
 ## Security
 
@@ -130,7 +131,8 @@ pipeline or render scripts of its own, and nothing pushes to its `main` directly
 
 | Failure | Effect |
 | --- | --- |
-| `docs-publish` fails | The layer keeps its last published state; the check on `main` shows the error |
+| `docs-publish` can't mirror | The layer stays as it was, or partly updated; the run on `main` shows the error, and a re-run or the next push mirrors it again |
+| `docs-publish`'s checks fail | The layer is already published; the run on `main` shows the problem until a fix merges |
 | A race collision | Both repositories' `Docs` checks fail until one renames; the site serves the first in overlay order |
 | A repository is missing from Caddy's layer list | Its layer isn't served; add it to the list when adding the repository |
 | A page can't render | That page answers 500; the raw `X.md` still works |
