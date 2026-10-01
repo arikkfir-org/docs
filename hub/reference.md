@@ -123,7 +123,7 @@ holds them.
 | `grafana-postgres-admin-password` | Password of the superuser `postgres` on Grafana's PostgreSQL, which people sign in with | `grafana/postgres-admin` key `password` |
 | `reviewer-deepseek-api-key` | DeepSeek API key | `ci-*/reviewer-deepseek-api-key` key `api-key` (the [reviewer](#pull-request-reviewer)'s `review` task) |
 | `reviewer-github-pat` | `arikkfir-reviewer`'s fine-grained personal access token | `ci-*/reviewer-github-pat` key `token` (the [reviewer](#pull-request-reviewer)'s `report` task) |
-| `infra-plan-github-pat` | Fine-grained personal access token, read only (see [Terraform applies](#terraform-applies)) | `ci-infra/ci-infra-plan`, read at run time by `infra`'s `ci` pipeline |
+| `infra-plan-github-pat` | Fine-grained personal access token that reads the organization's repositories and settings and writes contents (see [Terraform applies](#terraform-applies)) | `ci-infra/ci-infra-plan`, read at run time by `infra`'s `ci` pipeline |
 | `infra-apply-github-pat` | Fine-grained personal access token that administers the organization's repositories and settings (see [Terraform applies](#terraform-applies)) | `ci-infra/ci-infra-apply`, read at run time by `infra`'s `apply` pipeline |
 
 ## GCP identities and permissions
@@ -164,10 +164,12 @@ to GKE and are not managed here.
 | Merge to `main` | Pipeline `apply` (`Apply`) as `ci-infra/ci-infra-apply`: plans `gcp` and `github`; stops if either plan deletes or replaces anything; otherwise applies both, `gcp` first |
 | Concurrency | The merge queue's `ci` runs and `apply` share the group `terraform` (policy `queue`) |
 | By hand (`make terraform <root>`) | `argocd` (bootstrap only), applies the pipeline stopped, and the first apply of new roles or tokens |
-| `infra-plan-github-pat` | Fine-grained, resource owner `arikkfir-org`, all repositories: repository Administration and Metadata read; organization Administration and Members read |
-| `infra-apply-github-pat` | Fine-grained, resource owner `arikkfir-org`, all repositories: repository Administration read and write, Metadata read; organization Administration and Members read and write |
+| `infra-plan-github-pat` | Fine-grained, resource owner `arikkfir-org`, all repositories: repository Administration and Metadata read, Contents read and write; organization Administration and Members read |
+| `infra-apply-github-pat` | Fine-grained, resource owner `arikkfir-org`, all repositories: repository Administration and Contents read and write, Metadata read; organization Administration and Members read and write |
 
-The owner creates both tokens, adds them with `gcloud secrets versions add` and renews them within a year.
+Both tokens have Contents read and write because GitHub shows a repository's merge settings only to tokens with it
+([design](designs/terraform-plan-apply.md#github-tokens)). The owner creates both tokens, adds them with
+`gcloud secrets versions add` and renews them within a year.
 
 ## Kubernetes platform
 
