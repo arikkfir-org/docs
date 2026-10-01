@@ -36,9 +36,9 @@ flowchart LR
 
 Octomaton refuses a run whose PipelineRun names an annotated ServiceAccount from any other branch
 ([ServiceAccount branches](../reference.md#serviceaccount-branches)). A pull request can't change the annotation, which
-lives in `delivery`. `tooling` runs one PipelineRun file for both `ci` and `publish`, and a file can name only one
-ServiceAccount, so it splits into `.tekton/ci.yaml` (build and verify) and `.tekton/publish.yaml` (build, verify and
-upload).
+lives in `delivery`. `tooling` runs one PipelineRun file for both `ci` and `publish`, and Octomaton checks every
+ServiceAccount a file names, so `ci-tooling-publish` must not appear in any file a pull request runs. The file splits
+into `.tekton/ci.yaml` (build and verify) and `.tekton/publish.yaml` (build, verify and upload).
 
 Until ENG-49 moves the docs site's publishing to its own ServiceAccount, `ci-docs/pipeline` keeps its roles on
 `arikkfir-docs`. The site is private and the least exposed of the three.

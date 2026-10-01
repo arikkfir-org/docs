@@ -90,14 +90,14 @@ flowchart LR
   SB[octomaton/octomaton] -- creates PipelineRuns, token Secrets --> NS1[ci-docs]
   SB --> NS2[ci-octomaton]
   SB --> NS3[ci-...]
-  NS1 -- KSA pipeline --> B1[(arikkfir-docs: object user)]
-  NS2 -- KSA pipeline --> B2[(Artifact Registry images: writer)]
+  NS2 -- KSA ci-octomaton-release, main only --> B2[(Artifact Registry images: writer)]
 ```
 
 - Each repository runs in its own namespace, `ci-<repository>`, created in `delivery` (onboarding a repository is a
   small change there, plus IAM in `infra` if it needs cloud access).
-- Runs use the namespace's `pipeline` service account. GCP permissions attach to that identity through Workload
-  Identity, so one repository's pipelines can never use another's permissions.
+- Runs use the namespace's `pipeline` service account unless they name another. GCP permissions attach only to
+  ServiceAccounts a pipeline names, never to `pipeline`, through Workload Identity, so one repository's pipelines can
+  never use another's permissions ([CI ServiceAccounts](ci-service-accounts.md)).
 - Octomaton's own identity can create `PipelineRun`s and token Secrets only in tenant namespaces
   (`ClusterRole octomaton-tenant`, bound per namespace), and watch runs cluster-wide.
 - Tekton's default pod template schedules runs onto the `ci` node pool.
@@ -163,8 +163,9 @@ flowchart LR
   event from a repository that is a fork are ignored, without a check run or a reply.
 - Installation tokens are minted per run with least permissions (contents read), expire within an hour and are
   garbage-collected with the run.
-- Pull requests can change their own pipeline files, so they can use their namespace's permissions; that is why
-  namespaces, not pipelines, are the isolation boundary.
+- Pull requests can change their own pipeline files, so they can name any ServiceAccount in their namespace. Namespaces
+  separate repositories, and within a namespace a ServiceAccount annotated `octomaton.dev/branches` is refused to every
+  other branch ([CI ServiceAccounts](ci-service-accounts.md)).
 
 ## Rollout
 
