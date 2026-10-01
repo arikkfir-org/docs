@@ -1,6 +1,4 @@
-# Validates a pull request or merge queue group against its base (see .ci/): the Markdown files it adds or modifies
-# must render with the site's template and filter, and the relative links in its Markdown and HTML files must resolve.
-# Triggered by Octomaton; see .octomaton.yaml.
+# Checks nothing (see .octomaton.yaml). Triggered by Octomaton.
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
@@ -9,80 +7,22 @@ spec:
   timeouts:
     pipeline: 10m
   taskRunTemplate:
-    # Validation needs no Google Cloud access; the pipeline account, which can write the bucket, is for publishing.
     serviceAccountName: default
-  # Reserved once for all of the task's steps (step-level requests would add up as if the steps ran at once).
   taskRunSpecs:
-    - pipelineTaskName: validate
+    - pipelineTaskName: ci
       computeResources:
         requests:
-          cpu: 500m
-          memory: 512Mi
+          cpu: 100m
+          memory: 64Mi
         limits:
-          memory: 1Gi
-  workspaces:
-    - name: work
-      emptyDir: {}
+          memory: 128Mi
   pipelineSpec:
-    params:
-      - name: repo-url
-        type: string
-      - name: revision
-        type: string
-        description: Commit to validate.
-      - name: base
-        type: string
-        description: Commit the change is compared with; only the files it adds or modifies are validated.
-    workspaces:
-      - name: work
     tasks:
-      - name: validate
-        workspaces:
-          - name: work
-            workspace: work
-        params:
-          - name: repo-url
-            value: $(params.repo-url)
-          - name: revision
-            value: $(params.revision)
-          - name: base
-            value: $(params.base)
+      - name: ci
         taskSpec:
-          params:
-            - name: repo-url
-              type: string
-            - name: revision
-              type: string
-            - name: base
-              type: string
-          workspaces:
-            - name: work
-          stepTemplate:
-            workingDir: $(workspaces.work.path)
-            env:
-              - name: REPO_URL
-                value: $(params.repo-url)
-              - name: REVISION
-                value: $(params.revision)
-              - name: BASE
-                value: $(params.base)
           steps:
-            - name: checkout
+            - name: ci
               image: alpine/git:v2.54.0
               script: |
                 #!/bin/sh
-                set -eu
-                git clone --quiet --filter=blob:none --no-checkout "$REPO_URL" repo
-                cd repo
-                git checkout --quiet "$REVISION"
-                git cat-file -e "${BASE}^{commit}" 2> /dev/null || git fetch --quiet --filter=blob:none origin "$BASE"
-                sh .ci/changed.sh "$BASE" "$REVISION" > ../changed.txt
-                echo "Files to validate: $(wc -l < ../changed.txt)"
-                cat ../changed.txt
-            - name: validate
-              image: pandoc/core:3.11.0
-              workingDir: $(workspaces.work.path)/repo
-              script: |
-                #!/bin/sh
-                set -eu
-                sh .ci/validate.sh ../changed.txt
+                echo "Nothing to check here: the Docs check covers this repository."

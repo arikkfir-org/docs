@@ -16,21 +16,23 @@ flowchart LR
     HTML[HTML<br/>rich visuals]
     IMG[Images]
   end
-  H -- push to main --> repo
-  A -- push to main --> repo
+  H -- pull request --> repo
+  A -- pull request --> repo
   repo -- push event --> SB[Octomaton]
-  SB --> TK[Tekton: render changed Markdown,<br/>rsync to bucket]
+  SB --> TK[Tekton: docs-publish,<br/>mirror the docs layer]
   TK --> GCS[(gs://arikkfir-docs<br/>private)]
-  GCS -- Cloud Storage FUSE --> WEB[docs.dev.kfirs.com<br/>Caddy, behind sign-in]
-  WEB -- page.html, page.md --> B[Browsers]
+  GCS -- Cloud Storage FUSE --> WEB[docs.dev.kfirs.com<br/>Caddy renders on request,<br/>behind sign-in]
+  WEB -- page.md.html, page.md --> B[Browsers]
   repo -- page.md on GitHub --> AG[Agents]
 ```
 
-| Source in Git | Served as | Consumer |
-| --- | --- | --- |
-| `path/page.md` | `path/page.html` (rendered) and `path/page.md` (original) | browsers |
-| `path/page.html` | `path/page.html` (unchanged) | browsers |
-| `path/image.svg` | `path/image.svg` | pages |
+| Source in Git    | Served as                                                    | Consumer |
+|------------------|--------------------------------------------------------------|----------|
+| `path/page.md`   | `path/page.md.html` (rendered) and `path/page.md` (original) | browsers |
+| `path/page.html` | `path/page.html` (unchanged)                                 | browsers |
+| `path/image.svg` | `path/image.svg`                                             | pages    |
+
+Every other repository's `docs/` joins this tree in the same URL space, each published to its own layer ([Docs site composition](docs-site-composition.md), ENG-49).
 
 URLs are `https://docs.dev.kfirs.com/<path>`, behind the hub's sign-in. Agents read the repository itself.
 
@@ -38,7 +40,7 @@ URLs are `https://docs.dev.kfirs.com/<path>`, behind the hub's sign-in. Agents r
 
 | Decision | Why | Rejected |
 | --- | --- | --- |
-| Pull requests, as in every other repository, with a `Continuous Integration` check | Pages are reviewed with the changes they accompany, and broken pages or links never reach the site | Direct pushes to `main` (no review, no validation) |
+| Pull requests, as in every other repository, with the required `Docs` check | Pages are reviewed with the changes they accompany, and broken links never reach the site | Direct pushes to `main` (no review, no validation) |
 | Markdown + Mermaid by default | Diffable, renders on GitHub and on the site, agents read it natively | Wiki (not in Git), Google Docs (not agent-friendly) |
 | HTML allowed as-is | AI-generated architecture pages are often richer than Markdown | Forcing everything through Markdown |
 | Serve the Markdown source next to the HTML | The source is one click from its page | HTML only |

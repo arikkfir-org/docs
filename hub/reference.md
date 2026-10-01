@@ -101,7 +101,7 @@ Tekton runs land on the `ci` pool through Tekton's default pod template (node se
 | Resource | Name | Access |
 | --- | --- | --- |
 | Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomaton/ci-octomaton-release` writes |
-| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private, one layer per repository under `.layers/<repository>/` ([docs site](#docs-site)): `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; each tenant's `docs-publisher` writes its own layer, and `docs-reader` lists names. Until ENG-49's last step, `ci-docs/pipeline` writes the old site at the root |
+| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private, one layer per repository under `.layers/<repository>/` ([docs site](#docs-site)): `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; each tenant's `docs-publisher` writes its own layer, and `docs-reader` lists names. Until ENG-49's last step, the bucket root still holds the old site, which nothing writes any more, and Caddy serves it as a fallback |
 | Bucket | `arikkfir-claude` (`ME-WEST1`, uniform access) | public object reads (no listing); `ci-tooling/ci-tooling-publish` writes |
 
 Public URLs (`arikkfir-claude` only) are `https://storage.googleapis.com/<bucket>/<path>`.
