@@ -52,9 +52,11 @@ Google service accounts.
 | `ci-infra-plan` | none | `roles/iam.securityReviewer`, `roles/serviceusage.serviceUsageViewer`, `roles/compute.networkViewer`, `roles/container.clusterViewer`, `roles/artifactregistry.reader`, `roles/secretmanager.viewer`, `roles/dns.reader`, `roles/iam.serviceAccountViewer` (project); `roles/storage.legacyBucketReader` (each bucket `terraform/gcp` manages); `roles/storage.objectViewer` (bucket `arikkfir-devops`); `roles/secretmanager.secretAccessor` (secret `infra-plan-github-pat`) |
 | `ci-infra-apply` | `octomaton.dev/branches: main` | `roles/serviceusage.serviceUsageAdmin`, `roles/compute.networkAdmin`, `roles/container.admin`, `roles/artifactregistry.admin`, `roles/storage.admin`, `roles/secretmanager.admin`, `roles/dns.admin`, `roles/iam.serviceAccountAdmin`, `roles/iam.securityAdmin` (project); `roles/iam.serviceAccountUser` (service account `gke-hub-nodes@`) |
 
-The roles cover each resource type in `terraform/gcp`. `roles/iam.securityAdmin` sets the IAM policies of the
-project, buckets, secrets, repository and DNS zone; `roles/dns.admin` can't set a zone's. GCP grants
-`roles/owner` only to Google accounts, groups and service accounts, never to a federated principal.
+The roles cover each resource type in `terraform/gcp`. Each admin role also sets the IAM policies of its own
+resources: `roles/storage.admin` the buckets', `roles/secretmanager.admin` the secrets' and
+`roles/artifactregistry.admin` the repository's. `roles/iam.securityAdmin` sets the project's and the DNS zones',
+which `roles/dns.admin` can't. GCP grants `roles/owner` only to Google accounts, groups and service accounts, never
+to a federated principal.
 
 ### GitHub tokens
 
