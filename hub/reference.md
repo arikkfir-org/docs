@@ -408,7 +408,7 @@ Requesting a review from `arikkfir-reviewer` runs the reviewer on the pull reque
 | --- | --- |
 | GitHub user | `arikkfir-reviewer`, a member of `arikkfir-org` |
 | Team | `reviewers` (closed): `arikkfir-reviewer`, with `push` on every repository (resolving threads takes write access) |
-| Token | Fine-grained personal access token of `arikkfir-reviewer`: resource owner `arikkfir-org`, all repositories, pull requests read and write; expires within a year; Secret Manager `reviewer-github-pat` |
+| Token | Fine-grained personal access token of `arikkfir-reviewer`: resource owner `arikkfir-org`, all repositories, contents and pull requests read and write (GitHub resolves a review thread only for a token with contents write); expires within a year; Secret Manager `reviewer-github-pat` |
 | Model | DeepSeek V4 Pro (`deepseek-v4-pro`), through opencode `1.18.33` (`ghcr.io/anomalyco/opencode`) as `deepseek/deepseek-v4-pro`; key in Secret Manager `reviewer-deepseek-api-key` |
 | Definitions | `arikkfir-org/tooling`, `reviewer/`: the PipelineRun `reviewer/pipelinerun.yaml`, its scripts, the prompt and `opencode.json`, all read at `tooling`'s default branch |
 | Findings | Each a thread, marked 🔴 blocking (must fix), 🟡 non-blocking (should fix) or 🔵 nit (could fix), with a severity (`low`, `medium`, `high`, `urgent`) and a likelihood (`low`, `medium`, `high`). The review approves when there are none or only nits, and requests changes otherwise |
