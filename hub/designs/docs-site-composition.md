@@ -145,4 +145,4 @@ pipeline or render scripts of its own, and nothing pushes to its `main` directly
 4. `tooling`: the organization pipelines `docs` and `docs-publish`. Each repository publishes its layer on its next push to `main` (arikkfir-org/tooling#10).
 5. `infra`: `Docs` becomes a required check (arikkfir-org/infra#29).
 6. `docs`: drop its `publish` pipeline and `.site/`, leaving `ci` with nothing to check; links to `*.html` pages become `*.md.html` (arikkfir-org/docs#39).
-7. `delivery`: drop the fallback. The owner deletes the old root objects with `gcloud storage ls gs://arikkfir-docs/ | grep -v '/\.layers/$' | xargs gcloud storage rm -r`, and `infra` drops `ci-docs/pipeline`'s roles, the last a `pipeline` ServiceAccount holds ([CI ServiceAccounts](ci-service-accounts.md)).
+7. `delivery`: drop the fallback (arikkfir-org/delivery#24). The owner deletes the old root objects with `gcloud storage ls gs://arikkfir-docs/ | grep -v '/\.layers/$' | xargs gcloud storage rm -r`, and `infra` drops `ci-docs/pipeline`'s roles, the last a `pipeline` ServiceAccount holds (arikkfir-org/infra#30, [CI ServiceAccounts](ci-service-accounts.md)).

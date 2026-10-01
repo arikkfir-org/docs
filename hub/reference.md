@@ -101,7 +101,7 @@ Tekton runs land on the `ci` pool through Tekton's default pod template (node se
 | Resource | Name | Access |
 | --- | --- | --- |
 | Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomaton/ci-octomaton-release` writes |
-| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private, one layer per repository under `.layers/<repository>/` ([docs site](#docs-site)): `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; each tenant's `docs-publisher` writes its own layer, and `docs-reader` lists names. Until ENG-49's last step, the bucket root still holds the old site, which nothing writes any more, and Caddy serves it as a fallback |
+| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private, one layer per repository under `.layers/<repository>/` ([docs site](#docs-site)): `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; each tenant's `docs-publisher` writes its own layer, and `docs-reader` lists names |
 | Bucket | `arikkfir-claude` (`ME-WEST1`, uniform access) | public object reads (no listing); `ci-tooling/ci-tooling-publish` writes |
 
 Public URLs (`arikkfir-claude` only) are `https://storage.googleapis.com/<bucket>/<path>`.
@@ -130,9 +130,7 @@ holds them.
 Kubernetes workloads use GKE Workload Identity Federation with direct principal bindings (no Google service accounts):
 `principal://iam.googleapis.com/projects/8909046976/locations/global/workloadIdentityPools/arikkfir.svc.id.goog/subject/ns/<namespace>/sa/<service-account>`.
 
-In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design](designs/ci-service-accounts.md)),
-except `ci-docs/pipeline` until the docs site publishes through its own ServiceAccount (ENG-49). A pipeline that
-needs Google Cloud names its own ServiceAccount, and one that publishes is annotated `octomaton.dev/branches: main`.
+In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design](designs/ci-service-accounts.md)). A pipeline that needs Google Cloud names its own ServiceAccount, and one that publishes is annotated `octomaton.dev/branches: main`.
 
 | Principal (namespace/KSA) | Role | Scope |
 | --- | --- | --- |
@@ -141,7 +139,6 @@ needs Google Cloud names its own ServiceAccount, and one that publishes is annot
 | `grafana/grafana` | `roles/monitoring.viewer` | project |
 | `octomaton/octomaton` | `roles/telemetry.metricsWriter`, `roles/telemetry.tracesWriter`, `roles/serviceusage.serviceUsageConsumer` | project |
 | `docs/docs` | `roles/storage.objectViewer` | bucket `arikkfir-docs` |
-| `ci-docs/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-docs`, until ENG-49's last step |
 | `ci-<repository>/docs-publisher` | `roles/storage.objectUser` on objects under `.layers/<repository>/` (IAM condition), `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
 | `ci-<repository>/docs-reader` | `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
 | `ci-tooling/ci-tooling-publish` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-claude` |

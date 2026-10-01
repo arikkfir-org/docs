@@ -1,8 +1,6 @@
 # CI ServiceAccounts
 
-Tekton's default ServiceAccount, `pipeline`, has no Google Cloud access in any CI tenant (in `ci-docs`, once ENG-49
-moves the docs site's publishing). A pipeline that needs Google Cloud names a ServiceAccount of its own, whose Workload
-Identity principal holds the roles. A ServiceAccount that publishes can be used only from `main`. Tracked in ENG-50.
+Tekton's default ServiceAccount, `pipeline`, has no Google Cloud access in any CI tenant. A pipeline that needs Google Cloud names a ServiceAccount of its own, whose Workload Identity principal holds the roles. A ServiceAccount that publishes can be used only from `main`. Tracked in ENG-50.
 
 ## Why
 
@@ -40,8 +38,7 @@ lives in `delivery`. `tooling` runs one PipelineRun file for both `ci` and `publ
 ServiceAccount a file names, so `ci-tooling-publish` must not appear in any file a pull request runs. The file splits
 into `.tekton/ci.yaml` (build and verify) and `.tekton/publish.yaml` (build, verify and upload).
 
-Until ENG-49 moves the docs site's publishing to its own ServiceAccount, `ci-docs/pipeline` keeps its roles on
-`arikkfir-docs`. The site is private and the least exposed of the three.
+`ci-docs/pipeline` kept its roles on `arikkfir-docs` until ENG-49 moved the docs site's publishing to `docs-publisher` (arikkfir-org/infra#30).
 
 ## Decisions
 
@@ -57,4 +54,4 @@ Until ENG-49 moves the docs site's publishing to its own ServiceAccount, `ci-doc
 2. `delivery`: the two ServiceAccounts, annotated before they get any role.
 3. `infra`: their roles. Pipeline `apply` applies them on merge.
 4. `tooling` and `octomaton`: the push pipelines name them; `tooling` splits its PipelineRun file.
-5. `infra`: `pipeline` loses its roles in `ci-tooling` and `ci-octomaton`. `ci-docs`'s go with ENG-49.
+5. `infra`: `pipeline` loses its roles in `ci-tooling` and `ci-octomaton` (arikkfir-org/infra#27), and in `ci-docs` with ENG-49 (arikkfir-org/infra#30).

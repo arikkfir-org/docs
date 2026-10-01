@@ -90,16 +90,13 @@ flowchart LR
   SB[octomaton/octomaton] -- creates PipelineRuns, token Secrets --> NS1[ci-docs]
   SB --> NS2[ci-octomaton]
   SB --> NS3[ci-...]
-  NS1 -- KSA pipeline, until ENG-49 --> B1[(arikkfir-docs: object user)]
+  NS1 -- KSA docs-publisher, main only --> B1[(arikkfir-docs: object user on its layer)]
   NS2 -- KSA ci-octomaton-release, main only --> B2[(Artifact Registry images: writer)]
 ```
 
 - Each repository runs in its own namespace, `ci-<repository>`, created in `delivery` (onboarding a repository is a
   small change there, plus IAM in `infra` if it needs cloud access).
-- Runs use the namespace's `pipeline` service account unless they name another. GCP permissions attach only to
-  ServiceAccounts a pipeline names, never to `pipeline` (`ci-docs` keeps its roles until ENG-49), through Workload
-  Identity, so one repository's pipelines can never use another's permissions
-  ([CI ServiceAccounts](ci-service-accounts.md)).
+- Runs use the namespace's `pipeline` service account unless they name another. GCP permissions attach only to ServiceAccounts a pipeline names, never to `pipeline`, through Workload Identity, so one repository's pipelines can never use another's permissions ([CI ServiceAccounts](ci-service-accounts.md)).
 - Octomaton's own identity can create `PipelineRun`s and token Secrets only in tenant namespaces
   (`ClusterRole octomaton-tenant`, bound per namespace), and watch runs cluster-wide.
 - Tekton's default pod template schedules runs onto the `ci` node pool.
