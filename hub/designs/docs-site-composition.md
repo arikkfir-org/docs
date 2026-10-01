@@ -150,4 +150,5 @@ pipeline or render scripts of its own, and nothing pushes to its `main` directly
    `*.md.html`.
 7. `delivery`: drop the fallback. The owner deletes the old root objects with
    `gcloud storage ls gs://arikkfir-docs/ | grep -v '/\.layers/$' | xargs gcloud storage rm -r`, and `infra` drops
-   `ci-docs/pipeline`'s roles (ENG-50).
+   `ci-docs/pipeline`'s roles, the last a `pipeline` ServiceAccount holds
+   ([CI ServiceAccounts](ci-service-accounts.md)).

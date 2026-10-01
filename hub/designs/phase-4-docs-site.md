@@ -130,7 +130,7 @@ The bucket enforces public access prevention; nothing reads it anonymously.
 | A committed `x.html` next to `x.md` fails the pipeline | The rendered page would silently overwrite the hand-written one | Last writer wins |
 | Pull request checks validate only what a change adds or modifies | Fast, and a change is never blocked by an unrelated page | Validating the whole site on every pull request |
 | Links are read with pandoc's own Markdown parser (`pandoc lua`) | Checks exactly the links the site renders, in the image the pipeline already pins | A separate link checker and image |
-| Checks run as `default`, without Google Cloud access | A pull request's pipeline can't touch the bucket | The `pipeline` account, which can write it |
+| Checks run as `default`, without Google Cloud access | The committed check needs none. It doesn't stop a pull request from naming `pipeline` in its own copy of the file; `pipeline` loses its roles with [CI ServiceAccounts](ci-service-accounts.md) and ENG-49 | The `pipeline` account, which can write the bucket |
 
 ## Operations
 

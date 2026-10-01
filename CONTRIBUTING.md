@@ -138,7 +138,10 @@ change and updated when the implementation diverges.
 - **Secrets** never enter Git. Values live in Google Secret Manager; External Secrets Operator syncs them into the
   cluster.
 - **Least privilege**: grant the narrowest role on the narrowest resource to the narrowest identity (see
-  [hub/reference.md](hub/reference.md)).
+  [hub/reference.md](hub/reference.md)). In CI, Tekton's default ServiceAccount `pipeline` never gets a Google Cloud
+  role, and the roles `ci-docs/pipeline` still holds go with ENG-49. A pipeline that needs one names its own
+  ServiceAccount, and one that publishes runs only from `main`
+  ([CI ServiceAccounts](hub/designs/ci-service-accounts.md)).
 - **Names**: lower-case, hyphenated (`ingress-public`, `ci-docs`); labels and annotations use the `kfirs.com/` prefix.
   A product with a domain of its own uses that domain instead: Octomaton writes `octomaton.dev/` labels.
 - **Less is more**: reuse what exists rather than duplicate it, unless there is a good reason not to.

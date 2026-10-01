@@ -100,9 +100,9 @@ Tekton runs land on the `ci` pool through Tekton's default pod template (node se
 
 | Resource | Name | Access |
 | --- | --- | --- |
-| Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomaton/pipeline` writes |
-| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private, one layer per repository under `.layers/<repository>/` ([docs site](#docs-site)): `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; each tenant's `docs-publisher` writes its own layer, and `docs-reader` lists names |
-| Bucket | `arikkfir-claude` (`ME-WEST1`, uniform access) | public object reads (no listing); `ci-tooling/pipeline` writes |
+| Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomaton/ci-octomaton-release` writes |
+| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private, one layer per repository under `.layers/<repository>/` ([docs site](#docs-site)): `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; each tenant's `docs-publisher` writes its own layer, and `docs-reader` lists names. Until ENG-49's last step, `ci-docs/pipeline` writes the old site at the root |
+| Bucket | `arikkfir-claude` (`ME-WEST1`, uniform access) | public object reads (no listing); `ci-tooling/ci-tooling-publish` writes |
 
 Public URLs (`arikkfir-claude` only) are `https://storage.googleapis.com/<bucket>/<path>`.
 
@@ -130,6 +130,10 @@ holds them.
 Kubernetes workloads use GKE Workload Identity Federation with direct principal bindings (no Google service accounts):
 `principal://iam.googleapis.com/projects/8909046976/locations/global/workloadIdentityPools/arikkfir.svc.id.goog/subject/ns/<namespace>/sa/<service-account>`.
 
+In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design](designs/ci-service-accounts.md)),
+except `ci-docs/pipeline` until the docs site publishes through its own ServiceAccount (ENG-49). A pipeline that
+needs Google Cloud names its own ServiceAccount, and one that publishes is annotated `octomaton.dev/branches: main`.
+
 | Principal (namespace/KSA) | Role | Scope |
 | --- | --- | --- |
 | `external-secrets/external-secrets` | `roles/secretmanager.secretAccessor` | each secret above but `infra-plan-github-pat` and `infra-apply-github-pat` |
@@ -137,10 +141,11 @@ Kubernetes workloads use GKE Workload Identity Federation with direct principal 
 | `grafana/grafana` | `roles/monitoring.viewer` | project |
 | `octomaton/octomaton` | `roles/telemetry.metricsWriter`, `roles/telemetry.tracesWriter`, `roles/serviceusage.serviceUsageConsumer` | project |
 | `docs/docs` | `roles/storage.objectViewer` | bucket `arikkfir-docs` |
+| `ci-docs/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-docs`, until ENG-49's last step |
 | `ci-<repository>/docs-publisher` | `roles/storage.objectUser` on objects under `.layers/<repository>/` (IAM condition), `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
 | `ci-<repository>/docs-reader` | `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
-| `ci-tooling/pipeline` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-claude` |
-| `ci-octomaton/pipeline` | `roles/artifactregistry.writer` | repository `images` |
+| `ci-tooling/ci-tooling-publish` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-claude` |
+| `ci-octomaton/ci-octomaton-release` | `roles/artifactregistry.writer` | repository `images` |
 | `ci-infra/ci-infra-plan` | `roles/iam.securityReviewer`, `roles/serviceusage.serviceUsageViewer`, `roles/compute.networkViewer`, `roles/container.clusterViewer`, `roles/artifactregistry.reader`, `roles/secretmanager.viewer`, `roles/dns.reader`, `roles/iam.serviceAccountViewer` | project |
 | `ci-infra/ci-infra-plan` | `roles/storage.legacyBucketReader` | each bucket `terraform/gcp` manages |
 | `ci-infra/ci-infra-plan` | `roles/storage.objectViewer` | bucket `arikkfir-devops` |
@@ -286,7 +291,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 | Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz` (all on 8080) |
 | Telemetry | On GKE: JSON logs on stdout to Cloud Logging; metrics to Cloud Monitoring and traces to Cloud Trace through the Telemetry API (`telemetry.googleapis.com`), as `octomaton/octomaton`. Elsewhere: text logs, nothing exported |
 | Check links | `https://tekton.dev.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
-| Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccounts `pipeline`, `docs-reader` and `docs-publisher` (only `docs-publisher` is annotated `octomaton.dev/branches: main`; see [docs site](#docs-site)) and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer). `ci-infra` also has ServiceAccounts `ci-infra-plan` and `ci-infra-apply` (annotated `octomaton.dev/branches: main`) |
+| Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccounts `pipeline`, `docs-reader` and `docs-publisher` (only `docs-publisher` is annotated `octomaton.dev/branches: main`; see [docs site](#docs-site)) and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer). `ci-infra` also has ServiceAccounts `ci-infra-plan` and `ci-infra-apply` (annotated `octomaton.dev/branches: main`), `ci-tooling` has `ci-tooling-publish` and `ci-octomaton` has `ci-octomaton-release` (both annotated `octomaton.dev/branches: main`) |
 | Tenant permissions | `octomaton-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete); ServiceAccounts (get) |
 
 ### Server configuration
