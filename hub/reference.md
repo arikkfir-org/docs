@@ -53,7 +53,7 @@ syncing other repositories' branch and pull-request docs into a directory per re
 
 ## Organization
 
-`terraform/github` also manages the `arikkfir-org` organization's settings:
+From arikkfir-org/infra#19 on, `terraform/github` also manages the `arikkfir-org` organization's settings:
 
 | Setting | Value |
 | --- | --- |
