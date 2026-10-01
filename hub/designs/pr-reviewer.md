@@ -139,7 +139,7 @@ tokens, mostly cached across its turns, costs cents.
   "files": [
     {"filename": "…", "status": "modified", "patch": "…", "commentable": {"RIGHT": [[10, 25]], "LEFT": [[10, 22]]}}
   ],
-  "comments": [{"the conversation's comments (REST)": "..."}],
+  "comments": [{"the conversation's comments by organization members and people with write access (REST)": "..."}],
   "reviews": [
     {
       "the review, as GitHub's REST API returns it": "...",
@@ -156,7 +156,16 @@ tokens, mostly cached across its turns, costs cents.
 }
 ```
 
-- A thread is listed under the review of its first comment. It keeps every reply, whoever wrote it.
+- Only the words of organization members and people with write access go in: comments, reviews and thread comments
+  whose author's association is `OWNER` or `MEMBER`, or whose repository permission is `admin`, `maintain` or `write`
+  (asked once per author; a failure counts as an outsider). GitHub hides private organization membership from an
+  installation token, so the owner reads as `CONTRIBUTOR` and `arikkfir-reviewer` as `NONE`: the permission is what
+  trusts them ([ENG-46](https://linear.app/arikkfir/issue/ENG-46),
+  [tooling#8](https://github.com/arikkfir-org/tooling/pull/8)). Anyone can comment on a public repository's pull
+  request, and an outsider's comment must never steer the model. `report` still reads every thread, so the filter
+  can't hide one of the reviewer's codes from it.
+- A thread is listed under the review of its first trusted comment, and keeps its trusted replies. A thread with no
+  trusted comment is left out.
 - `code` is set only on threads `arikkfir-reviewer` started. `codes` lists every code used so far, resolved or not.
 - `commentable` lists the line ranges GitHub accepts comments on, per side of the diff.
 
@@ -279,10 +288,13 @@ fixed, and the approval stands. The body holds the summary and one line of count
 
 ## Security and failure modes
 
-- The sandbox can reach the internet, GitHub anonymously included, and spend DeepSeek credit. Content in a pull request
-  could steer the model into leaking the DeepSeek key. Only members of the organization can open pull requests that run
-  anything (forks are ignored) and request reviews, so the key's exposure is the price of an internet-connected model.
-  Revoke and rotate it in DeepSeek's console and Secret Manager if needed.
+- The sandbox can reach the internet, GitHub anonymously included, and spend DeepSeek credit. Content in a pull
+  request could steer the model into leaking the DeepSeek key. Only members of the organization can open pull requests
+  that run anything (forks are ignored) and request reviews, and only the comments, reviews and replies of
+  organization members and people with write access reach the model (anyone else's are dropped from `pr.json`), so the
+  key's exposure is the price of an internet-connected model. Failed steps' logs reach the check run through
+  Octomaton's [redaction](check-run-redaction.md), which removes the key by value. Revoke and rotate it in DeepSeek's
+  console and Secret Manager if needed.
 - The model can write anywhere on the volume, so nothing that holds a credential runs code from it. `report` runs
   `report.py` from its own copy of `tooling`, and reads only `findings.json` from the volume, as data. It checks the
   schema, sizes, codes and anchors again against the diff and threads it fetches itself, and never follows
