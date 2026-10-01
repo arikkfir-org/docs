@@ -51,6 +51,21 @@ Code can't clone a repository whose name starts with a dot, so nothing else live
 pull requests with the bypass. In `docs`, direct pushes to `main` are reserved for automation: publishing the site and
 syncing other repositories' branch and pull-request docs into a directory per repository and branch.
 
+## Organization
+
+`terraform/github` also manages the `arikkfir-org` organization's settings:
+
+| Setting | Value |
+| --- | --- |
+| Projects | Off, for the organization and for its repositories |
+| Base permission | Read |
+| Repository creation by members | Off (public, private and internal): `terraform/github` creates repositories |
+| Pages sites by members | Off |
+| Forking private and internal repositories | Off |
+| Web commit sign-off | Not required |
+| Set by hand | The profile (name, description, links, public email) and the billing email, which stays out of the public `infra` repository |
+| Left as they are | Security defaults for new repositories: GitHub replaced them with code security configurations, and `terraform/github` turns on Dependabot alerts and security updates per repository |
+
 ## Network
 
 | Resource | Name | Value |
