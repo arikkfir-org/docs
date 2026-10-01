@@ -57,13 +57,16 @@ syncing other repositories' branch and pull-request docs into a directory per re
 
 | Setting | Value |
 | --- | --- |
+| Name | `arikkfir-org` |
+| Description | A personal development hub: the home of personal projects, and of the platform they are built and run on. |
+| Billing email | The owner's address |
 | Projects | Off, for the organization and for its repositories |
 | Base permission | Read |
 | Repository creation by members | Off (public, private and internal): `terraform/github` creates repositories |
 | Pages sites by members | Off |
 | Forking private and internal repositories | Off |
 | Web commit sign-off | Not required |
-| Set by hand | The profile (name, description, links, public email) and the billing email, which stays out of the public `infra` repository |
+| Set by hand | The rest of the profile: links, company, location, public email |
 | Left as they are | Security defaults for new repositories: GitHub replaced them with code security configurations, and `terraform/github` turns on Dependabot alerts and security updates per repository |
 
 ## Network
