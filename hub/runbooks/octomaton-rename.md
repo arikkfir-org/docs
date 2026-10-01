@@ -5,9 +5,9 @@ labels and configuration API group ([design](../designs/octomaton-dev.md)). Each
 every change as a pull request; you merge, apply, and handle the GitHub App, secret values and the registrar. Once
 step 2 lands, the [reference](../reference.md) and the [bootstrap runbook](bootstrap.md) describe the new names.
 
-This migration is complete, and this page is its record. One thing has changed since: `terraform/github` no longer
-has the `octomaton_app_id` variable. The App ID is a constant, `local.octomaton_app_id` in `rulesets.tf`, so the
-`terraform/github` commands below pass no `-var`; at the time they passed `-var octomaton_app_id=<app id>`.
+This migration is complete, and this page is its record. arikkfir-org/infra#17 replaces `terraform/github`'s
+`octomaton_app_id` variable with a constant, `local.octomaton_app_id` in `rulesets.tf`. From that change on, the
+`terraform/github` commands below pass no `-var`; during the migration they passed `-var octomaton_app_id=<app id>`.
 
 ## What changes
 
