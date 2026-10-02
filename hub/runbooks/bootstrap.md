@@ -2,22 +2,23 @@
 
 Bringing the hub up from nothing, in order. Names and values: [reference](../reference.md). Designs:
 [phase 1](../designs/phase-1-foundations.md), [phase 2](../designs/phase-2-octomaton.md),
-[phase 3](../designs/phase-3-ingress-and-auth.md).
+[phase 3](../designs/phase-3-ingress-and-auth.md), [Keycloak](../designs/keycloak.md).
 
 ```mermaid
 flowchart TD
   P[0. Prerequisites] --> SB[1. State bucket]
   SB --> APP[2. GitHub App]
-  SB --> DS[3. Descope]
+  SB --> GO[3. Google OAuth client]
   APP --> GCP[4. terraform/gcp]
-  DS --> GCP
+  GO --> GCP
   GCP --> SEC[5. Secret values]
   SEC --> IMG[6. First Octomaton image]
   IMG --> ACD[7. terraform/argocd]
-  ACD --> VER[8. Verify platform and login]
-  VER --> CI[9. Verify CI checks]
-  CI --> GH[10. terraform/github: rulesets]
-  GH --> CC[11. Claude Code environment]
+  ACD --> KC[8. terraform/keycloak]
+  KC --> VER[9. Verify platform and login]
+  VER --> CI[10. Verify CI checks]
+  CI --> GH[11. terraform/github: rulesets]
+  GH --> CC[12. Claude Code environment]
 ```
 
 ## 0. Prerequisites
@@ -30,7 +31,7 @@ flowchart TD
 
 ## 1. Terraform state bucket
 
-State for all three roots lives in `gs://arikkfir-devops`. Skip this step if the bucket already exists.
+State for every root lives in `gs://arikkfir-devops`. Skip this step if the bucket already exists.
 
 ```bash
 gcloud storage buckets create gs://arikkfir-devops --project=arikkfir --location=me-west1 \
@@ -55,15 +56,21 @@ In `arikkfir-org` → Settings → Developer settings → GitHub Apps → New Gi
 Then: generate a private key (download the `.pem`), note the App ID, and install the App on all repositories of
 `arikkfir-org`. A new App gets a new ID: if it isn't the one the [hub reference](../reference.md#octomaton) records
 (Octomaton, GitHub App), change it there and in `infra`'s `terraform/github/rulesets.tf` (`local.octomaton_app_id`),
-whose rulesets accept `Continuous Integration` only from that App, before step 10.
+whose rulesets accept `Continuous Integration` only from that App, before step 11.
 
-## 3. Descope
+## 3. Google OAuth client
 
-Company `KFIRS`, project `development` (`P3JyPV2qsSrMLUpVPTGcBNRHlSkv`). The sign-in-only Google flow `hub-sign-in`,
-the default OIDC application's login page and the first user are already configured
-([phase 3](../designs/phase-3-ingress-and-auth.md#manual-setup)). Turn on Project Settings → "Block self-registration
-sign up": every user of the project can sign in to the hub, so users must not be able to register themselves. Create
-an access key (Access keys → create) and keep it for step 5: it is the OIDC client secret.
+Keycloak signs people in with Google. In the GCP console for project `arikkfir`, under Google Auth Platform:
+
+| Item | Value |
+| --- | --- |
+| Branding | App name, logo, and the privacy and terms pages at `https://legal.kfirs.com`; authorized domain `kfirs.com`. Sign-in works while the branding is unverified |
+| Audience | External, published to production |
+| Client | Web application, authorized redirect URI `https://id.kfirs.com/realms/hub/broker/google/endpoint`, no JavaScript origins |
+
+Copy the client's secret at once and keep it for step 5. A new client gets a new client ID: if it isn't the one the
+[hub reference](../reference.md#authentication) records (identity provider `google`), change it there and in `infra`'s
+`terraform/keycloak/realm.tf`.
 
 ## 4. GCP resources
 
@@ -89,9 +96,15 @@ add() { gcloud secrets versions add "$1" --project=arikkfir --data-file=-; }
 printf '%s' "<app id>"                          | add octomaton-github-app-id
 add octomaton-github-private-key               < octomaton.YYYY-MM-DD.private-key.pem
 printf '%s' "<webhook secret>"                  | add octomaton-github-webhook-secret
-printf '%s' "<descope access key>"              | add oidc-client-secret
+printf '%s' "<google client secret>"            | add keycloak-google-client-secret
+openssl rand -hex 32 | tr -d '\n'               | add keycloak-bootstrap-admin
+openssl rand -hex 32 | tr -d '\n'               | add keycloak-hub-client-secret
 openssl rand -base64 32 | tr -d '\n' | tr -- '+/' '-_' | add oauth2-proxy-cookie-secret
 ```
+
+`keycloak-hub-client-secret` starts as a placeholder. `terraform/keycloak` writes the real value in step 8, but Argo
+CD (wave 2) and oauth2-proxy read the secret from the start, and an ExternalSecret with nothing to read would hold back
+every later wave, Keycloak's included.
 
 ## 6. First Octomaton image
 
@@ -117,7 +130,41 @@ gcloud container clusters get-credentials hub --zone=me-west1-a --project=arikkf
 kubectl -n argocd get applications -w     # everything converges to Synced / Healthy
 ```
 
-## 8. Verify the platform and login
+## 8. Keycloak
+
+Once Argo CD shows `keycloak` Synced and Healthy, apply `terraform/keycloak` once by hand, as the operator's temporary
+bootstrap admin. It creates realm `hub`, its sign-in flows, client `hub`, the declared users and the pipelines'
+clients, and writes the generated secrets to Secret Manager:
+
+```bash
+kubectl -n keycloak port-forward svc/keycloak-service 8080 &
+cd infra
+KEYCLOAK_CLIENT_ID=bootstrap-admin \
+KEYCLOAK_CLIENT_SECRET="$(gcloud secrets versions access latest --secret=keycloak-bootstrap-admin --project=arikkfir)" \
+make terraform keycloak ARGS="-var keycloak_url=http://localhost:8080"
+```
+
+External Secrets would pick up the real `keycloak-hub-client-secret` within the hour; have it read the new value now
+(Reloader then restarts oauth2-proxy, and Argo CD rereads its Secret on its own):
+
+```bash
+kubectl -n auth annotate externalsecret oauth2-proxy force-sync="$(date +%s)" --overwrite
+kubectl -n argocd annotate externalsecret argocd-oidc force-sync="$(date +%s)" --overwrite
+```
+
+Then delete the bootstrap admin, a full administrator that nothing needs any more. Keycloak creates it only on a fresh
+install, and `kc.sh bootstrap-admin` in a Keycloak pod recreates one for break-glass:
+
+```bash
+kubectl -n keycloak exec keycloak-0 -- bash -c '
+  kc=/opt/keycloak/bin/kcadm.sh; cfg=/tmp/kcadm.config
+  $kc config credentials --config $cfg --server http://localhost:8080 --realm master \
+    --client "$KC_BOOTSTRAP_ADMIN_CLIENT_ID" --secret "$KC_BOOTSTRAP_ADMIN_CLIENT_SECRET"
+  id=$($kc get clients --config $cfg -r master -q clientId=bootstrap-admin --fields id --format csv --noquotes)
+  $kc delete "clients/$id" --config $cfg -r master; rm -f $cfg'
+```
+
+## 9. Verify the platform and login
 
 - `kubectl -n traefik get certificate wildcard-kfirs-com octomaton-dev` shows both `Ready`.
 - `curl -s 'https://octomaton.dev/?go-get=1'` returns the `go-import` tag, and `https://octomaton.dev` redirects to
@@ -125,17 +172,17 @@ kubectl -n argocd get applications -w     # everything converges to Synced / Hea
 - `kubectl -n external-secrets get clustersecretstore gcp-secret-manager` is `Valid`, and every `ExternalSecret` is
   `SecretSynced`.
 - `https://argocd.dev.kfirs.com`, `https://grafana.dev.kfirs.com`, `https://tekton.dev.kfirs.com`,
-  `https://nui.dev.kfirs.com` and `https://traefik.dev.kfirs.com` redirect to Descope, accept the Google account of a
-  Descope user, and reject any other.
+  `https://nui.dev.kfirs.com` and `https://traefik.dev.kfirs.com` go straight to Google, accept the Google account of
+  a user `terraform/keycloak` declares, and refuse any other.
 
-## 9. Verify CI
+## 10. Verify CI
 
 Open a pull request in any hub repository; a `Continuous Integration` check run from Octomaton appears and links to
 the Tekton Dashboard.
 
 Pushes made before Octomaton ran were never delivered, so nothing is published yet. Merge a pull request (any change) into `docs` and into `tooling` to trigger the first publish, then check `https://docs.dev.kfirs.com/README.md.html` (after signing in) and `https://storage.googleapis.com/arikkfir-claude/setup.sh`.
 
-## 10. GitHub repositories and rulesets
+## 11. GitHub repositories and rulesets
 
 Only once `Continuous Integration` checks work, since the rulesets require them from the App ID in
 `terraform/github/rulesets.tf` (step 2):
@@ -149,7 +196,7 @@ terraform -chdir=terraform/github apply
 Then, in each repository's Settings → General → Features, turn Sponsorships on and Preserve this repository off:
 the provider can't set them.
 
-## 11. Claude Code environment
+## 12. Claude Code environment
 
 In claude.ai/code → environment settings → setup script:
 

@@ -29,7 +29,7 @@ This migration is complete, and this page is its record. arikkfir-org/infra#17 r
 | TLS (new) | | certificate `octomaton-dev`, listener `octomaton-dev` on the public gateway |
 | Import page (new) | | `go-import` (nginx) in namespace `octomaton`: the `go-import` tag for `?go-get=1`, a redirect to the repository otherwise |
 
-Unchanged: the `ci` check and its App ID pin, Descope, the `*.kfirs.com` certificate and every other host.
+Unchanged: the `ci` check and its App ID pin, sign-in, the `*.kfirs.com` certificate and every other host.
 
 ## Order
 

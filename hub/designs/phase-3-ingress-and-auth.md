@@ -1,5 +1,8 @@
 # Phase 3: Ingress and authentication
 
+**Superseded for sign-in** by [Keycloak](keycloak.md): since 2 October 2026, Keycloak's realm `hub` signs everyone in,
+and Descope is retired. The ingress design and the interceptor below still hold; read the Descope parts as history.
+
 **Goal**: expose cluster applications through Traefik on L4 (passthrough network) load balancers, and make OpenID
 authentication of a closed set of users the default for everything, so an internal application can't be exposed
 unauthenticated by forgetting a setting. Hosts, IPs and names: [reference](../reference.md#ingress).

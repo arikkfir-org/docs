@@ -111,7 +111,7 @@ A publication shows up within about a minute (Cloud Storage FUSE caches object m
 | Principal | Role | On |
 | --- | --- | --- |
 | `ci-docs/default` (pull request checks) | None: no Workload Identity binding | — |
-| Descope users | Sign-in at the protected gateway (OIDC interceptor) | `https://docs.dev.kfirs.com` |
+| Hub users (Keycloak) | Sign-in at the protected gateway (OIDC interceptor) | `https://docs.dev.kfirs.com` |
 | `docs/docs` (Workload Identity) | `roles/storage.objectViewer` | `arikkfir-docs` |
 | `ci-docs/pipeline` (Workload Identity) | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | `arikkfir-docs` |
 

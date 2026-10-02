@@ -83,13 +83,13 @@ single sign-in. Facts and names: <a href="reference.md.html">reference</a>. Brin
   <text class="s" x="406" y="92">Claude Code on the web</text>
 
   <rect class="box" x="650" y="20" width="230" height="100" rx="10"/>
-  <text class="t" x="666" y="46">Descope</text>
-  <text class="s" x="666" y="70">OIDC provider, Google sign-in</text>
-  <text class="s" x="666" y="92">pre-created users only</text>
+  <text class="t" x="666" y="46">Google</text>
+  <text class="s" x="666" y="70">sign-in for Keycloak</text>
+  <text class="s" x="666" y="92">declared users only</text>
 
   <rect class="box" x="910" y="20" width="270" height="100" rx="10"/>
   <text class="t" x="926" y="46">Terraform · infra</text>
-  <text class="s" x="926" y="70">gcp → argocd → github</text>
+  <text class="s" x="926" y="70">gcp → argocd → github → keycloak</text>
   <text class="s" x="926" y="92">cloud, cluster, repos, rulesets</text>
 
   <!-- GCP frame -->
@@ -126,7 +126,7 @@ single sign-in. Facts and names: <a href="reference.md.html">reference</a>. Brin
   <text class="s" x="476" y="341">NUI (NATS)</text>
   <text class="s" x="476" y="362">Traefik dashboard</text>
   <text class="s" x="476" y="383">Docs site</text>
-  <text class="l" x="476" y="410">*.dev.kfirs.com, Descope users</text>
+  <text class="l" x="476" y="410">*.dev.kfirs.com, Keycloak users</text>
 
   <rect class="box" x="700" y="230" width="210" height="80" rx="8"/>
   <text class="t" x="716" y="255">Octomaton</text>
@@ -235,7 +235,7 @@ single sign-in. Facts and names: <a href="reference.md.html">reference</a>. Brin
     <h3>Sign in</h3>
     <ol class="steps">
       <li>open argocd.dev.kfirs.com</li><li>Traefik ForwardAuth</li><li>oauth2-proxy</li>
-      <li>Descope + Google, existing users only</li><li>callback on auth.kfirs.com</li><li>cookie for .kfirs.com</li>
+      <li>Keycloak (id.kfirs.com) + Google, declared users only</li><li>callback on auth.kfirs.com</li><li>cookie for .kfirs.com</li>
     </ol>
   </section>
   <section class="flow">

@@ -4,7 +4,7 @@
 
 ## Context
 
-- Descope decides who signs in today: the users of its project `development`, created by hand in its console, through a flow configured there too ([phase 3](phase-3-ingress-and-auth.md)). Who may sign in is configuration outside Git, and no change to it is reviewed.
+- Descope decided who signed in: the users of its project `development`, created by hand in its console, through a flow configured there too ([phase 3](phase-3-ingress-and-auth.md)). Who may sign in is configuration outside Git, and no change to it is reviewed.
 - Every protected host (Argo CD, Grafana, Tekton, NUI, the Traefik dashboard, the docs site) signs in through oauth2-proxy, and Argo CD verifies the ID tokens of the same client. The identity provider is on the path of every request.
 - Apps beyond the hub will need sign-up, organizations and users of their own ([later](#later)), which an identity provider the hub runs can grow into.
 
@@ -79,7 +79,7 @@ Terraform owns Keycloak's configuration from its first apply. It never reads a s
 | Admin console only on `admin.id.kfirs.com`, behind the protected gateway | `/admin` and the master realm never get a public route. It is the identity platform's own console, not a dev tool, so it sits under `id.kfirs.com` rather than `dev.kfirs.com`. It needs a host of its own, because it uses the protected gateway's IP. `*.kfirs.com` doesn't cover a name two levels deep, so it joins the wildcard certificate; the issuer already solves DNS-01 in zone `kfirs-com`. Break-glass: `kubectl exec` and `kcadm.sh` | A public admin console; `keycloak.dev.kfirs.com` (it isn't a dev tool); `id-admin.kfirs.com` (no certificate change, but reads as a sibling of `id`, not part of it); `*.id.kfirs.com` on the certificate (only one host needs it) |
 | Two pipeline service accounts in the master realm: `terraform-plan` (view roles) and `terraform-apply` (admin) | The same plan and apply split as for GCP ([Terraform plan and apply](terraform-plan-apply.md)); created by the first apply, which runs by hand as the bootstrap admin | One credential for both |
 | Pull request plans of `keycloak` don't refresh, so `terraform-plan` reads only the data sources: `view-realm` and `view-clients` of realm `master` | Keycloak 26.8 shows a client's secret only to administrators who can manage clients, and the provider reads it to refresh a client. `apply` refreshes as `terraform-apply`, so a change made in Keycloak itself shows in the `Apply` check and is reverted | `manage-clients` for `terraform-plan`: it could read `terraform-apply`'s secret, and so administer Keycloak, from any branch |
-| New secret names; cut over in one pull request; keep Descope for a week | Reverting the cutover returns to Descope at once, because `oidc-client-secret` still holds Descope's key | Reusing `oidc-client-secret` (breaks Descope sign-in before the cutover) |
+| New secret names; cut over in one pull request; keep Descope for a week | Reverting the cutover returns to Descope at once, because `oidc-client-secret` still holds Descope's key. In the event, the owner retired Descope on the cutover's day, once step 11 passed | Reusing `oidc-client-secret` (breaks Descope sign-in before the cutover) |
 | The HTTPRoutes sync in wave 2, after Keycloak | Argo CD marks a route whose backend Service is missing Degraded, which fails the sync. The operator creates `keycloak-service` only once Keycloak (wave 1) exists, so routes in an earlier wave would never let Keycloak be created | The routes in wave 0 with everything else |
 | The Keycloak image is pinned and started unoptimized (`startOptimized: false`) | Naming an image makes the operator start it `--optimized`, which the stock image, never built for PostgreSQL or the file vault, can't run | Leaving the image to the operator's default (pinned only through the operator's release) |
 
@@ -87,6 +87,7 @@ Terraform owns Keycloak's configuration from its first apply. It never reads a s
 
 - **Keycloak down means every protected host is down.** The way back doesn't need it: `kubectl` through the GKE DNS endpoint, the Argo CD CLI through a port-forward, and CI through Octomaton, which only needs GitHub. Two Keycloak pods and a PodDisruptionBudget make it rare; the database is the one single instance.
 - **Sign-in pauses while the database restarts.** A node drain, a GKE upgrade or a crash of the one PostgreSQL pod stops new sign-ins and token refreshes for the minute or so it takes to come back. Existing oauth2-proxy sessions keep working until their next refresh. CloudNativePG removes this ([later](#later)).
+- **Bootstrapping from nothing needs a placeholder secret.** Argo CD's own Application (wave 2) and oauth2-proxy read `keycloak-hub-client-secret`, which `terraform/keycloak` writes only once Keycloak (wave 4) runs. Without a placeholder version, their ExternalSecrets have nothing to read, and the root Application never reaches wave 4 ([bootstrap runbook](../runbooks/bootstrap.md), steps 5 and 8).
 - **With Keycloak down, every infra pull request's check fails**, once the pipelines plan `keycloak`: its plan runs in the same `Continuous Integration` check as `gcp` and `github`. A fix that Keycloak itself needs merges with the admin bypass, or applies by hand with `make terraform keycloak`.
 - **Each quarterly minor upgrade restarts every pod.** Only the latest minor gets fixes, and pods of two minors can't run side by side. Each upgrade is a pull request that bumps the operator and the image together, merged at a quiet time: sign-in pauses for about a minute.
 - **Losing the database loses sessions and Google links.** Terraform recreates the whole configuration, and users link again at their next sign-in. Backups come before any app keeps users that Terraform doesn't declare.
@@ -99,7 +100,7 @@ Terraform owns Keycloak's configuration from its first apply. It never reads a s
 | --- | --- | --- |
 | 1–9 | None: Descope still signs everyone in | Revert or leave the pull requests; nothing depends on them yet |
 | 10–11 | Every protected host uses Keycloak | Revert step 10. `oidc-client-secret` still holds Descope's key, so Descope sign-in returns as soon as Argo CD syncs |
-| 12–14 | Descope is gone | No way back to Descope: hence the week's wait before step 12 |
+| 12–14 | Descope is gone | No way back to Descope: hence the planned week's wait before step 12, which the owner waived |
 
 ## Rollout
 
