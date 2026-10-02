@@ -23,13 +23,14 @@ flowchart LR
   PR[Pull request or merge queue run] -->|pipeline| N[No Google Cloud access]
   T[tooling: push to main] -->|ci-tooling-publish| B[(arikkfir-claude)]
   O[octomaton: push to main] -->|ci-octomaton-release| R[(images)]
+  RI[octomaton: push to main changing images/reviewer] -->|ci-octomaton-release| R
   X[Any other branch naming them] -.->|refused by Octomaton| T
 ```
 
 | ServiceAccount | Annotation | Roles | Named by |
 | --- | --- | --- | --- |
 | `ci-tooling/ci-tooling-publish` | `octomaton.dev/branches: main` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` on bucket `arikkfir-claude` | tooling's `publish` pipeline |
-| `ci-octomaton/ci-octomaton-release` | `octomaton.dev/branches: main` | `roles/artifactregistry.writer` on repository `images` | octomaton's `release` pipeline |
+| `ci-octomaton/ci-octomaton-release` | `octomaton.dev/branches: main` | `roles/artifactregistry.writer` on repository `images` | octomaton's `release` and `reviewer-image` pipelines |
 | `<tenant>/pipeline` | none | none | every other run |
 
 Octomaton refuses a run whose PipelineRun names an annotated ServiceAccount from any other branch
@@ -46,6 +47,7 @@ into `.tekton/ci.yaml` (build and verify) and `.tekton/publish.yaml` (build, ver
 | --- | --- | --- |
 | No roles on `pipeline` at all | A run that names no ServiceAccount runs as `pipeline`, which Octomaton never checks | Annotating `pipeline`: it would refuse every pull request run |
 | One ServiceAccount per publishing pipeline, `ci-<repository>-<pipeline>` | The pattern of `ci-infra-plan` and `ci-infra-apply`; roles stay per pipeline | One shared name in every tenant: the roles differ per tenant anyway |
+| Pipelines of one repository that need the same role on the same resource share its ServiceAccount: octomaton's `reviewer-image` ([pull request reviewer](pr-reviewer.md)) publishes as `ci-octomaton-release` | Artifact Registry grants roles per repository, so a ServiceAccount of its own would hold the same `roles/artifactregistry.writer` on `images`: no less access, one more object in `delivery` and binding in `infra` | `ci-octomaton-reviewer-image` |
 | Split tooling's PipelineRun file | A PipelineRun names its ServiceAccounts statically; Octomaton checks every one it names, run or not | A `when`-guarded upload task with its own ServiceAccount: still named, so pull requests would be refused |
 
 ## Rollout
