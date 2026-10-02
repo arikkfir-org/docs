@@ -498,7 +498,7 @@ Requesting a review from `arikkfir-reviewer` runs the reviewer on the pull reque
 | GitHub user | `arikkfir-reviewer`, a member of `arikkfir-org` |
 | Team | `reviewers` (closed): `arikkfir-reviewer`, with `push` on every repository (resolving threads takes write access) |
 | Token | Fine-grained personal access token of `arikkfir-reviewer`: resource owner `arikkfir-org`, all repositories, contents and pull requests read and write (GitHub resolves a review thread only for a token with contents write); expires within a year; Secret Manager `reviewer-github-pat` |
-| Model | DeepSeek V4.1 Flash (`deepseek-flash`), through opencode `1.18.33` (`ghcr.io/anomalyco/opencode`) as `deepseek/deepseek-flash`; key in Secret Manager `reviewer-deepseek-api-key` |
+| Model | DeepSeek V4.1 Flash (`deepseek-flash`), through opencode `1.18.33` (`ghcr.io/anomalyco/opencode`) as `deepseek/deepseek-flash`, at reasoning effort `low` (`--variant low`), without subagents; key in Secret Manager `reviewer-deepseek-api-key` |
 | Image | `me-west1-docker.pkg.dev/arikkfir/images/reviewer`, pinned by digest in `reviewer/pipelinerun.yaml`: opencode's image plus `bash`, `python3`, `git`, `jq`, `yq`, `curl`, `wget` and GNU userland. Built from `images/reviewer/` in `arikkfir-org/octomaton` by its pipeline `reviewer-image` (on pushes to `main` that change it, as `ci-octomaton-release`; `reviewer-image-check`, check `Reviewer Image`, builds it on pull requests) |
 | GitHub proxy | Sidecar `github` of task `review`, on `http://127.0.0.1:8080`: GitHub's REST API under `/api/` (GET and HEAD) and git fetches under `/git/<owner>/<repository>.git`, sent with the run's token, which only it and `setup` mount. Code `reviewer/github_proxy.py` |
 | Definitions | `arikkfir-org/tooling`, `reviewer/`: the PipelineRun `reviewer/pipelinerun.yaml`, its scripts, the prompt and `opencode.json`, all read at `tooling`'s default branch |
@@ -506,7 +506,7 @@ Requesting a review from `arikkfir-reviewer` runs the reviewer on the pull reque
 | Trigger | Pipeline `review`, display name `AI Review`: an organization pipeline in `arikkfir-org/tooling`'s `.octomaton.yaml` (the organization repository), so every repository has it. `on.review_request.reviewers: [arikkfir-reviewer]`, `secrets: [reviewer-deepseek-api-key, reviewer-github-pat]`, `githubToken` with contents and pull requests read for every repository (`repositories: all`) |
 | Tasks | `setup` (clone, state), `review` (opencode, check, fix, recheck; sidecar `github`), `report`; all as ServiceAccount `reviewer`, all labelled `kfirs.com/sandbox=true` |
 | Volume | One per run: 50Gi, `ReadWriteOnce` (`volumeClaimTemplate`), deleted an hour after the run (`OCTOMATON_RETENTION_FREE_PVCS_AFTER`) |
-| Files on the volume | `pr.json`, `pr.diff`, `pr.log` (setup), `findings.json` (review), `repos/<repository>/`, `.review/` |
+| Files on the volume | `<repository>/`: the pull request's repository at the head commit, the model's working directory, with `pr.json`, `pr.diff`, `pr.log` (setup) and `findings.json` (review) at its root; `.review/` beside it (`reviewer/` from `tooling`'s default branch, opencode's home). The model clones other repositories into `/tmp` |
 | Markers | A thread's first comment: `<!-- reviewer:<code> -->`. The review body: `<!-- reviewer-run:<PipelineRun> -->` |
 | Check | `AI Review` on the reviewed commit; `report` sets its title and summary |
 

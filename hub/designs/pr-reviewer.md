@@ -3,11 +3,12 @@
 **Decision**: requesting a review from the GitHub user `arikkfir-reviewer` runs a three-task Tekton pipeline through
 Octomaton:
 
-- `setup` puts the hub's repositories and the pull request's full state on a 50Gi volume.
+- `setup` checks out the pull request's repository on a 50Gi volume, with the pull request's full state at its root.
 - `review` runs opencode with DeepSeek in a sandbox, in the hub's reviewer image (opencode plus bash, python3,
-  git and the usual command-line tools). The model's steps hold no credential but its API key and can reach nothing but
-  the internet. Their `github` sidecar holds a token that reads every repository's code and pull requests, and reads
-  GitHub for the model, so the model can follow a change into an internal repository (`fin`) without the token.
+  git and the usual command-line tools), in that checkout. The model's steps hold no credential but its API key and can
+  reach nothing but the internet. Their `github` sidecar holds a token that reads every repository's code and pull
+  requests, and reads GitHub for the model, which clones the hub's other repositories as it needs them and can follow a
+  change into an internal repository (`fin`) without the token.
 - `report` turns the findings into one GitHub review by `arikkfir-reviewer`, with one thread per finding.
 
 Each finding carries a short code (`IAM-3`), so later rounds reply to its thread or resolve it. Names and wiring:
@@ -37,10 +38,10 @@ sequenceDiagram
   GH->>OCT: pull_request (review_requested)
   OCT->>GH: read the repository's and tooling's .octomaton.yaml, and tooling's reviewer/pipelinerun.yaml (default branches)
   OCT->>S: start the PipelineRun, with check "AI Review" on the head commit
-  S->>GH: clone five repositories anonymously (+ the pull request's, with the token), read the pull request, reviews and threads
-  S->>S: write pr.json
-  R->>DS: opencode run: prompt, repositories, pr.json
-  R->>G: other repositories' pull requests and code, on 127.0.0.1:8080
+  S->>GH: clone the pull request's repository (with the token) and tooling's reviewer/, read the pull request, reviews and threads
+  S->>S: write pr.json, pr.diff and pr.log at the checkout's root
+  R->>DS: opencode run in the checkout: prompt, pr.json
+  R->>G: other repositories (clones into /tmp), pull requests and code, on 127.0.0.1:8080
   G->>GH: reads, with the read-only token
   R->>R: write findings.json, checked against the diff (one correction round)
   P->>GH: one review as arikkfir-reviewer (new threads, replies, verdict), then resolve and unresolve threads
@@ -76,9 +77,9 @@ sequenceDiagram
 
 | Task | Identity and credentials | Network | Steps |
 | --- | --- | --- | --- |
-| `setup` | ServiceAccount `reviewer`; the installation token (contents and pull requests: read, every repository) as workspace `github-token` | Internet only | `clone`: the five repositories at their default branch, anonymously; the pull request's repository at the head commit, with the installation token as an HTTP header on git's command line, never on the volume; `pr.diff` and `pr.log` from it; `reviewer/` from `tooling`'s default branch into `.review/`. `state`: `pr.json` from GitHub's REST and GraphQL APIs |
-| `review` | ServiceAccount `reviewer`; its steps: `DEEPSEEK_API_KEY` from Secret `reviewer-deepseek-api-key` and nothing else; its sidecar `github`: the installation token, an isolated workspace that no step mounts | Internet only | Sidecar `github`: [the GitHub proxy](#the-github-proxy), started before the steps. `review`: `opencode run` with `prompt.md` ([opencode](#opencode)). `check`: `findings.py`. `fix`: `opencode run --continue` with the errors, only when `check` found any. `recheck`: `findings.py` again, failing the task if anything is still wrong |
-| `report` | ServiceAccount `reviewer`; `GITHUB_TOKEN` from Secret `reviewer-github-pat` (`arikkfir-reviewer`'s token) | Internet only | `fetch`: `reviewer/` from `tooling`'s default branch into the task's own `emptyDir`. `report`: that copy of `report.py` reads `findings.json` from the volume, posts the review, resolves threads and writes the `check-title` and `check-summary` results |
+| `setup` | ServiceAccount `reviewer`; the installation token (contents and pull requests: read, every repository) as workspace `github-token` | Internet only | `clone`: the pull request's repository at the head commit, into `<name>/`, with the installation token as an HTTP header on git's command line, never on the volume; refused if its root already has a `pr.json`, `pr.diff`, `pr.log` or `findings.json` (a link included); `pr.diff` and `pr.log` from it, at its root; `reviewer/` from `tooling`'s default branch, cloned anonymously, into `.review/` beside it. `state`: `<name>/pr.json` from GitHub's REST and GraphQL APIs |
+| `review` | ServiceAccount `reviewer`; its steps: `DEEPSEEK_API_KEY` from Secret `reviewer-deepseek-api-key` and nothing else; its sidecar `github`: the installation token, an isolated workspace that no step mounts | Internet only | Sidecar `github`: [the GitHub proxy](#the-github-proxy), started before the steps. Every step works in the checkout, `<name>/`. `review`: `opencode run` with `prompt.md` ([opencode](#opencode)). `check`: `findings.py`. `fix`: `opencode run --continue` with the errors, only when `check` found any. `recheck`: `findings.py` again, failing the task if anything is still wrong |
+| `report` | ServiceAccount `reviewer`; `GITHUB_TOKEN` from Secret `reviewer-github-pat` (`arikkfir-reviewer`'s token) | Internet only | `fetch`: `reviewer/` from `tooling`'s default branch into the task's own `emptyDir`. `report`: that copy of `report.py` reads `<name>/findings.json` from the volume, posts the review, resolves threads and writes the `check-title` and `check-summary` results |
 
 The ServiceAccount has no RoleBinding and doesn't mount its token, and its Workload Identity principal has no IAM
 role. Every pod carries `kfirs.com/sandbox=true`, which NetworkPolicy `sandbox` confines to public addresses. The pods
@@ -116,8 +117,10 @@ flowchart LR
 | --- | --- | --- |
 | Image | `me-west1-docker.pkg.dev/arikkfir/images/reviewer` pinned by digest: `ghcr.io/anomalyco/opencode:1.18.33` (Alpine; `opencode` and `ripgrep`) plus `bash`, `python3`, `git`, `jq`, `yq`, `curl`, `wget` and GNU userland, built from `octomaton`'s `images/reviewer/` | The official image of the current v1 release, v2 being days old, with the tools the model reaches for: `git log` and `git blame` in the checkouts, `curl` and `git` through the GitHub proxy, `jq`, `yq` and `python3` to read what it fetches. opencode runs commands in bash once it is on `PATH` |
 | Model | `deepseek/deepseek-flash` (V4.1 Flash) in `reviewer/opencode.json`; `enabled_providers: ["deepseek"]` | A third of V4 Pro's input price ([tooling#18](https://github.com/arikkfir-org/tooling/pull/18)). opencode 1.18.33 hides the deprecated `deepseek-v4-flash`; `deepseek-flash` is its active successor, at the same price. A stronger model is a one-line change |
-| Permissions | `"permission": "allow"`, `experimental.continue_loop_on_deny: true` | `opencode run` rejects any "ask" and stops. The sandbox is the boundary, not opencode's prompts |
-| Isolation from the repositories | `OPENCODE_DISABLE_PROJECT_CONFIG=1`, `OPENCODE_CONFIG=/workspace/shared/.review/opencode.json`, `--pure` | No `AGENTS.md`, `opencode.json` or plugin from a reviewed repository configures the reviewer; the model reads each `CLAUDE.md` as material, not as its instructions |
+| Reasoning | `opencode run --variant low` in `review` and `fix`: DeepSeek's `reasoning_effort: low` | A review is some fifty short turns of reading and searching, and each turn waits on the model's reasoning; at the default effort a turn took about ten seconds |
+| Permissions | `"permission": {"*": "allow", "task": "deny"}`, `experimental.continue_loop_on_deny: true` | `opencode run` rejects any "ask" and stops. The sandbox is the boundary, not opencode's prompts. No subagents: `opencode run` doesn't log a subagent's steps, and one redid a whole review, unseen, for eleven minutes; denied outright, the `task` tool isn't offered |
+| Working directory | The pull request's checkout, `/workspace/shared/<name>`, with `pr.json`, `pr.diff`, `pr.log` and `findings.json` at its root; other repositories cloned by the model into `/tmp` | The model starts in what it reviews, with `git` history at hand, and fetches only the repositories the change touches. The scripts and opencode's state stay beside the checkout in `.review/`, out of its way: in the working directory, models read them for minutes, looking for the expected answer |
+| Isolation from the repositories | `OPENCODE_DISABLE_PROJECT_CONFIG=1`, `OPENCODE_DISABLE_EXTERNAL_SKILLS=1`, `OPENCODE_CONFIG=/workspace/shared/.review/opencode.json`, `--pure` | The working directory is a checkout the pull request controls: no `AGENTS.md`, `CLAUDE.md`, `opencode.json`, `.opencode/`, plugin or `.claude/`/`.agents/` skill from it configures the reviewer; the model reads each `CLAUDE.md` as material, not as its instructions |
 | No uploads, no updates | `"share": "disabled"`, `OPENCODE_DISABLE_SHARE=1`, `OPENCODE_DISABLE_MODELS_FETCH=1` (the bundled model list), `OPENCODE_DISABLE_AUTOUPDATE=1`, `"snapshot": false`; an empty `node_modules` and a `package-lock.json` listing `@opencode-ai/plugin` in opencode's config directory | Sessions stay in the pod. Nothing but DeepSeek's API is called on opencode's own account, and opencode doesn't install its plugin package from npm at start (it skips the install only when both exist) |
 | State | `HOME` and `XDG_*` under `/workspace/shared/.review/home` | `fix` continues `review`'s session, and the steps share only volumes |
 
@@ -146,15 +149,21 @@ refused), and the `review` and `fix` steps refuse to start the model if it is mo
 ### The volume
 
 ```text
-/workspace/shared/  the workspace shared (Tekton's mount path; scripts use $(workspaces.shared.path))
-├── pr.json         setup: the pull request's state
-├── pr.diff         setup: git diff <base>...<head> of the pull request's repository
-├── pr.log          setup: git log <base>..<head>, with each commit's changed files
-├── findings.json   review: the findings
-├── repos/<name>/   setup: docs, infra, delivery, octomaton, tooling at their default branch; the pull request's
-│                   repository (one of those, or another) at the head commit, with its base branch fetched
-└── .review/        setup: reviewer/ from tooling's default branch; opencode's home and session
+/workspace/shared/      the workspace shared (Tekton's mount path; scripts use $(workspaces.shared.path))
+├── <name>/             setup: the pull request's repository at the head commit, with origin's branches; the
+│   │                   model's working directory
+│   ├── pr.json         setup: the pull request's state
+│   ├── pr.diff         setup: git diff <base>...<head>
+│   ├── pr.log          setup: git log <base>..<head>, with each commit's changed files
+│   ├── findings.json   review: the findings
+│   └── …               the repository's own files
+└── .review/            setup: reviewer/ from tooling's default branch; opencode's home and session
+/tmp/<repository>/      review: other repositories the model clones through the proxy (each step's own /tmp)
 ```
+
+The four files at the checkout's root are untracked. `setup` refuses a repository whose root already has one, a link
+included: the pull request controls the checkout, and a link would send `setup`'s writes, or the model's, anywhere on
+the volume, `.review/` included.
 
 ### `pr.json`
 
@@ -233,8 +242,9 @@ refused), and the `review` and `fix` steps refuse to start the model if it is mo
 
 `reviewer/prompt.md` is a draft, to be refined with real reviews. It asks the reviewer to:
 
-- Read the shared house rules first: `docs/CONTRIBUTING.md` (the conventions, including the code guidelines below) and
-  the contract, `docs/hub/reference.md`.
+- Clone `docs` first, with any other repository it already knows it needs, in one command, and read the shared house
+  rules: `CONTRIBUTING.md` (the conventions, including the code guidelines below) and the contract,
+  `hub/reference.md`.
 - Then read the rules of the pull request's repository: its `CLAUDE.md`, `README.md` and any contributing notes. Where
   they conflict with the house rules, the repository's rules win.
 - Review the change (`pr.diff`, `pr.log`). Where it interacts with code in other repositories or with the
@@ -248,7 +258,7 @@ refused), and the `review` and `fix` steps refuse to start the model if it is mo
 - One problem per finding, with a new code for a new problem. Anchor it on the changed line that causes it or should
   fix it. Give it a priority, a severity and a likelihood.
 - Write plainly: simple English, short and concise; no praise, no filler.
-- Use the tools in the image: `git` in the checkouts; other repositories' pull requests and code (internal ones too)
+- Use the tools in the image: `git` in the checkouts; other repositories, pull requests and code (internal ones too)
   through the GitHub proxy on `127.0.0.1:8080`, cloned into `/tmp`.
 - Write `findings.json`, and nothing else: the repositories are read-only.
 
@@ -312,7 +322,8 @@ fixed, and the approval stands. The body holds the summary and one line of count
 | Octomaton lets a pipeline mount the Secrets it declares, only if all its triggers read default-branch definitions | Head-commit definitions still can't name a Secret, so a pull request can't reach the reviewer's token | A server-wide allowlist: any pull request's CI could mount the token |
 | Octomaton refuses remote Tekton references (`pipelineRef`, resolvers, bundles) | The guard only sees inline definitions; a remote one would slip past it. No repository uses them | Resolving them first (Octomaton would fetch and trust what Tekton fetches) |
 | Every reviewer pod is sandboxed, not just `review` | None of them needs the cluster; each holds one credential | `setup` and `report` on the CI default network |
-| `setup` clones the pull request's repository, and fetches the pull request, with the installation token, given to git as an HTTP header on its command line (`git -c http.extraHeader=…`). The five hub repositories stay anonymous | Internal and private repositories (`fin`) refuse anonymous clones. The token is already in `setup`: read-only, an hour at most. Given on the command line, it never reaches the volume the model reads. Used for every pull request, not only for non-public repositories: one path runs on every review, with no visibility check | The token in the remote's URL or in a credential helper's file (both on the volume); an anonymous attempt first, then the token (its path would run only for internal repositories); a second, read-only personal access token for every clone (every repository, for up to a year, on a volume an internet-connected model reads) |
+| `setup` clones the pull request's repository, and fetches the pull request, with the installation token, given to git as an HTTP header on its command line (`git -c http.extraHeader=…`). `tooling`, for `reviewer/`, stays anonymous | Internal and private repositories (`fin`) refuse anonymous clones. The token is already in `setup`: read-only, an hour at most. Given on the command line, it never reaches the volume the model reads. Used for every pull request, not only for non-public repositories: one path runs on every review, with no visibility check | The token in the remote's URL or in a credential helper's file (both on the volume); an anonymous attempt first, then the token (its path would run only for internal repositories); a second, read-only personal access token for every clone (every repository, for up to a year, on a volume an internet-connected model reads) |
+| The model works in the pull request's checkout, with the pull request's files at its root, and clones other repositories itself through the proxy | It starts in what it reviews, with its history, and fetches the one or two repositories a change touches in one command. `.review/` sits beside the checkout, out of the model's way: in its working directory, models spent minutes of every review reading the scripts and opencode's session for the expected answer | `setup` cloning the hub's five repositories into `repos/` (most go unread, and only the hub's); ignoring the pull request's files in each repository's `.gitignore` or `.git/info/exclude` (ripgrep, so opencode's grep, glob and list, skips ignored files, and `.gitignore` needs a change in every repository, `fin` included) |
 | Codes as keys, one thread per code | A finding keeps its conversation across rounds; the author's replies are the next round's input | A list matched by location or text (moves with the code, breaks on rewording) |
 | The model sets each finding's priority (with severity and likelihood); `report` derives the verdict | Every verdict follows from what the review shows. Only nits leave an approval | A model-chosen verdict |
 | Every finding is a thread, a pull-request-wide one too | Each finding keeps its code, its conversation and its resolution | Pull-request-wide findings in the review's body, which can't be tracked or resolved |
