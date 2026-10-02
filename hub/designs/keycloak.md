@@ -120,7 +120,7 @@ Each step depends on the ones before it. Until step 10, nobody signs in differen
 | 10 | `delivery` | The cutover: issuer `https://id.kfirs.com/realms/hub`, client `hub`, scopes without `offline_access`, both ExternalSecrets reading `keycloak-hub-client-secret`; Argo CD's middleware `descope-token` becomes `id-token`. Everyone signs in once more | ENG-60 |
 | 11 | Check | Argo CD (through the interceptor, and with "Log in via Keycloak"), Grafana, Tekton, NUI, the Traefik dashboard and the docs site sign in with Google; an unlisted account is refused everywhere. Otherwise revert step 10 | ENG-60 |
 | 12 | `infra`, `terraform/gcp` | Remove `oidc-client-secret`. Planned for a week after the cutover; the owner waived the wait once step 11 passed, on the cutover's day | ENG-61 |
-| 13 | Owner | Delete Descope's access key, then project `development` in company `KFIRS`; disconnect the Descope connector if nothing else uses it | ENG-62 |
+| 13 | Owner | Delete Descope's access key, then project `development` in company `KFIRS`; disconnect the Descope connector if nothing else uses it. In the event, the owner deleted the access key and kept the project and the connector: the hub no longer trusts Descope's issuer | ENG-62 |
 | 14 | `docs` | Mark [phase 3](phase-3-ingress-and-auth.md) superseded, replace step 3 of the bootstrap runbook (and give `keycloak-hub-client-secret` a placeholder there), and update the overview, the phase 4 design and the Octomaton rename runbook. Done on the cutover's day, with step 12 | ENG-63 |
 
 ## Open questions
