@@ -115,15 +115,14 @@ flowchart LR
 | Setting | Value | Why |
 | --- | --- | --- |
 | Image | `me-west1-docker.pkg.dev/arikkfir/images/reviewer` pinned by digest: `ghcr.io/anomalyco/opencode:1.18.33` (Alpine; `opencode` and `ripgrep`) plus `bash`, `python3`, `git`, `jq`, `yq`, `curl`, `wget` and GNU userland, built from `octomaton`'s `images/reviewer/` | The official image of the current v1 release, v2 being days old, with the tools the model reaches for: `git log` and `git blame` in the checkouts, `curl` and `git` through the GitHub proxy, `jq`, `yq` and `python3` to read what it fetches. opencode runs commands in bash once it is on `PATH` |
-| Model | `deepseek/deepseek-v4-pro` in `reviewer/opencode.json`; `enabled_providers: ["deepseek"]` | DeepSeek's strongest released model. V4.1 Pro, once released, is a one-line change |
+| Model | `deepseek/deepseek-flash` (V4.1 Flash) in `reviewer/opencode.json`; `enabled_providers: ["deepseek"]` | A third of V4 Pro's input price ([tooling#18](https://github.com/arikkfir-org/tooling/pull/18)). opencode 1.18.33 hides the deprecated `deepseek-v4-flash`; `deepseek-flash` is its active successor, at the same price. A stronger model is a one-line change |
 | Permissions | `"permission": "allow"`, `experimental.continue_loop_on_deny: true` | `opencode run` rejects any "ask" and stops. The sandbox is the boundary, not opencode's prompts |
 | Isolation from the repositories | `OPENCODE_DISABLE_PROJECT_CONFIG=1`, `OPENCODE_CONFIG=/workspace/shared/.review/opencode.json`, `--pure` | No `AGENTS.md`, `opencode.json` or plugin from a reviewed repository configures the reviewer; the model reads each `CLAUDE.md` as material, not as its instructions |
 | No uploads, no updates | `"share": "disabled"`, `OPENCODE_DISABLE_SHARE=1`, `OPENCODE_DISABLE_MODELS_FETCH=1` (the bundled model list), `OPENCODE_DISABLE_AUTOUPDATE=1`, `"snapshot": false`; an empty `node_modules` and a `package-lock.json` listing `@opencode-ai/plugin` in opencode's config directory | Sessions stay in the pod. Nothing but DeepSeek's API is called on opencode's own account, and opencode doesn't install its plugin package from npm at start (it skips the install only when both exist) |
 | State | `HOME` and `XDG_*` under `/workspace/shared/.review/home` | `fix` continues `review`'s session, and the steps share only volumes |
 
-DeepSeek V4 Pro costs, per million tokens, $0.022 for cached input, $0.66 for other input and $1.98 for output, twice as
-much in DeepSeek's weekday peak hours (01:00–04:00 and 06:00–10:00 UTC). A review that reads a few hundred thousand
-tokens, mostly cached across its turns, costs cents.
+DeepSeek V4.1 Flash costs, per million tokens, $0.15 for input and $0.60 for output (V4 Pro: $0.435 and $0.87). A review
+that reads a few hundred thousand tokens costs cents.
 
 ### The GitHub proxy
 
@@ -394,8 +393,8 @@ The reviewer image and the GitHub proxy came after the first rollout, in this or
 ## Open questions
 
 - The prompt: `reviewer/prompt.md` starts as a draft. It will be tuned against real reviews.
-- DeepSeek V4.1 Pro: DeepSeek said on 2026-09-10 that it is coming, without a date. Switching is one line in
-  `reviewer/opencode.json`.
+- A stronger model, if Flash's reviews fall short: V4 Pro, or V4.1 Pro, which DeepSeek said on 2026-09-10 is coming,
+  without a date. Switching is one line in `reviewer/opencode.json`.
 - The App already receives review events (`pull_request_review`, `pull_request_review_comment`,
   `pull_request_review_thread`), which Octomaton ignores. An author's reply to a finding could start a new round
   without a re-request.
