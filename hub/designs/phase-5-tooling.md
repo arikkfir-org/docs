@@ -29,7 +29,7 @@ flowchart LR
 | `hooks/add_repo.py` (`PreToolUse`, the remote-session server's `add_repo` and `register_repo_root`) | Allows attaching one of `arikkfir-org`'s public repositories without a prompt; `fin` and a repository not listed yet still ask |
 | `hooks/format.py` (`PostToolUse`, Edit/Write) | Formats the written `.go` / `.tf` file with `gofmt` / `terraform fmt` when installed, and tells Claude if the file changed or failed to parse |
 | `hooks/pull_request.py` (`PostToolUse`, `create_pull_request`) | After an `arikkfir-org` pull request opens, reminds the session to request `arikkfir-reviewer` and to link the Linear issue and design |
-| `hooks/git_hooks.py` (`SessionStart`; `PostToolUse`, `register_repo_root`) | In cloud sessions, points each repository that commits hooks in `.githooks/` at them (`core.hooksPath`) |
+| `hooks/git_hooks.py` (`SessionStart`; `PostToolUse`, `register_repo_root`) | In cloud sessions, points each `arikkfir-org` repository that commits hooks in `.githooks/` at them (`core.hooksPath`); any other repository's hooks stay off, as git leaves them |
 | `hooks/dockerd.py` (`SessionStart`) | In cloud sessions, starts the Docker daemon in the background, pulling from Docker Hub through `mirror.gcr.io` |
 
 Hooks are stdlib-only Python, fail open (a bug never blocks the session) and are covered by tests.
