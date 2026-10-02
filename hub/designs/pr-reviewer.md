@@ -120,7 +120,7 @@ flowchart LR
 | Reasoning | `opencode run --variant low` in `review` and `fix`: DeepSeek's `reasoning_effort: low` | A review is some fifty short turns of reading and searching, and each turn waits on the model's reasoning; at the default effort a turn took about ten seconds |
 | Permissions | `"permission": {"*": "allow", "task": "deny"}`, `experimental.continue_loop_on_deny: true` | `opencode run` rejects any "ask" and stops. The sandbox is the boundary, not opencode's prompts. No subagents: `opencode run` doesn't log a subagent's steps, and one redid a whole review, unseen, for eleven minutes; denied outright, the `task` tool isn't offered |
 | Working directory | The pull request's checkout, `/workspace/shared/<name>`, with `pr.json`, `pr.diff`, `pr.log` and `findings.json` at its root; other repositories cloned by the model into `/tmp` | The model starts in what it reviews, with `git` history at hand, and fetches only the repositories the change touches. The scripts and opencode's state stay beside the checkout in `.review/`, out of its way: in the working directory, models read them for minutes, looking for the expected answer |
-| Isolation from the repositories | `OPENCODE_DISABLE_PROJECT_CONFIG=1`, `OPENCODE_DISABLE_EXTERNAL_SKILLS=1`, `OPENCODE_CONFIG=/workspace/shared/.review/opencode.json`, `--pure` | The working directory is a checkout the pull request controls: no `AGENTS.md`, `CLAUDE.md`, `opencode.json`, `.opencode/`, plugin or `.claude/`/`.agents/` skill from it configures the reviewer; the model reads each `CLAUDE.md` as material, not as its instructions |
+| Isolation from the repositories | `OPENCODE_DISABLE_PROJECT_CONFIG=1`, `OPENCODE_DISABLE_EXTERNAL_SKILLS=1`, `OPENCODE_DISABLE_CLAUDE_CODE_PROMPT=1`, `OPENCODE_CONFIG=/workspace/shared/.review/opencode.json`, `--pure` | The working directory is a checkout the pull request controls: no `opencode.json`, `.opencode/`, plugin, `.claude/`/`.agents/` skill or `CLAUDE.md` from it configures the reviewer, and the model reads each `CLAUDE.md` as material, not as its instructions. One path stays open: opencode's `read` tool hands the model an `AGENTS.md` or `CONTEXT.md` from a subdirectory of the checkout as instructions, and no setting turns it off (see [Security](#security-and-failure-modes)) |
 | No uploads, no updates | `"share": "disabled"`, `OPENCODE_DISABLE_SHARE=1`, `OPENCODE_DISABLE_MODELS_FETCH=1` (the bundled model list), `OPENCODE_DISABLE_AUTOUPDATE=1`, `"snapshot": false`; an empty `node_modules` and a `package-lock.json` listing `@opencode-ai/plugin` in opencode's config directory | Sessions stay in the pod. Nothing but DeepSeek's API is called on opencode's own account, and opencode doesn't install its plugin package from npm at start (it skips the install only when both exist) |
 | State | `HOME` and `XDG_*` under `/workspace/shared/.review/home` | `fix` continues `review`'s session, and the steps share only volumes |
 
@@ -342,6 +342,11 @@ fixed, and the approval stands. The body holds the summary and one line of count
   key's exposure is the price of an internet-connected model. Failed steps' logs reach the check run through
   Octomaton's [redaction](check-run-redaction.md), which removes the key by value. Revoke and rotate it in DeepSeek's
   console and Secret Manager if needed.
+- A pull request can steer the model through what it reads: its diff, its comments, and an `AGENTS.md` or
+  `CONTEXT.md` in a subdirectory, which opencode's `read` tool presents as instructions (none of the hub's repositories
+  has one). Only members of the organization open pull requests that run the reviewer, and its approval counts toward
+  the one a merge needs, so a member can steer it into approving their own change, as they can steer any reviewer
+  with what they write.
 - The model can write anywhere on the volume, so nothing that holds a credential runs code from it. `report` runs
   `report.py` from its own copy of `tooling`, and reads only `findings.json` from the volume, as data. It checks the
   schema, sizes, codes and anchors again against the diff and threads it fetches itself, and never follows
