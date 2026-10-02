@@ -144,3 +144,4 @@ Not part of the migration; needed once apps beyond the hub sign users in.
 | Organizations and sign-up for apps (a realm or organizations per product) | With the first app |
 | Metrics: a `PodMonitoring` for Keycloak's management port 9000 | Any time |
 | Argo CD roles from Keycloak groups instead of admin for everyone | Any time |
+| Logging out of any app ends the hub session: Argo CD's and Grafana's logout go to oauth2-proxy's sign-out, which also ends the Keycloak session (ENG-65) | Any time |
