@@ -8,7 +8,7 @@ Conventions for every repository in `arikkfir-org`, for humans and coding agents
 flowchart LR
   L[Linear issue<br/>ENG-123] --> B[Branch<br/>eng-123-short-slug]
   B --> D[Design doc<br/>in docs, if meaningful]
-  B --> P[Pull request<br/>Conventional title]
+  B --> P[Pull request<br/>title names the change]
   P --> C[CI check]
   P --> R[1 approval]
   C --> Q[Merge queue<br/>merge commit]
@@ -64,8 +64,7 @@ Changes in `docs` repository can be pushed directly to `main` as long as they re
 
 ## Pull requests
 
-**Title**: the merge commit's subject, so it follows the commit rules above, e.g.
-`feat(octomaton): report skipped pipelines as skipped checks`.
+**Title**: names the change the pull request makes, in the imperative and in sentence case, e.g. `Report skipped pipelines as skipped checks`. It becomes the merge commit's subject, so `git log --first-parent` reads as a list of what each merge did. No `type(scope):` prefix (that belongs to commit subjects, which keep it), no issue key and no emoji. GitHub ends the merge commit's subject with ` (#123)`, so keep the title within 66 characters for the subject to fit in 72.
 
 **Description**: the merge commit's body. Use this structure:
 
