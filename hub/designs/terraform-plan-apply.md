@@ -24,7 +24,7 @@ flowchart LR
   MQ --> M[main]
   M -->|apply| AP[ci-infra-apply]
   O[Octomaton] -. refuses unless the branch is main .-> AP
-  AP --> A[plan and apply gcp, then github]
+  AP --> A[plan and apply gcp, github, then keycloak]
 ```
 
 ### Octomaton: ServiceAccount branches
