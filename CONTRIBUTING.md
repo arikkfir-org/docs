@@ -130,6 +130,21 @@ Every meaningful unit of work (a new component, a change of architecture, a new 
   - Configure programs with [`envconfig`](https://github.com/kelseyhightower/envconfig) (environment variables), not command-line flags.
   - Start an OpenTelemetry span in every significant method.
   - Log through `log/slog` only.
+- **Shell**:
+  - Start every script with `set -euo pipefail` (`set -eu` in POSIX `sh`).
+  - Never let an exit code stand in for an answer. When a script needs to know something, ask for the data and branch three ways, failing on anything but the two answers you expect. `if cmd >/dev/null 2>&1` can't tell "no" from "the command broke":
+
+    ```sh
+    found="$(kubectl get applications -n argocd -o json | jq --arg name "$name" 'any(.items[]; .metadata.name == $name)')"
+    case "$found" in
+      true) echo "found $name" ;;
+      false) echo "no $name yet" ;;
+      *) echo "could not list Applications" >&2; exit 1 ;;
+    esac
+    ```
+
+  - Tolerate a failure on purpose with `|| true` and a comment saying why, never with `2>/dev/null` alone: silencing stderr hides the failures you didn't expect along with the one you did.
+  - A loop over many items carries on past a failure, counts the failures, and exits non-zero if there were any.
 - **Markdown**:
   - Do not manually wrap text; let the Markdown viewer or renderers do it on their own.
   - Keep tables borders formatted.
