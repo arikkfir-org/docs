@@ -100,7 +100,8 @@ Tekton runs land on the `ci` pool through Tekton's default pod template (node se
 
 | Resource | Name | Access |
 | --- | --- | --- |
-| Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomaton/ci-octomaton-release` writes |
+| Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomaton/ci-octomaton-release` and `ci-fin/ci-fin-release` write |
+| Docker repository | `me-west1-docker.pkg.dev/arikkfir/previews` | Pull requests' preview images ([Fin](#fin)): nodes read; `ci-fin/ci-fin-preview` writes, from any branch. Versions older than 14 days are deleted, except each image's 20 newest |
 | Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private, one layer per repository under `.layers/<repository>/` ([docs site](#docs-site)): `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; each tenant's `docs-publisher` writes its own layer, and `docs-reader` lists names |
 | Bucket | `arikkfir-claude` (`ME-WEST1`, uniform access) | public object reads (no listing); `ci-tooling/ci-tooling-publish` writes |
 
@@ -120,6 +121,9 @@ holds them.
 | `oidc-client-secret` | Descope access key (OIDC client secret) | `auth/oauth2-proxy` key `client-secret`; `argocd/argocd-oidc` key `clientSecret` |
 | `oauth2-proxy-cookie-secret` | 32 random bytes, base64 | `auth/oauth2-proxy` key `cookie-secret` |
 | `grafana-postgres-admin-password` | Password of the superuser `postgres` on Grafana's PostgreSQL, which people sign in with | `grafana/postgres-admin` key `password` |
+| `argocd-github-app-id` | Argo CD's GitHub App ID (number) | `argocd/github-app` key `githubAppID` |
+| `argocd-github-app-private-key` | Argo CD's GitHub App private key (PEM) | `argocd/github-app` key `githubAppPrivateKey` |
+| `fin-postgres-arik-password` | Password of role `arik`, the superuser people sign in as, on every [Fin](#fin) environment's PostgreSQL | `fin-<environment>/db-arik` key `password` |
 | `reviewer-deepseek-api-key` | DeepSeek API key | `ci-*/reviewer-deepseek-api-key` key `api-key` (the [reviewer](#pull-request-reviewer)'s `review` task) |
 | `reviewer-github-pat` | `arikkfir-reviewer`'s fine-grained personal access token | `ci-*/reviewer-github-pat` key `token` (the [reviewer](#pull-request-reviewer)'s `report` task) |
 | `infra-plan-github-pat` | Fine-grained personal access token that reads the organization's repositories and settings and writes contents (see [Terraform applies](#terraform-applies)) | `ci-infra/ci-infra-plan`, read at run time by `infra`'s `ci` pipeline |
@@ -130,7 +134,7 @@ holds them.
 Kubernetes workloads use GKE Workload Identity Federation with direct principal bindings (no Google service accounts):
 `principal://iam.googleapis.com/projects/8909046976/locations/global/workloadIdentityPools/arikkfir.svc.id.goog/subject/ns/<namespace>/sa/<service-account>`.
 
-In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design](designs/ci-service-accounts.md)). A pipeline that needs Google Cloud names its own ServiceAccount, and one that publishes is annotated `octomaton.dev/branches: main`.
+In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design](designs/ci-service-accounts.md)). A pipeline that needs Google Cloud names its own ServiceAccount, and one that publishes is annotated `octomaton.dev/branches: main`. The one exception is `ci-fin/ci-fin-preview`, which publishes pull requests' images, from their branches, to `previews`, which only previews pull from.
 
 | Principal (namespace/KSA) | Role | Scope |
 | --- | --- | --- |
@@ -143,6 +147,8 @@ In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design
 | `ci-<repository>/docs-reader` | `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
 | `ci-tooling/ci-tooling-publish` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-claude` |
 | `ci-octomaton/ci-octomaton-release` | `roles/artifactregistry.writer` | repository `images` |
+| `ci-fin/ci-fin-release` | `roles/artifactregistry.writer` | repository `images` |
+| `ci-fin/ci-fin-preview` | `roles/artifactregistry.writer` | repository `previews` |
 | `ci-infra/ci-infra-plan` | `roles/iam.securityReviewer`, `roles/serviceusage.serviceUsageViewer`, `roles/compute.networkViewer`, `roles/container.clusterViewer`, `roles/artifactregistry.reader`, `roles/secretmanager.viewer`, `roles/dns.reader`, `roles/iam.serviceAccountViewer` | project |
 | `ci-infra/ci-infra-plan` | `roles/storage.legacyBucketReader` | each bucket `terraform/gcp` manages |
 | `ci-infra/ci-infra-plan` | `roles/storage.objectViewer` | bucket `arikkfir-devops` |
@@ -150,7 +156,7 @@ In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design
 | `ci-infra/ci-infra-apply` | `roles/serviceusage.serviceUsageAdmin`, `roles/compute.networkAdmin`, `roles/container.admin`, `roles/artifactregistry.admin`, `roles/storage.admin`, `roles/secretmanager.admin`, `roles/dns.admin`, `roles/iam.serviceAccountAdmin`, `roles/iam.securityAdmin` | project |
 | `ci-infra/ci-infra-apply` | `roles/iam.serviceAccountUser` | service account `gke-hub-nodes@` |
 | `gke-hub-nodes@` (GSA) | `roles/container.defaultNodeServiceAccount` | project |
-| `gke-hub-nodes@` (GSA) | `roles/artifactregistry.reader` | repository `images` |
+| `gke-hub-nodes@` (GSA) | `roles/artifactregistry.reader` | repositories `images` and `previews` |
 
 There is no Workload Identity Federation pool for workloads outside GCP: no GitHub Actions run, and CI runs in the
 cluster. The pre-existing `github-actions`, `greenstar` and `arikkfir.svc.id.goog` pools belong to other projects or
@@ -196,6 +202,7 @@ Both tokens have Contents read and write because GitHub shows a repository's mer
 | `octomaton` | `go-import`: Caddy answering for `octomaton.dev` | `docker.io/library/caddy` | `2.11.4-alpine` |
 | `docs` | Docs site: Caddy overlaying the layers of `arikkfir-docs` (Cloud Storage FUSE mount) and rendering Markdown ([docs site](#docs-site)) | `docker.io/library/caddy` | `2.11.4-alpine` |
 | `ci-<repo>` | CI tenants (one per repository) | `delivery` | n/a |
+| `fin-production`, `fin-pr-<number>` | [Fin](#fin)'s environments: its workloads and PostgreSQL with pgvector | `deploy/chart` in `fin`, and `platform/fin/edge` in `delivery` | The images of the environment's commit; PostgreSQL `docker.io/pgvector/pgvector:0.8.7-pg18-trixie` |
 
 NATS clients, NACK included, connect to `nats://nats.nats.svc.cluster.local:4222`. JetStream streams may keep up to
 three replicas. The servers spread across system-pool nodes when there are several, but don't make the pool grow.
@@ -229,6 +236,9 @@ Certificates come from cert-manager (Let's Encrypt, DNS-01 through Cloud DNS, Cl
 | --- | --- | --- |
 | `protected/websecure`, `public/public-websecure` | `*.kfirs.com` (which also matches `*.dev.kfirs.com`) | `wildcard-kfirs-com` (`*.kfirs.com`, `*.dev.kfirs.com`) / `traefik/wildcard-kfirs-com-tls` |
 | `public/octomaton-dev` (port 9443) | `octomaton.dev` | `octomaton-dev` / `traefik/octomaton-dev-tls` |
+| `fin-<environment>/fin`, listeners `app` and `api` (port 8443) | The environment's two hosts (below) | `fin` / `fin-<environment>/fin-tls` |
+
+Each [Fin](#fin) environment has a Gateway of its own, `fin`, on the protected gateway's entry point (port 8443, `websecure`), since `*.kfirs.com` covers only one label: its routes get the same interceptor. Its listeners admit routes from its own namespace only.
 
 The `octomaton-dev` listener accepts routes only from namespace `octomaton` (which also carries
 `kfirs.com/public-ingress=true`).
@@ -243,9 +253,13 @@ The `octomaton-dev` listener accepts routes only from namespace `octomaton` (whi
 | `docs.dev.kfirs.com` | protected | `docs/docs:80` |
 | `auth.kfirs.com` | public | `auth/oauth2-proxy:80`, path `/oauth2` |
 | `octomaton.dev` | public (listener `octomaton-dev`) | `octomaton/octomaton:80` for path `/github/hooks`; `octomaton/go-import:80` for everything else |
+| `app.fin.kfirs.com`, `api.fin.kfirs.com` | `fin-production/fin` (protected entry point) | `fin-production/web:80`, `fin-production/api:80` |
+| `app.pr-<number>.fin.dev.kfirs.com`, `api.pr-<number>.fin.dev.kfirs.com` | `fin-pr-<number>/fin` (protected entry point) | `fin-pr-<number>/web:80`, `fin-pr-<number>/api:80` |
 
 DNS A records (TTL 300) point each host at its gateway's IP: in zone `kfirs-com` for `kfirs.com` hosts, and the apex
 of zone `octomaton-dev` for `octomaton.dev`.
+
+Fin's records are `app.fin`, `api.fin` and the wildcard `*.fin.dev`, which answers for every preview, all at `ingress-protected`.
 
 ## Authentication
 
@@ -288,7 +302,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 | Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz` (all on 8080) |
 | Telemetry | On GKE: JSON logs on stdout to Cloud Logging; metrics to Cloud Monitoring and traces to Cloud Trace through the Telemetry API (`telemetry.googleapis.com`), as `octomaton/octomaton`. Elsewhere: text logs, nothing exported |
 | Check links | `https://tekton.dev.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
-| Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccounts `pipeline`, `docs-reader` and `docs-publisher` (only `docs-publisher` is annotated `octomaton.dev/branches: main`; see [docs site](#docs-site)) and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer). `ci-infra` also has ServiceAccounts `ci-infra-plan` and `ci-infra-apply` (only `ci-infra-apply` is annotated `octomaton.dev/branches: main`), `ci-tooling` has `ci-tooling-publish` and `ci-octomaton` has `ci-octomaton-release` (both annotated `octomaton.dev/branches: main`) |
+| Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccounts `pipeline`, `docs-reader` and `docs-publisher` (only `docs-publisher` is annotated `octomaton.dev/branches: main`; see [docs site](#docs-site)) and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer). `ci-infra` also has ServiceAccounts `ci-infra-plan` and `ci-infra-apply` (only `ci-infra-apply` is annotated `octomaton.dev/branches: main`), `ci-tooling` has `ci-tooling-publish` and `ci-octomaton` has `ci-octomaton-release` (both annotated `octomaton.dev/branches: main`); `ci-fin` has `ci-fin-release` (annotated `octomaton.dev/branches: main`) and `ci-fin-preview` (not annotated: pull requests' branches use it) |
 | Tenant permissions | `octomaton-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete); ServiceAccounts (get) |
 
 ### Server configuration
@@ -510,3 +524,22 @@ One URL space at `https://docs.dev.kfirs.com`, composed from every repository
 | Publish | Organization pipeline `docs-publish`, on pushes to `main`, as `docs-publisher`: mirror the layer, then the same checks |
 | Definitions | `tooling`: `.octomaton.yaml` (`organization.pipelines`) and `docs-site/` |
 | Serving | `delivery`, `platform/docs`: the Caddyfile and page template; its layer list is the overlay order |
+
+## Fin
+
+Fin's environments ([design](https://github.com/arikkfir-org/fin/blob/main/docs/fin/designs/environments.md)): production, from `fin`'s `main`, and a preview of every open pull request into `main`, from its head commit. Each is self-contained: its own namespace, PostgreSQL, migrations and host names.
+
+| Item | Value |
+| --- | --- |
+| Environments | `production`: namespace `fin-production`, `https://app.fin.kfirs.com` and `https://api.fin.kfirs.com`. `pr-<number>`: namespace `fin-pr-<number>`, `https://app.pr-<number>.fin.dev.kfirs.com` and `https://api.pr-<number>.fin.dev.kfirs.com`. The app serves the back-office at `/backoffice`, and the API serves it under `/backoffice/` |
+| Applications | Per environment, in namespace `argocd`: `fin-<environment>`, Fin's chart (`deploy/chart` in `fin`, release `fin`), and `fin-<environment>-edge` (`platform/fin/edge` in `delivery` at `main`, release `fin-edge`). Production's two come from Application `fin` (`platform/fin/manifests`, wave 4); previews' from ApplicationSets `fin-previews` and `fin-preview-edges`, whose pull request generators list `fin`'s open pull requests into `main` every minute. Previews' Applications carry the resources finalizer; production's don't |
+| Projects | `fin` (destination `fin-production`) and `fin-previews` (`fin-pr-*`): source `https://github.com/arikkfir-org/fin` only, no cluster-scoped kind, namespaced kinds `Deployment`, `StatefulSet`, `Service`, `ConfigMap`, `Job`, `PodDisruptionBudget` and `NetworkPolicy` only. The edge Applications use project `default` |
+| Images | `fin-api` and `fin-web`, tagged with the commit's short SHA: production's in `images` (pipeline `release`, as `ci-fin-release`, on every push to `main`), previews' in `previews` (pipeline `preview`, check `Preview images`, as `ci-fin-preview`, on every pull request push) |
+| Workloads | Deployment and Service `api` (port 80 → 8080) and `web` (Caddy, port 80 → 8080): two replicas each in production, with PodDisruptionBudgets of `maxUnavailable: 1`, one each in previews. NetworkPolicies `api` and `web` admit only the `traefik` namespace |
+| Database | StatefulSet and Service `postgres` (5432, without TLS), one replica without a budget, a 10Gi volume in production and 1Gi in previews. NetworkPolicy `postgres` admits only the `api` and `migrate` pods. Database `fin`, owned by role `migrator`, which runs migrations; role `backend`, the API's, reads and writes rows and never changes the schema; role `arik`, a superuser, is for people (`kubectl port-forward -n fin-<environment> svc/postgres 5432`); role `postgres`, the image's superuser, only over the local socket. pgvector lives in schema `extensions` |
+| Migrations | Job `migrate` (`fin-api migrate`), an Argo CD `Sync` hook in wave -1, after PostgreSQL (wave -2) and before the workloads. Previews reset schema `public` first. A server never migrates at start |
+| Database secrets | `db-postgres`, `db-migrator` and `db-backend` (key `password`): ESO `Password` generator `db`, `refreshPolicy: CreatedOnce`. `db-arik`: Secret Manager `fin-postgres-arik-password` |
+| Namespace | Labels `kfirs.com/fin-environment: <environment>` and `pod-security.kubernetes.io/enforce: restricted`; ResourceQuota `fin`. Production's carries `argocd.argoproj.io/sync-options: Delete=false,Prune=false` |
+| Admission | ValidatingAdmissionPolicy `fin-cluster-ip-services` (with its binding): in namespaces labelled `kfirs.com/fin-environment`, every Service is `ClusterIP`, without external IPs |
+| Argo CD's GitHub App | Created by hand; Contents, Pull requests and Metadata read; installed on `fin` only. Secret `argocd/github-app`, repo-creds for `https://github.com/arikkfir-org/fin`, from `argocd-github-app-id` and `argocd-github-app-private-key`. Argo CD finds the installation itself |
+| Sign-in | Until Fin signs people in itself, the hub's interceptor guards every request ([Authentication](#authentication)). Routes `app` and `api` remove the `Cookie` header after it, so the hub's session cookie (domain `.kfirs.com`) never reaches a pull request's code |
