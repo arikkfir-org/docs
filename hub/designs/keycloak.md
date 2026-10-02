@@ -13,10 +13,11 @@
 ```mermaid
 flowchart LR
   B((Browser)) -- "*.dev.kfirs.com, admin.id.kfirs.com" --> TP[Traefik<br/>protected]
-  B -- "id.kfirs.com/realms/hub,<br/>auth.kfirs.com/oauth2" --> TQ[Traefik<br/>public]
+  B -- "id.kfirs.com/realms/hub,<br/>id.kfirs.com/realms/master,<br/>auth.kfirs.com/oauth2" --> TQ[Traefik<br/>public]
   TP -- ForwardAuth --> O[oauth2-proxy]
   TQ --> O
-  TQ --> K[Keycloak<br/>realm hub, client hub<br/>2 pods]
+  TQ -- "ForwardAuth (/realms/master only)" --> O
+  TQ --> K[Keycloak<br/>realms hub and master<br/>2 pods]
   O -- OIDC, client hub --> K
   K -- straight to Google --> G[Google]
   TP -- "ID token (id-token middleware)" --> A[Argo CD]
@@ -47,7 +48,7 @@ Terraform owns Keycloak's configuration from its first apply. It never reads a s
 | Operator | Application `keycloak-operator` (wave 3): the operator's pinned release kustomization (CRDs, RBAC, the operator), in namespace `keycloak`, watching that namespace only. Server-side apply, for its large CRDs |
 | Keycloak | Application `keycloak` (wave 4), namespace labelled `kfirs.com/public-ingress`. Resource `keycloak`: two instances spread over nodes (`ScheduleAnyway`), a PodDisruptionBudget of `maxUnavailable: 1`, the image pinned and started unoptimized, the file vault mounted from Secret `keycloak-vault`, the bootstrap admin from Secret `keycloak-bootstrap-admin` |
 | Database | PostgreSQL 18 as StatefulSet `postgres`, Grafana's shape ([disruption budgets](disruption-budgets.md#grafana-on-postgresql)): one replica on a 10Gi volume; role and database `keycloak`, created by the image on the volume's first start; a password generated in the cluster; every TCP connection needs it, only the local socket is trusted |
-| Hosts | `id.kfirs.com` on the public gateway routes only `/realms/hub` and `/resources`. `admin.id.kfirs.com` on the protected gateway routes `/admin`, `/realms/master` and `/resources`, behind the hub's sign-in. The gateways' `*.kfirs.com` listeners match both; the wildcard certificate gains `admin.id.kfirs.com`, which is two labels deep |
+| Hosts | `id.kfirs.com` on the public gateway routes `/realms/hub` and `/resources`, and `/realms/master` behind the hub's sign-in (Middleware `keycloak/oidc`), where the admin console signs in. `admin.id.kfirs.com` on the protected gateway routes `/` (Keycloak redirects it to the console), `/admin`, `/realms/master` and `/resources`, behind the hub's sign-in. The gateways' `*.kfirs.com` listeners match both; the wildcard certificate gains `admin.id.kfirs.com`, which is two labels deep |
 | Network | The operator's NetworkPolicy admits Keycloak's HTTP port from namespaces `traefik` (both hosts) and `ci-infra` (Terraform) only. NetworkPolicy `postgres` admits only Keycloak's pods |
 | Sync waves | In `keycloak`: the database and the ExternalSecrets in wave 0, Keycloak in wave 1, the routes in wave 2 |
 
