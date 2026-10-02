@@ -31,10 +31,13 @@ flowchart LR
 | `hooks/pull_request.py` (`PostToolUse`, `create_pull_request`) | After an `arikkfir-org` pull request opens, reminds the session to request `arikkfir-reviewer` and to link the Linear issue and design |
 | `hooks/git_hooks.py` (`SessionStart`; `PostToolUse`, `register_repo_root`) | In cloud sessions, points each `arikkfir-org` repository that commits hooks in `.githooks/` at them (`core.hooksPath`); any other repository's hooks stay off, as git leaves them |
 | `hooks/dockerd.py` (`SessionStart`) | In cloud sessions, starts the Docker daemon in the background, pulling from Docker Hub through `mirror.gcr.io` |
+| `hooks/bundle.py` (`SessionStart`, async) | In cloud sessions, runs the published `setup.sh` in the background when it is pinned to a bundle other than the installed one (`hooks/arikkfir/.bundle`), so sessions started from a cached environment or resumed after idling catch up |
 
 Hooks are stdlib-only Python, fail open (a bug never blocks the session) and are covered by tests.
 
 `commit_message.py`, `add_repo.py`, `pull_request.py`, `git_hooks.py`, `dockerd.py`, `guard.py`'s questions, the permissions and the new `CLAUDE.md` rules come with ENG-51 (arikkfir-org/tooling#11 to #17): each is live once its pull request merges and a session installs the new bundle.
+
+`bundle.py` comes with arikkfir-org/tooling#21.
 
 ## Installation in a session
 
@@ -48,9 +51,19 @@ Claude Code in cloud sessions is started with the launcher's settings file and a
 user-level files written into `~/.claude` are loaded like on a workstation.
 
 `setup.sh` is pinned at build time to one content-addressed bundle. It downloads it, checks the SHA-256, installs
-`CLAUDE.md`, replaces `hooks/arikkfir/` as a whole, and merges `settings.json` into any existing settings (bundle values
-win). Running it twice changes nothing. On any failure it warns and exits 0, because a failed setup script would stop
-the session from starting; `ARIKKFIR_CLAUDE_STRICT=1` makes failures fatal.
+`CLAUDE.md`, replaces `hooks/arikkfir/` as a whole, merges `settings.json` into any existing settings (bundle values
+win), and records the bundle it installed in `hooks/arikkfir/.bundle`. Running it twice changes nothing. On any failure
+it warns and exits 0, because a failed setup script would stop the session from starting; `ARIKKFIR_CLAUDE_STRICT=1`
+makes failures fatal.
+
+The environment runs its setup script once and starts later sessions from a snapshot of the result for about seven
+days, and a session resumed after idling skips it too, so sessions would keep the bundle their environment was cached
+with. `bundle.py` closes that gap: at every session start, resume and compaction it reads the bundle the published
+`setup.sh` is pinned to and, when that isn't the recorded one, runs that `setup.sh` in the background. Because installs
+now run in live sessions, `setup.sh` holds a lock (`hooks/.arikkfir.lock`) from its first write until it exits, so
+overlapping installs take turns, and it stages the new hooks and swaps them in, so a hook that fires meanwhile finds the
+old set or the new one. New hooks and settings apply at once; Claude Code reads `CLAUDE.md` again at the next
+compaction or resume.
 
 ## Publication
 
