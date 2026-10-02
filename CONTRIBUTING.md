@@ -153,7 +153,10 @@ Every meaningful unit of work (a new component, a change of architecture, a new 
 
 - **Formatting**: use the language's canonical formatter (`gofmt`, `terraform fmt`, `prettier` where configured) and linter. CI enforces them.
 - **Comments** explain why, not what. No commented-out code; no TODO without a Linear key.
-- **Tests** accompany behaviour changes. Bug fixes start with a failing test.
+  - Leave code you didn't change alone: no new comments, docs or type annotations on it.
+  - When a change touches part of a comment, change only the words whose meaning changed. Don't reflow or rewrap the rest of it: the churn buries the real change in the diff.
+  - Wrap a new comment at the width of the comments around it, not at a narrower default such as 72 columns.
+- **Tests** accompany behaviour changes. Bug fixes start with a failing test, in the same pull request as the fix, at the level where the bug lived: a bug in how a PipelineRun is rendered gets a test of the rendered run, not only of the code beneath it.
 - **Infrastructure as code**: every cloud and cluster change goes through Terraform (`infra`) or Argo CD (`delivery`). Manual changes are for emergencies only and are back-ported to Git the same day.
 - **Secrets** never enter Git. Values live in Google Secret Manager; External Secrets Operator syncs them into the cluster.
 - **Least privilege**: grant the narrowest role on the narrowest resource to the narrowest identity (see [hub/reference.md](hub/reference.md)). In CI, Tekton's default ServiceAccount `pipeline` never gets a Google Cloud role. A pipeline that needs one names its own ServiceAccount, and one that publishes runs only from `main`
