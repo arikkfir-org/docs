@@ -43,7 +43,7 @@ Changes in `docs` repository can be pushed directly to `main` as long as they re
 
 ### Writing an issue
 
-The issue and the pull request each have one job. The issue says why something should change; the pull request says what changed and how. An issue may name the code path at fault, but it never designs the fix, and a pull request never re-argues why the change is needed. If the implementation ends up contradicting the issue, say so in the pull request and update the issue.
+The issue and the pull request each have one job. The issue says why something should change; the pull request says what changed and how. An issue may name the code path at fault, but it never designs the fix, and a pull request never re-argues why the change is needed. If the implementation ends up contradicting the issue, say so in the pull request and update the issue ([design](hub/designs/writing-issues.md)).
 
 - **Title**: a bug's title describes the wrong behaviour as it is today ("The argocd Application never reaches Synced"). Any other issue's title states the outcome it asks for, as it will be true once done ("infra plans every pull request and applies every merge to main").
 - **Body**:
@@ -60,12 +60,12 @@ The issue and the pull request each have one job. The issue says why something s
 
 - **Priority**, set when the issue is filed:
 
-  | Priority | When                                                         |
-  |----------|--------------------------------------------------------------|
-  | Urgent   | Something is down or exploitable, and there is no workaround |
-  | High     | It hurts, but there is a workaround                          |
-  | Medium   | Limited impact; planned work starts here                     |
-  | Low      | Cosmetic, internal or cleanup                                |
+  | Priority | When                                                                      |
+  |----------|---------------------------------------------------------------------------|
+  | Urgent   | Something is down, exploitable or losing data, and there is no workaround |
+  | High     | It hurts, but there is a workaround                                       |
+  | Medium   | Limited impact; planned work starts here                                  |
+  | Low      | Cosmetic, internal or cleanup                                             |
 
   A security weakness or data loss is never below High.
 
