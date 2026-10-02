@@ -11,10 +11,10 @@ repository's CI configuration must agree with this page. Change it here first, t
 | GitHub organization | `arikkfir-org` |
 | GCP project | `arikkfir` (number `8909046976`, organization `468825984716`) |
 | Region / cluster zone | `me-west1` / `me-west1-a` |
-| DNS domain | `kfirs.com` (Cloud DNS zone `kfirs-com`): hub tools under `dev.kfirs.com`, sign-in at `auth.kfirs.com`. `octomaton.dev` (zone `octomaton-dev`): Octomaton's webhook and Go module path. `kfirfamily.com` (zone `kfirfamily-com`) is imported but unused. |
-| Identity provider | Descope company `KFIRS`, project `development` (`P3JyPV2qsSrMLUpVPTGcBNRHlSkv`), issuer `https://api.descope.com/P3JyPV2qsSrMLUpVPTGcBNRHlSkv` |
+| DNS domain | `kfirs.com` (Cloud DNS zone `kfirs-com`): hub tools under `dev.kfirs.com`, sign-in at `auth.kfirs.com` (oauth2-proxy) and `id.kfirs.com` (Keycloak). `octomaton.dev` (zone `octomaton-dev`): Octomaton's webhook and Go module path. `kfirfamily.com` (zone `kfirfamily-com`) is imported but unused. |
+| Identity provider | Keycloak, realm `hub` in namespace `keycloak`, issuer `https://id.kfirs.com/realms/hub` ([Authentication](#authentication)). Until the cutover, oauth2-proxy and Argo CD still sign in with Descope company `KFIRS`, project `development` (`P3JyPV2qsSrMLUpVPTGcBNRHlSkv`), issuer `https://api.descope.com/P3JyPV2qsSrMLUpVPTGcBNRHlSkv` |
 | Label/annotation prefix | `kfirs.com/` for hub-wide labels, `octomaton.dev/` for Octomaton bookkeeping and the [ServiceAccount branch restriction](#serviceaccount-branches) |
-| Terraform state | GCS bucket `arikkfir-devops` (created by hand, versioned), prefixes `github`, `gcp`, `argocd` |
+| Terraform state | GCS bucket `arikkfir-devops` (created by hand, versioned), prefixes `github`, `gcp`, `argocd`, `keycloak` |
 
 ## Repositories
 
@@ -22,7 +22,7 @@ repository's CI configuration must agree with this page. Change it here first, t
 | --- | --- | --- | --- |
 | `.github` | The organization's welcome page on GitHub: `profile/README.md`, nothing else | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` (neither runs, since `.github` has no CI tenant: merged with the admin bypass) |
 | `docs` | Hub-wide knowledge base; with every repository's `docs/`, served at `docs.dev.kfirs.com` ([docs site](#docs-site)) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
-| `infra` | Terraform: GitHub, GCP, Argo CD bootstrap; [plans and applies](#terraform-applies) `gcp` and `github` | PR + 1 approval + merge queue of one | `Continuous Integration` (fmt, validate, plans), `Docs` |
+| `infra` | Terraform: GitHub, GCP, Argo CD bootstrap, Keycloak's configuration; [plans and applies](#terraform-applies) `gcp` and `github` | PR + 1 approval + merge queue of one | `Continuous Integration` (fmt, validate, plans), `Docs` |
 | `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
 | `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
 | `tooling` | Org-wide tooling: the Claude Code web bundle, the [pull request reviewer](#pull-request-reviewer), and the organization pipelines every repository runs (`.octomaton.yaml`) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
@@ -108,22 +108,25 @@ Public URLs (`arikkfir-claude` only) are `https://storage.googleapis.com/<bucket
 
 ## Secret Manager
 
-Terraform creates the secret containers; values are added by hand (`gcloud secrets versions add`). External Secrets
-Operator reads all but `infra`'s two GitHub tokens, which only `infra`'s pipelines read, so no Kubernetes Secret ever
-holds them.
+Terraform (`terraform/gcp`) creates the secret containers. Values are added by hand (`gcloud secrets versions add`), except the three that `terraform/keycloak` generates and writes write-only, so neither its state nor its plans hold them: `keycloak-hub-client-secret`, `infra-plan-keycloak-secret` and `infra-apply-keycloak-secret`. External Secrets Operator reads all but `infra`'s four pipeline secrets (its GitHub tokens and Keycloak credentials), which only `infra`'s pipelines read, so no Kubernetes Secret ever holds them.
 
 | Secret | Content | Consumed by |
 | --- | --- | --- |
 | `octomaton-github-app-id` | GitHub App ID (number) | `octomaton/octomaton-github` key `app-id` |
 | `octomaton-github-private-key` | GitHub App private key (PEM) | `octomaton/octomaton-github` key `private-key` |
 | `octomaton-github-webhook-secret` | GitHub App webhook secret | `octomaton/octomaton-github` key `webhook-secret` |
-| `oidc-client-secret` | Descope access key (OIDC client secret) | `auth/oauth2-proxy` key `client-secret`; `argocd/argocd-oidc` key `clientSecret` |
+| `oidc-client-secret` | Descope access key (OIDC client secret); deleted when Descope is retired | Until the cutover: `auth/oauth2-proxy` key `client-secret`; `argocd/argocd-oidc` key `clientSecret` |
 | `oauth2-proxy-cookie-secret` | 32 random bytes, base64 | `auth/oauth2-proxy` key `cookie-secret` |
+| `keycloak-bootstrap-admin` | Secret of Keycloak's temporary bootstrap admin, service account `bootstrap-admin` in realm `master` (`openssl rand -hex 32`), for `terraform/keycloak`'s first apply | `keycloak/keycloak-bootstrap-admin` keys `client-id` (`bootstrap-admin`) and `client-secret` |
+| `keycloak-google-client-secret` | Secret of the Google OAuth client of realm `hub`'s identity provider `google` | `keycloak/keycloak-vault` key `hub_google-client-secret` (Keycloak's file vault) |
+| `keycloak-hub-client-secret` | Secret of Keycloak client `hub` (realm `hub`), generated by `terraform/keycloak` | From the cutover: `auth/oauth2-proxy` key `client-secret`; `argocd/argocd-oidc` key `clientSecret` |
 | `grafana-postgres-admin-password` | Password of the superuser `postgres` on Grafana's PostgreSQL, which people sign in with | `grafana/postgres-admin` key `password` |
 | `reviewer-deepseek-api-key` | DeepSeek API key | `ci-*/reviewer-deepseek-api-key` key `api-key` (the [reviewer](#pull-request-reviewer)'s `review` task) |
 | `reviewer-github-pat` | `arikkfir-reviewer`'s fine-grained personal access token | `ci-*/reviewer-github-pat` key `token` (the [reviewer](#pull-request-reviewer)'s `report` task) |
 | `infra-plan-github-pat` | Fine-grained personal access token that reads the organization's repositories and settings and writes contents (see [Terraform applies](#terraform-applies)) | `ci-infra/ci-infra-plan`, read at run time by `infra`'s `ci` pipeline |
 | `infra-apply-github-pat` | Fine-grained personal access token that administers the organization's repositories and settings (see [Terraform applies](#terraform-applies)) | `ci-infra/ci-infra-apply`, read at run time by `infra`'s `apply` pipeline |
+| `infra-plan-keycloak-secret` | Secret of Keycloak client `terraform-plan` (realm `master`), generated by `terraform/keycloak` | `ci-infra/ci-infra-plan`, read at run time by `infra`'s `ci` pipeline (see [Terraform applies](#terraform-applies)) |
+| `infra-apply-keycloak-secret` | Secret of Keycloak client `terraform-apply` (realm `master`), generated by `terraform/keycloak` | `ci-infra/ci-infra-apply`, read at run time by `infra`'s `apply` pipeline |
 
 ## GCP identities and permissions
 
@@ -134,7 +137,7 @@ In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design
 
 | Principal (namespace/KSA) | Role | Scope |
 | --- | --- | --- |
-| `external-secrets/external-secrets` | `roles/secretmanager.secretAccessor` | each secret above but `infra-plan-github-pat` and `infra-apply-github-pat` |
+| `external-secrets/external-secrets` | `roles/secretmanager.secretAccessor` | each secret above but `infra`'s four pipeline secrets: `infra-plan-github-pat`, `infra-apply-github-pat`, `infra-plan-keycloak-secret` and `infra-apply-keycloak-secret` |
 | `cert-manager/cert-manager` | `roles/dns.admin` | managed zones `kfirs-com` and `octomaton-dev` |
 | `grafana/grafana` | `roles/monitoring.viewer` | project |
 | `octomaton/octomaton` | `roles/telemetry.metricsWriter`, `roles/telemetry.tracesWriter`, `roles/serviceusage.serviceUsageConsumer` | project |
@@ -146,7 +149,7 @@ In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design
 | `ci-infra/ci-infra-plan` | `roles/iam.securityReviewer`, `roles/serviceusage.serviceUsageViewer`, `roles/compute.networkViewer`, `roles/container.clusterViewer`, `roles/artifactregistry.reader`, `roles/secretmanager.viewer`, `roles/dns.reader`, `roles/iam.serviceAccountViewer` | project |
 | `ci-infra/ci-infra-plan` | `roles/storage.legacyBucketReader` | each bucket `terraform/gcp` manages |
 | `ci-infra/ci-infra-plan` | `roles/storage.objectViewer` | bucket `arikkfir-devops` |
-| `ci-infra/ci-infra-plan` | `roles/secretmanager.secretAccessor` | secret `infra-plan-github-pat` |
+| `ci-infra/ci-infra-plan` | `roles/secretmanager.secretAccessor` | secrets `infra-plan-github-pat` and `infra-plan-keycloak-secret` |
 | `ci-infra/ci-infra-apply` | `roles/serviceusage.serviceUsageAdmin`, `roles/compute.networkAdmin`, `roles/container.admin`, `roles/artifactregistry.admin`, `roles/storage.admin`, `roles/secretmanager.admin`, `roles/dns.admin`, `roles/iam.serviceAccountAdmin`, `roles/iam.securityAdmin` | project |
 | `ci-infra/ci-infra-apply` | `roles/iam.serviceAccountUser` | service account `gke-hub-nodes@` |
 | `gke-hub-nodes@` (GSA) | `roles/container.defaultNodeServiceAccount` | project |
@@ -165,9 +168,11 @@ to GKE and are not managed here.
 | Pull requests and merge queue | Pipeline `ci` (`Continuous Integration`) as `ci-infra/ci-infra-plan`: `fmt`, `validate` in every root, `plan -lock=false` in `gcp` and `github` |
 | Merge to `main` | Pipeline `apply` (`Apply`) as `ci-infra/ci-infra-apply`: plans `gcp` and `github` and applies both in full, deletions and replacements included, `gcp` first |
 | Concurrency | The merge queue's `ci` runs and `apply` share the group `terraform` (policy `queue`) |
-| By hand (`make terraform <root>`) | `argocd` (bootstrap only) and the first apply of new roles or tokens |
+| By hand (`make terraform <root>`) | `argocd` (bootstrap only), the first apply of new roles or tokens, and `keycloak` until the pipelines plan and apply it |
 | `infra-plan-github-pat` | Fine-grained, resource owner `arikkfir-org`, all repositories: repository Administration and Metadata read, Contents read and write; organization Administration and Members read |
 | `infra-apply-github-pat` | Fine-grained, resource owner `arikkfir-org`, all repositories: repository Administration and Contents read and write, Metadata read; organization Administration and Members read and write |
+| `keycloak` | Root `terraform/keycloak`, state prefix `keycloak`: realm `hub` with its flows, identity provider, client and users, and the pipelines' clients in realm `master` ([Authentication](#authentication)). Applied by hand until `ci` plans it and `apply` applies it, after `gcp` and `github`. The first apply runs as the bootstrap admin through `kubectl -n keycloak port-forward svc/keycloak-service 8080`; the pipelines reach `http://keycloak-service.keycloak.svc.cluster.local:8080` |
+| Keycloak credentials | `ci-infra-plan` signs in as client `terraform-plan` (secret `infra-plan-keycloak-secret`): roles `view-realm`, `view-clients`, `view-users`, `view-identity-providers` and `view-events` of client `hub-realm`, `view-realm` and `view-clients` of client `master-realm`. `ci-infra-apply` signs in as `terraform-apply` (`infra-apply-keycloak-secret`): realm role `admin`. Both are service accounts in realm `master`, and the provider reads them from `KEYCLOAK_CLIENT_ID` and `KEYCLOAK_CLIENT_SECRET` |
 
 Both tokens have Contents read and write because GitHub shows a repository's merge settings only to tokens with it
 ([design](designs/terraform-plan-apply.md#github-tokens)). The owner creates both tokens, adds them with
@@ -188,6 +193,9 @@ Both tokens have Contents read and write because GitHub shows a repository's mer
 | `traefik` | Gateway API CRDs (standard channel) | `kubernetes-sigs/gateway-api` release | `v1.6.2` |
 | `traefik` | Traefik | `https://traefik.github.io/charts` `traefik` | `41.6.0` (Traefik v3.7) |
 | `auth` | oauth2-proxy (auth interceptor) | `https://oauth2-proxy.github.io/manifests` `oauth2-proxy` | `10.7.0` |
+| `keycloak` | Keycloak Operator, watching its own namespace | `keycloak/keycloak-k8s-resources` release kustomization (`kubernetes/`) | `26.8.0` |
+| `keycloak` | Keycloak (identity provider): resource `keycloak`, two pods, Service `keycloak-service` (port 8080) | `quay.io/keycloak/keycloak` | `26.8.0` |
+| `keycloak` | PostgreSQL for Keycloak: StatefulSet `postgres`, one replica, a 10Gi volume | `docker.io/library/postgres` | `18.6-trixie` |
 | `grafana` | Grafana | `https://grafana-community.github.io/helm-charts` `grafana` | `13.2.7` (Grafana 13.2.3) |
 | `grafana` | PostgreSQL for Grafana: StatefulSet `postgres`, one replica, a 10Gi volume | `docker.io/library/postgres` | `18.6-trixie` |
 | `tekton-operator` | Tekton Operator | `tektoncd/operator` release manifest from `infra.tekton.dev` (Tekton's release host since v0.78) | `v0.81.1` |
@@ -200,7 +208,7 @@ Both tokens have Contents read and write because GitHub shows a repository's mer
 NATS clients, NACK included, connect to `nats://nats.nats.svc.cluster.local:4222`. JetStream streams may keep up to
 three replicas. The servers spread across system-pool nodes when there are several, but don't make the pool grow.
 
-Availability ([design](designs/disruption-budgets.md)): Traefik, oauth2-proxy, the docs site, Grafana, Octomaton,
+Availability ([design](designs/disruption-budgets.md)): Traefik, oauth2-proxy, Keycloak, the docs site, Grafana, Octomaton,
 `go-import` and KEDA's operator, metrics server and webhooks run two replicas each. NATS runs three servers. Each has a
 PodDisruptionBudget of `maxUnavailable: 1` and spreads its pods over nodes when the pool has several
 (`whenUnsatisfiable: ScheduleAnyway`). Grafana keeps its state in database `grafana` on StatefulSet `postgres` in its
@@ -210,6 +218,8 @@ pods. Role `grafana`'s password is generated in the cluster: an ESO `Password` g
 `kubectl port-forward -n grafana svc/postgres 5432`, with the password from Secret Manager
 `grafana-postgres-admin-password`. Every TCP connection needs a password; only the local socket is trusted. PostgreSQL
 runs one replica without a budget. Grafana's replicas share alert state through Service `grafana-headless` on port 9094.
+
+Keycloak keeps its state, sessions included, in database `keycloak` on StatefulSet `postgres` in namespace `keycloak`, at `postgres.keycloak.svc.cluster.local:5432` without TLS, and NetworkPolicy `postgres` admits only Keycloak's pods. Role `keycloak`, the image's superuser and the database's owner, has a password generated in the cluster: an ESO `Password` generator with `refreshPolicy: CreatedOnce` creates Secret `keycloak/keycloak-db` (keys `username` and `password`). People connect with `kubectl exec -n keycloak postgres-0 -- psql -U keycloak`. Every TCP connection needs a password; only the local socket is trusted. PostgreSQL runs one replica without a budget, so sign-in pauses while it restarts. The PodDisruptionBudget `keycloak` and the pods' spread select `app=keycloak` and `app.kubernetes.io/instance=keycloak`, the labels the operator sets.
 
 ## Ingress
 
@@ -227,7 +237,7 @@ Certificates come from cert-manager (Let's Encrypt, DNS-01 through Cloud DNS, Cl
 
 | Listener | Hostname | Certificate / secret |
 | --- | --- | --- |
-| `protected/websecure`, `public/public-websecure` | `*.kfirs.com` (which also matches `*.dev.kfirs.com`) | `wildcard-kfirs-com` (`*.kfirs.com`, `*.dev.kfirs.com`) / `traefik/wildcard-kfirs-com-tls` |
+| `protected/websecure`, `public/public-websecure` | `*.kfirs.com` (which also matches `*.dev.kfirs.com` and `admin.id.kfirs.com`) | `wildcard-kfirs-com` (`*.kfirs.com`, `*.dev.kfirs.com`, `admin.id.kfirs.com`) / `traefik/wildcard-kfirs-com-tls` |
 | `public/octomaton-dev` (port 9443) | `octomaton.dev` | `octomaton-dev` / `traefik/octomaton-dev-tls` |
 
 The `octomaton-dev` listener accepts routes only from namespace `octomaton` (which also carries
@@ -241,7 +251,9 @@ The `octomaton-dev` listener accepts routes only from namespace `octomaton` (whi
 | `traefik.dev.kfirs.com` | protected | Traefik dashboard (`api@internal`, IngressRoute) |
 | `nui.dev.kfirs.com` | protected | `nats/nui` |
 | `docs.dev.kfirs.com` | protected | `docs/docs:80` |
+| `admin.id.kfirs.com` | protected | `keycloak/keycloak-service:8080`, paths `/admin`, `/realms/master` and `/resources`: Keycloak's admin console |
 | `auth.kfirs.com` | public | `auth/oauth2-proxy:80`, path `/oauth2` |
+| `id.kfirs.com` | public | `keycloak/keycloak-service:8080`, paths `/realms/hub` and `/resources`: realm `hub` only |
 | `octomaton.dev` | public (listener `octomaton-dev`) | `octomaton/octomaton:80` for path `/github/hooks`; `octomaton/go-import:80` for everything else |
 
 DNS A records (TTL 300) point each host at its gateway's IP: in zone `kfirs-com` for `kfirs.com` hosts, and the apex
@@ -249,26 +261,36 @@ of zone `octomaton-dev` for `octomaton.dev`.
 
 ## Authentication
 
-- Descope decides who signs in: every user of the project, and nobody else. Users sign in with Google through a
-  sign-in-only flow, and the project blocks self-registration, so users can't register themselves. The project must
-  have no SSO tenant or tenant self-provisioning domain: either would admit users by domain.
-- oauth2-proxy (`auth` namespace) is the OIDC client (`client_id` = Descope project ID, `client_secret` = Descope access
-  key), keeps a session cookie on `.kfirs.com`, and admits every user Descope authenticates (`emailDomains: ["*"]`, no
-  email list).
+Keycloak decides who signs in: the users `terraform/keycloak` declares in realm `hub`, and nobody else ([design](designs/keycloak.md)). oauth2-proxy and Argo CD stay on Descope until the cutover pull request in `delivery` merges ([until the cutover](#until-the-cutover)).
+
+| Item | Value |
+| --- | --- |
+| Realm `hub` | Issuer `https://id.kfirs.com/realms/hub`. Registration, password reset and duplicate emails off; login with email on. Access tokens live 10 minutes; SSO sessions end after 7 idle days, and after 30 days at most |
+| Browser flow | `browser-google`, the realm's browser flow: an existing session (`auth-cookie`), or straight to Google (`identity-provider-redirector`, config `google`, default provider `google`) |
+| Identity provider `google` | Google OIDC; client secret `${vault.google-client-secret}`, from Keycloak's file vault; emails trusted; sync mode `IMPORT`; scopes `openid email profile`. Its Google OAuth client, in project `arikkfir` (Google Auth Platform), is created by hand, with redirect URI `https://id.kfirs.com/realms/hub/broker/google/endpoint` |
+| First login | Flow `existing-users-only`: `idp-detect-existing-broker-user`, then `idp-auto-link`. A Google identity links to the declared user with the same email; anyone else is refused |
+| Users | Declared in `terraform/keycloak`, keyed by the email of their Google account, which is also their username; email verified |
+| Client `hub` | Confidential, standard flow only; redirect URIs `https://auth.kfirs.com/oauth2/callback` and `https://argocd.dev.kfirs.com/auth/callback`. Terraform generates its secret and writes it, write-only, to Keycloak and to `keycloak-hub-client-secret`. oauth2-proxy and Argo CD share it, so Argo CD accepts the ID tokens oauth2-proxy forwards |
+| Realm `master` | Outside the cluster, only at `admin.id.kfirs.com`. Clients `terraform-plan` and `terraform-apply` ([Terraform applies](#terraform-applies)), and the bootstrap admin, service account `bootstrap-admin`, which is deleted once the pipelines apply `keycloak`. Break-glass: `kcadm.sh` through `kubectl exec`; `kc.sh bootstrap-admin` recreates an admin |
+| Server | Resource `keycloak`: hostname `https://id.kfirs.com`, admin hostname `https://admin.id.kfirs.com`, backchannel URLs from each request (for Terraform's in-cluster calls), plain HTTP on 8080 behind Traefik, trusting its `X-Forwarded-*` headers. The file vault is Secret `keycloak-vault`, mounted at `/opt/keycloak/vault`. The operator's NetworkPolicy admits port 8080 from namespaces `traefik` and `ci-infra` only |
+
+- oauth2-proxy (`auth` namespace) is the OIDC client (client `hub`), keeps a session cookie on `.kfirs.com`, and admits every user Keycloak authenticates (`emailDomains: ["*"]`, no email list).
 - Traefik's `oidc` ForwardAuth middleware calls `http://oauth2-proxy.auth.svc.cluster.local/` (static `202` upstream)
   for every request on the protected entry point, and copies `X-Auth-Request-User`, `X-Auth-Request-Email` and
   `X-Auth-Request-Preferred-Username` to the upstream request. `strip-auth-headers` removes client-supplied copies first.
-- Grafana trusts `X-Auth-Request-Email` (auth proxy mode). Argo CD's route adds the `argocd/descope-token` ForwardAuth
-  middleware, which copies oauth2-proxy's `Authorization: Bearer <Descope ID token>` to Argo CD only; Argo CD verifies
-  the token against Descope (OIDC, same client), so the Descope session signs the user in, and grants `role:admin` to
-  every authenticated user. Its own "Log in via Descope" remains the fallback. Tekton Dashboard, NUI and the Traefik
-  dashboard rely on the interceptor alone.
-- oauth2-proxy requests `offline_access` and refreshes a session's tokens after 5 minutes (`cookie-refresh`), so the ID
-  token it hands to Argo CD stays valid.
+- Grafana trusts `X-Auth-Request-Email` (auth proxy mode). Argo CD's route adds the `argocd/id-token` ForwardAuth middleware, which copies oauth2-proxy's `Authorization: Bearer <ID token>` to Argo CD only; Argo CD verifies the token against Keycloak (OIDC, same client), so the Keycloak session signs the user in, and grants `role:admin` to every authenticated user. Its own "Log in via Keycloak" remains the fallback. Tekton Dashboard, NUI and the Traefik dashboard rely on the interceptor alone.
+- oauth2-proxy requests `openid email profile` and refreshes a session's tokens after 5 minutes (`cookie-refresh`), so the ID token it hands to Argo CD stays valid. It doesn't request `offline_access`: requested at the first login, it stops Keycloak from setting its SSO cookie. The refresh token lasts as long as the SSO session.
 - NUI's route adds `nats/strip-cookies`, which removes the `Cookie` header after ForwardAuth: NUI's server (fasthttp)
   refuses request headers over 4 KiB, which oauth2-proxy's session cookies on `.kfirs.com` can exceed.
 - Protected backends accept traffic only from the `traefik` namespace (NetworkPolicy); Argo CD's server also admits
   its own namespace and Octomaton, which relays GitHub webhooks to `/api/webhook`.
+
+### Until the cutover
+
+Until the cutover pull request in `delivery` merges, oauth2-proxy and Argo CD sign in with Descope. Descope stays a week after it, so that reverting that pull request restores sign-in:
+
+- Descope decides who signs in: every user of project `development`, and nobody else. Users sign in with Google through the sign-in-only flow `hub-sign-in`, and the project blocks self-registration. The project must have no SSO tenant or tenant self-provisioning domain: either would admit users by domain.
+- oauth2-proxy's client ID is the Descope project ID, its secret the access key in `oidc-client-secret`, and it requests `offline_access` as well. Argo CD verifies tokens against Descope with the same client, its route's middleware is `argocd/descope-token`, and its fallback is "Log in via Descope".
 
 ## Octomaton
 

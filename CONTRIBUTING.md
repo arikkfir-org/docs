@@ -18,12 +18,12 @@ flowchart LR
 
 1. **Start from a Linear issue** for anything beyond a trivial fix (see [Linear](#linear)).
 2. **Branch** from the default branch using the issue's branch name.
-3. **Write or update the design doc** in the same pull request as the change, in that repository's `docs/`, for every meaningful unit of work (see
+3. **Write or update the design doc** for every meaningful unit of work, in the change's pull request (that repository's `docs/`) or on `docs`'s `main` (see
    [Design documents](#design-documents)).
 4. **Open a pull request** early; mark it ready once CI is green and the description is complete.
-5. **Merge through the merge queue**. Default branches accept merge commits only, after one approval, resolved conversations and a green `Continuous Integration` check. Nobody pushes directly to a protected default branch.
+5. **Merge through the merge queue**. Default branches accept merge commits only, after one approval, resolved conversations and a green `Continuous Integration` check. Nobody pushes directly to a protected default branch, except `docs`'s `main` (below).
 
-Changes in `docs` repository can be pushed directly to `main` as long as they represent the present; otherwise, a PR is required. For instance, a design for a new feature can be pushed directly to `docs`'s `main` since it describes a new feature (and clearly states it's a design for a new feature, not description of something deployed in production).
+Changes to the `docs` repository are pushed directly to its `main`, without a pull request. The `Docs` check runs only on pull requests, so `docs-publish` finds a broken link or a collision only after the push: fix it at once. Every other repository changes through pull requests, which carry their docs in their own `docs/` unless those go to `docs`'s `main`.
 
 ## Linear
 
@@ -140,14 +140,14 @@ A round ends in this order: push the fixes, reply on every thread, then request 
 
 ## Design documents
 
-Every meaningful unit of work (a new component, a change of architecture, a new convention, anything someone will later ask "why is it like this?" about) gets a design document, written before or alongside the change and updated when the implementation diverges. The design ships in the same pull request as the change, in that repository's `docs/` (in `docs`, anywhere in its tree): one pull request and one review instead of two, and the design merges with the code it describes.
+Every meaningful unit of work (a new component, a change of architecture, a new convention, anything someone will later ask "why is it like this?" about) gets a design document, written before or alongside the change and updated when the implementation diverges. It never gets a pull request of its own: it ships in the change's pull request, in that repository's `docs/`, so it merges with the code it describes, or it goes straight to `docs`'s `main`.
 
 - **Where**: `<area>/designs/<slug>.md` on the site (e.g. `hub/designs/phase-2-octomaton.md`). Every repository's `docs/` maps to the site root, so `docs/hub/designs/x.md` in `infra` is `hub/designs/x.md`. Rich visual pages may be HTML.
-- **Across repositories**: put the design in the leading repository, or split it into one document per repository, each in the pull request of that repository's part. A directory groups the parts (`hub/designs/<slug>/`): every repository's `docs/` composes into the one URL space at `docs.dev.kfirs.com` ([design](hub/designs/docs-site-composition.md)), so the parts read as one design. Repositories share directories, never file paths.
+- **Across repositories**: put the design in the leading repository or on `docs`'s `main`, or split it into one document per repository, each in the pull request of that repository's part. A directory groups the parts (`hub/designs/<slug>/`): every repository's `docs/` composes into the one URL space at `docs.dev.kfirs.com` ([design](hub/designs/docs-site-composition.md)), so the parts read as one design. Repositories share directories, never file paths.
 - **Links**: the `Docs` check resolves relative links against the other repositories' `main`, so a part links only to pages already merged or in its own pull request. Later parts link back to earlier ones.
 - **Visual first**: at least one diagram (Mermaid in Markdown, or SVG/HTML) showing the moving parts.
 - **Contents**: context and goal; the design; decisions with their rationale and rejected alternatives; security and failure modes; rollout and manual steps; open questions.
-- **Facts in one place**: names, addresses, identities and permissions belong in the area's reference page (for the hub, [hub/reference.md](hub/reference.md)). Designs link to it instead of copying. The hub reference lives only in `docs`, so a change that adds a name to it also takes a `docs` pull request, merged first.
+- **Facts in one place**: names, addresses, identities and permissions belong in the area's reference page (for the hub, [hub/reference.md](hub/reference.md)). Designs link to it instead of copying. The hub reference lives only in `docs`, so a change that adds a name to it pushes the reference to `docs`'s `main` first.
 - Link the design from the pull request, and the pull request from the design once it exists.
 
 ## Investigations and walkthroughs
@@ -210,4 +210,4 @@ The [pull request reviewer](hub/designs/pr-reviewer.md) applies both.
 
 - Agents follow this page and the repository's `CLAUDE.md`.
 - Agent-authored pull requests get the same review as any other: at least one human approval.
-- Agents never apply Terraform, change the cluster directly, or push to protected default branches.
+- Agents never apply Terraform, change the cluster directly, or push to protected default branches other than `docs`'s `main`.
