@@ -254,6 +254,7 @@ The `octomaton-dev` listener accepts routes only from namespace `octomaton` (whi
 | `admin.id.kfirs.com` | protected | `keycloak/keycloak-service:8080`, paths `/admin`, `/realms/master` and `/resources`: Keycloak's admin console |
 | `auth.kfirs.com` | public | `auth/oauth2-proxy:80`, path `/oauth2` |
 | `id.kfirs.com` | public | `keycloak/keycloak-service:8080`, paths `/realms/hub` and `/resources`: realm `hub` only |
+| `legal.kfirs.com` | public | `docs/docs:80`, exact paths `/privacy.html`, `/tos.html` and their `.md.html` pages: the privacy policy and terms of service the Google OAuth app's branding links to |
 | `octomaton.dev` | public (listener `octomaton-dev`) | `octomaton/octomaton:80` for path `/github/hooks`; `octomaton/go-import:80` for everything else |
 
 DNS A records (TTL 300) point each host at its gateway's IP: in zone `kfirs-com` for `kfirs.com` hosts, and the apex
