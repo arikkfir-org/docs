@@ -49,7 +49,7 @@ Google service accounts.
 
 | ServiceAccount | Annotation | Roles (scope) |
 | --- | --- | --- |
-| `ci-infra-plan` | none | `roles/iam.securityReviewer`, `roles/serviceusage.serviceUsageViewer`, `roles/compute.networkViewer`, `roles/container.clusterViewer`, `roles/artifactregistry.reader`, `roles/secretmanager.viewer`, `roles/dns.reader`, `roles/iam.serviceAccountViewer` (project); `roles/storage.legacyBucketReader` (each bucket `terraform/gcp` manages); `roles/storage.objectViewer` (bucket `arikkfir-devops`); `roles/secretmanager.secretAccessor` (secret `infra-plan-github-pat`) |
+| `ci-infra-plan` | none | `roles/iam.securityReviewer`, `roles/serviceusage.serviceUsageViewer`, `roles/compute.networkViewer`, `roles/container.clusterViewer`, `roles/artifactregistry.reader`, `roles/secretmanager.viewer`, `roles/dns.reader`, `roles/iam.serviceAccountViewer` (project); `roles/storage.legacyBucketReader` (each bucket `terraform/gcp` manages); `roles/storage.objectViewer` (bucket `arikkfir-devops`); `roles/secretmanager.secretAccessor` (secrets `infra-plan-github-pat` and `infra-plan-keycloak-secret`) |
 | `ci-infra-apply` | `octomaton.dev/branches: main` | `roles/serviceusage.serviceUsageAdmin`, `roles/compute.networkAdmin`, `roles/container.admin`, `roles/artifactregistry.admin`, `roles/storage.admin`, `roles/secretmanager.admin`, `roles/dns.admin`, `roles/iam.serviceAccountAdmin`, `roles/iam.securityAdmin` (project); `roles/iam.serviceAccountUser` (service account `gke-hub-nodes@`) |
 
 The roles cover each resource type in `terraform/gcp`. Each admin role also sets the IAM policies of its own
