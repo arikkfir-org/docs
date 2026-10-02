@@ -204,7 +204,7 @@ The [pull request reviewer](hub/designs/pr-reviewer.md) applies both.
 
 - Every push to an application's default branch releases it: the push publishes the application's image, tagged with the commit's short SHA, which is also the version the application reports. There are no version tags.
 - A release's notes are its merge commit: the pull request's title and description.
-- Deploying a release is a pull request to `arikkfir-org/delivery` that bumps the pinned image tag. Octomaton is the exception: Argo CD deploys its `main` with the image of the commit it syncs (see [Octomaton](hub/reference.md#octomaton)).
+- Deploying a release is a pull request to `arikkfir-org/delivery` that bumps the pinned image tag. Octomaton and Fin are the exceptions: Argo CD deploys their `main` with the image of the commit it syncs (see [Octomaton](hub/reference.md#octomaton) and [Fin](hub/reference.md#fin)).
 
 ## Coding agents
 
