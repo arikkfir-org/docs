@@ -1,7 +1,7 @@
 # docs
 
 The knowledge base of the `arikkfir-org` development hub: designs, architecture, runbooks and conventions. Every
-meaningful unit of work lands here as a visual design document.
+meaningful unit of work gets a visual design document, here or in the `docs/` of the repository it changes.
 
 ## Start here
 
