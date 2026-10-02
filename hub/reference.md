@@ -100,7 +100,7 @@ Tekton runs land on the `ci` pool through Tekton's default pod template (node se
 
 | Resource | Name | Access |
 | --- | --- | --- |
-| Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomaton/ci-octomaton-release` writes |
+| Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomaton/ci-octomaton-release` writes. Images: `octomaton` (Octomaton's `release`) and `reviewer` (Octomaton's `reviewer-image`, the [pull request reviewer](#pull-request-reviewer)'s image), each tagged with the commit's short SHA and `main` |
 | Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private, one layer per repository under `.layers/<repository>/` ([docs site](#docs-site)): `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; each tenant's `docs-publisher` writes its own layer, and `docs-reader` lists names |
 | Bucket | `arikkfir-claude` (`ME-WEST1`, uniform access) | public object reads (no listing); `ci-tooling/ci-tooling-publish` writes |
 
@@ -381,6 +381,8 @@ pipelines:
     githubToken:                       # optional installation token for this repository, refreshed while the run lives
       workspace: github-token          # bound as a Secret workspace (key: token)
       permissions: {contents: read}    # default
+      # repositories: all              # optional: every repository the App is installed on in the owner, not just this
+                                       # one; only when every trigger reads definitions from the default branch
     secrets: []                        # optional: Secrets in the run's namespace it may mount; only when every
                                        # trigger reads definitions from the default branch (comment, review_request,
                                        # schedule)
@@ -443,7 +445,8 @@ or Markdown summary.
 
 Secrets: a run may mount the token Octomaton binds and the Secrets its pipeline lists in `secrets`, nothing else. Only a
 pipeline whose every trigger reads definitions from the default branch may list any, so definitions at a pull request's
-head commit never reach a Secret. Remote Tekton references are refused (`pipelineRef`, `taskRef`, a step's `ref`, any
+head commit never reach a Secret. The token reads only the run's repository, unless `githubToken.repositories: all` asks
+for every repository the App is installed on in the owner (same `permissions`); the same rule as for `secrets` applies. Remote Tekton references are refused (`pipelineRef`, `taskRef`, a step's `ref`, any
 `resolver` or `bundle`), because Octomaton can only check definitions it can see: a PipelineRun holds its whole
 `spec.pipelineSpec`, with a `taskSpec` per task.
 
@@ -473,10 +476,12 @@ Requesting a review from `arikkfir-reviewer` runs the reviewer on the pull reque
 | Team | `reviewers` (closed): `arikkfir-reviewer`, with `push` on every repository (resolving threads takes write access) |
 | Token | Fine-grained personal access token of `arikkfir-reviewer`: resource owner `arikkfir-org`, all repositories, contents and pull requests read and write (GitHub resolves a review thread only for a token with contents write); expires within a year; Secret Manager `reviewer-github-pat` |
 | Model | DeepSeek V4 Pro (`deepseek-v4-pro`), through opencode `1.18.33` (`ghcr.io/anomalyco/opencode`) as `deepseek/deepseek-v4-pro`; key in Secret Manager `reviewer-deepseek-api-key` |
+| Image | `me-west1-docker.pkg.dev/arikkfir/images/reviewer`, pinned by digest in `reviewer/pipelinerun.yaml`: opencode's image plus `bash`, `python3`, `git`, `jq`, `yq`, `curl`, `wget` and GNU userland. Built from `images/reviewer/` in `arikkfir-org/octomaton` by its pipeline `reviewer-image` (on pushes to `main` that change it, as `ci-octomaton-release`; `reviewer-image-check`, check `Reviewer Image`, builds it on pull requests) |
+| GitHub proxy | Sidecar `github` of task `review`, on `http://127.0.0.1:8080`: GitHub's REST API under `/api/` (GET and HEAD) and git fetches under `/git/<owner>/<repository>.git`, sent with the run's token, which only it and `setup` mount. Code `reviewer/github_proxy.py` |
 | Definitions | `arikkfir-org/tooling`, `reviewer/`: the PipelineRun `reviewer/pipelinerun.yaml`, its scripts, the prompt and `opencode.json`, all read at `tooling`'s default branch |
 | Findings | Each a thread, marked 🔴 blocking (must fix), 🟡 non-blocking (should fix) or 🔵 nit (could fix), with a severity (`low`, `medium`, `high`, `urgent`) and a likelihood (`low`, `medium`, `high`). The review approves when there are none or only nits, and requests changes otherwise |
-| Trigger | Pipeline `review`, display name `AI Review`: an organization pipeline in `arikkfir-org/tooling`'s `.octomaton.yaml` (the organization repository), so every repository has it. `on.review_request.reviewers: [arikkfir-reviewer]`, `secrets: [reviewer-deepseek-api-key, reviewer-github-pat]`, `githubToken` with contents and pull requests read |
-| Tasks | `setup` (clone, state), `review` (opencode, check, fix, recheck), `report`; all as ServiceAccount `reviewer`, all labelled `kfirs.com/sandbox=true` |
+| Trigger | Pipeline `review`, display name `AI Review`: an organization pipeline in `arikkfir-org/tooling`'s `.octomaton.yaml` (the organization repository), so every repository has it. `on.review_request.reviewers: [arikkfir-reviewer]`, `secrets: [reviewer-deepseek-api-key, reviewer-github-pat]`, `githubToken` with contents and pull requests read for every repository (`repositories: all`) |
+| Tasks | `setup` (clone, state), `review` (opencode, check, fix, recheck; sidecar `github`), `report`; all as ServiceAccount `reviewer`, all labelled `kfirs.com/sandbox=true` |
 | Volume | One per run: 50Gi, `ReadWriteOnce` (`volumeClaimTemplate`), deleted an hour after the run (`OCTOMATON_RETENTION_FREE_PVCS_AFTER`) |
 | Files on the volume | `pr.json`, `pr.diff`, `pr.log` (setup), `findings.json` (review), `repos/<repository>/`, `.review/` |
 | Markers | A thread's first comment: `<!-- reviewer:<code> -->`. The review body: `<!-- reviewer-run:<PipelineRun> -->` |
