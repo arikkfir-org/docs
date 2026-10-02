@@ -2,8 +2,11 @@
 
 An investigation ends in a write-up, whether or not it leads to a fix or an issue. It is the record the next person reads instead of investigating again. Write it for the person who reported the problem and the one who will fix it, and assume they have ninety seconds.
 
-- **Where**: in this repository, at `root-causes/<YYYY-MM-DD>-<slug>.md`, dated the day the investigation concluded and named for the symptom. It describes what is, so it goes straight to `main`.
+- **Where**: `root-causes/<YYYY-MM-DD>-<slug>.md`, dated the day the investigation concluded and named for the symptom, in a repository as visible as what it's about:
+  - **A public repository's problem**: in this repository. It describes what is, so it goes straight to `main`.
+  - **An internal repository's problem** (`fin`): in that repository's own `docs/`, through a pull request. This repository is public, so anything in it is readable by anyone on GitHub; the site serves the internal repository's pages at the same paths, behind sign-in. Its file names stay visible to every repository's `Docs` check, so keep private details out of the slug.
 - **Not a design for the fix**: it names the code at fault; the fix belongs to an issue and its pull request, which link here.
+- **Nothing secret**: quote logs, queries and reproductions without credentials or personal data, wherever the write-up lives.
 - **Visuals**: the [writing toolkit](toolkit.md).
 
 Copy the skeleton and keep its headings, in their order:

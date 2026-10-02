@@ -117,6 +117,7 @@ Every meaningful unit of work (a new component, a change of architecture, a new 
 - An investigation ends in a root-cause write-up, whether or not it leads to a fix or an issue: [template](hub/templates/root-cause.md).
 - A pull request a reviewer can't follow from its diff gets a walkthrough, linked from its `## Summary`: [template](hub/templates/walkthrough.md).
 - Both use one visual vocabulary (diagrams over narration, tables over parallel lists, status markers, drill-downs): the [writing toolkit](hub/templates/toolkit.md).
+- Both live in `docs`, which is public, unless they're about an internal repository (`fin`): then they live in that repository's own `docs/`, as private as its code ([design](hub/designs/investigations-and-walkthroughs.md)).
 
 ## Code and configuration
 
