@@ -24,7 +24,9 @@ flowchart LR
   MQ --> M[main]
   M -->|apply| AP[ci-infra-apply]
   O[Octomaton] -. refuses unless the branch is main .-> AP
-  AP --> A[plan and apply gcp, github, then keycloak]
+  AP --> G[gcp: plan, apply]
+  AP --> H[github: plan, apply]
+  G --> K[keycloak: plan, apply]
 ```
 
 ### Octomaton: ServiceAccount branches
@@ -77,8 +79,8 @@ Secret holds it: Octomaton never lets a `push` pipeline mount one. The owner cre
 
 | Pipeline | Triggers | ServiceAccount | Steps |
 | --- | --- | --- | --- |
-| `ci` (`Continuous Integration`) | `pull_request` to `main`, `merge_group` | `ci-infra-plan` | `fmt -check`; `init -backend=false` and `validate` in every root; then in `gcp`, `github` and `keycloak`, a full `init` (it reads the state in `arikkfir-devops`) and `plan -lock=false`, without refreshing `keycloak` ([Keycloak](keycloak.md#decisions)). The plans go into the check's summary, deletions and replacements first |
-| `apply` (`Apply`) | `push` to `main` | `ci-infra-apply` | A full `init` and `plan -out` in `gcp`, `github` and `keycloak`, then apply the saved plans in full, deletions and replacements included, in that order. The plans go into the check's summary |
+| `ci` (`Continuous Integration`) | `pull_request` to `main`, `merge_group` | `ci-infra-plan` | `fmt -check`; `init -backend=false` and `validate` in every root; then in `gcp`, `github` and `keycloak`, a full `init` (it reads the state in `arikkfir-devops`) and `plan -lock=false`, without refreshing `keycloak` ([Keycloak](keycloak.md#decisions)). Task `check` runs `fmt` and `validate`, and each root plans in a task of its own, all four at once. The plans go into the check's summary, deletions and replacements first |
+| `apply` (`Apply`) | `push` to `main` | `ci-infra-apply` | A full `init` and `plan -out` in `gcp`, `github` and `keycloak`, then apply the saved plans in full, deletions and replacements included, in a task per root: `gcp` and `github` at once, `keycloak` after `gcp`, because it writes versions of secrets that `gcp` creates. The plans go into the check's summary |
 
 - `argocd` is never planned or applied by a pipeline. It bootstraps Argo CD, which manages itself afterwards, so
   applying it again would fight Argo CD.
@@ -97,6 +99,7 @@ Secret holds it: Octomaton never lets a `push` pipeline mount one. The owner cre
 | Tokens read from Secret Manager at run time | Octomaton refuses Secrets in `push` pipelines | Kubernetes Secrets, which would need that rule relaxed |
 | Apply every plan in full, deletions and replacements included | Pull requests plan, merges apply: the pull request's plan is the review, and merging approves it. `prevent_destroy` still fails any plan that would destroy a DNS zone, the organization's settings or a repository | Stopping on any deletion or replacement for the owner to apply by hand, the first version (until arikkfir-org/infra#28). It stopped even on IAM bindings a reviewed pull request removed |
 | Merge queue of one, sharing a concurrency group with `apply` | The plan of each merge is the plan that is applied | Groups of up to five |
+| A task per root, in parallel; `keycloak` applies after `gcp` | The roots share no state, so their plans and applies don't wait on each other, except `keycloak`'s writes into `gcp`'s secrets. Each task clones the commit into its own `emptyDir`: without the affinity assistant, tasks sharing a volume must run one after another. Each task is also its own check, which keeps its root's plan when another root fails: Tekton drops a pipeline result that names a failed task's result, so the run's check then has none | One task planning, then applying, every root in turn (the first version, until arikkfir-org/infra#39); a volume shared by the tasks; Tekton `matrix`, whose TaskRuns share one pipeline task name, so Octomaton's task table and checks show only one of them |
 | Contents read and write on both tokens | GitHub shows merge settings only to such tokens, and pull request plans still refresh, so they show drift | A plan token without it and `-refresh=false` for `github` in `ci` (no drift in pull request plans); `ignore_changes` on the merge settings (Terraform would set them only at creation) |
 
 ## Security and failure modes
@@ -112,7 +115,7 @@ Secret holds it: Octomaton never lets a `push` pipeline mount one. The owner cre
   `ci-infra-apply`. Cluster admins can always bypass it.
 - A merge applies its plan in full, deletions and replacements included. The pull request's `Continuous Integration`
   check lists them first: read it before merging.
-- An apply that fails part-way leaves what it applied; the next merge, or the owner, finishes. A refused run (wrong
+- An apply that fails part-way leaves what it applied; the next merge, or the owner, finishes. The roots apply independently: a failed plan or apply in one root stops no task already running, so `github` can be applied while `gcp` fails, but no task starts after a failure, so `keycloak` never applies after `gcp` failed. A refused run (wrong
   branch) fails the `Apply` check with the reason.
 - Missing roles show up as a failed plan or apply, never as a wrong change.
 
