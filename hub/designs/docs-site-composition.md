@@ -123,6 +123,9 @@ pipeline or render scripts of its own, and nothing pushes to its `main` directly
   ([GCP identities](../reference.md#gcp-identities-and-permissions)).
 - **Rendering:** documents can contain raw HTML, which is rendered as written, as pandoc did. The site stays behind the
   hub's sign-in, and only organization repositories publish.
+- **Public exception:** `legal.kfirs.com`, on the public gateway, serves only the exact paths `/privacy.html`,
+  `/tos.html` and their `.md.html` pages, for the Google OAuth app's branding. Both pages are this repository's, whose
+  layer comes first, so no other repository can replace them; every other path on that host is a 404.
 - **Internal repositories:** every repository takes part, `fin` (internal) included. Its pages are served behind the
   hub's sign-in, whose users the owner manages, like every other hub tool. The names of its files, but not their
   content, are visible to every tenant's `docs-reader`, since listing can't be limited to a prefix.
