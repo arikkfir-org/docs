@@ -149,6 +149,13 @@ Every meaningful unit of work (a new component, a change of architecture, a new 
 - **Facts in one place**: names, addresses, identities and permissions belong in the area's reference page (for the hub, [hub/reference.md](hub/reference.md)). Designs link to it instead of copying.
 - Link the design from the pull request, and the pull request from the design once it exists.
 
+## Investigations and walkthroughs
+
+- An investigation ends in a root-cause write-up, whether or not it leads to a fix or an issue: [template](hub/templates/root-cause.md).
+- A pull request a reviewer can't follow from its diff gets a walkthrough, linked from its `## Summary`: [template](hub/templates/walkthrough.md).
+- Both use one visual vocabulary (diagrams over narration, tables over parallel lists, status markers, drill-downs): the [writing toolkit](hub/templates/toolkit.md).
+- Both live in `docs`, which is public, unless they're about an internal repository (`fin`): then they live in that repository's own `docs/`, as private as its code ([design](hub/designs/investigations-and-walkthroughs.md)).
+
 ## Code and configuration
 
 - **Formatting**: use the language's canonical formatter (`gofmt`, `terraform fmt`, `prettier` where configured) and linter. CI enforces them.
