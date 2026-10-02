@@ -4,7 +4,7 @@
 Octomaton:
 
 - `setup` puts the hub's repositories and the pull request's full state on a 50Gi volume.
-- `review` runs opencode with DeepSeek V4 Pro in a sandbox, in the hub's reviewer image (opencode plus bash, python3,
+- `review` runs opencode with DeepSeek in a sandbox, in the hub's reviewer image (opencode plus bash, python3,
   git and the usual command-line tools). The model's steps hold no credential but its API key and can reach nothing but
   the internet. Their `github` sidecar holds a token that reads every repository's code and pull requests, and reads
   GitHub for the model, so the model can follow a change into an internal repository (`fin`) without the token.
