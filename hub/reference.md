@@ -26,7 +26,7 @@ repository's CI configuration must agree with this page. Change it here first, t
 | `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
 | `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
 | `tooling` | Org-wide tooling: the Claude Code web bundle, the [pull request reviewer](#pull-request-reviewer), and the organization pipelines every repository runs (`.octomaton.yaml`) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
-| `fin` | Personal finance manager and assistant. Internal: visible only to members of the organization's enterprise | PR + 1 approval + merge queue | `Continuous Integration` (none runs until `fin` has a `ci` pipeline: until then, merged with the admin bypass), `Docs` |
+| `fin` | Personal finance manager and assistant. Internal: visible only to members of the organization's enterprise | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
 
 Every repository gets the same settings and the same `Default branch` ruleset. `terraform/github` in `infra` applies
 all but the last two rows:
