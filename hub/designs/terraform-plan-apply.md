@@ -1,6 +1,6 @@
 # Terraform plan on pull requests, apply on merge
 
-**Decision**: `infra` plans `gcp` and `github` on every pull request and in the merge queue, and applies whatever the
+**Decision**: `infra` plans `gcp`, `github` and `keycloak` on every pull request and in the merge queue, and applies whatever the
 plans say when a change merges to `main`. Two Kubernetes ServiceAccounts in `ci-infra` hold the GCP roles:
 `ci-infra-plan` (read-only roles) and `ci-infra-apply`. `ci-infra-apply` carries the annotation
 `octomaton.dev/branches: main`, and Octomaton refuses any run that names it unless the run's branch is `main`. Names
@@ -77,8 +77,8 @@ Secret holds it: Octomaton never lets a `push` pipeline mount one. The owner cre
 
 | Pipeline | Triggers | ServiceAccount | Steps |
 | --- | --- | --- | --- |
-| `ci` (`Continuous Integration`) | `pull_request` to `main`, `merge_group` | `ci-infra-plan` | `fmt -check`; `init -backend=false` and `validate` in every root; then in `gcp` and `github`, a full `init` (it reads the state in `arikkfir-devops`) and `plan -lock=false`. The plans go into the check's summary, deletions and replacements first |
-| `apply` (`Apply`) | `push` to `main` | `ci-infra-apply` | A full `init` and `plan -out` in `gcp` and `github`, then apply both saved plans in full, deletions and replacements included, `gcp` first. The plans go into the check's summary |
+| `ci` (`Continuous Integration`) | `pull_request` to `main`, `merge_group` | `ci-infra-plan` | `fmt -check`; `init -backend=false` and `validate` in every root; then in `gcp`, `github` and `keycloak`, a full `init` (it reads the state in `arikkfir-devops`) and `plan -lock=false`, without refreshing `keycloak` ([Keycloak](keycloak.md#decisions)). The plans go into the check's summary, deletions and replacements first |
+| `apply` (`Apply`) | `push` to `main` | `ci-infra-apply` | A full `init` and `plan -out` in `gcp`, `github` and `keycloak`, then apply the saved plans in full, deletions and replacements included, in that order. The plans go into the check's summary |
 
 - `argocd` is never planned or applied by a pipeline. It bootstraps Argo CD, which manages itself afterwards, so
   applying it again would fight Argo CD.

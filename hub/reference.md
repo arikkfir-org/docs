@@ -22,7 +22,7 @@ repository's CI configuration must agree with this page. Change it here first, t
 | --- | --- | --- | --- |
 | `.github` | The organization's welcome page on GitHub: `profile/README.md`, nothing else | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` (neither runs, since `.github` has no CI tenant: merged with the admin bypass) |
 | `docs` | Hub-wide knowledge base; with every repository's `docs/`, served at `docs.dev.kfirs.com` ([docs site](#docs-site)) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
-| `infra` | Terraform: GitHub, GCP, Argo CD bootstrap, Keycloak's configuration; [plans and applies](#terraform-applies) `gcp` and `github` | PR + 1 approval + merge queue of one | `Continuous Integration` (fmt, validate, plans), `Docs` |
+| `infra` | Terraform: GitHub, GCP, Argo CD bootstrap, Keycloak's configuration; [plans and applies](#terraform-applies) `gcp`, `github` and `keycloak` | PR + 1 approval + merge queue of one | `Continuous Integration` (fmt, validate, plans), `Docs` |
 | `delivery` | Argo CD applications (GitOps) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
 | `octomaton` | CI orchestrator (GitHub App + Tekton) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
 | `tooling` | Org-wide tooling: the Claude Code web bundle, the [pull request reviewer](#pull-request-reviewer), and the organization pipelines every repository runs (`.octomaton.yaml`) | PR + 1 approval + merge queue | `Continuous Integration`, `Docs` |
@@ -165,14 +165,14 @@ to GKE and are not managed here.
 
 | Item | Value |
 | --- | --- |
-| Pull requests and merge queue | Pipeline `ci` (`Continuous Integration`) as `ci-infra/ci-infra-plan`: `fmt`, `validate` in every root, `plan -lock=false` in `gcp` and `github` |
-| Merge to `main` | Pipeline `apply` (`Apply`) as `ci-infra/ci-infra-apply`: plans `gcp` and `github` and applies both in full, deletions and replacements included, `gcp` first |
+| Pull requests and merge queue | Pipeline `ci` (`Continuous Integration`) as `ci-infra/ci-infra-plan`: `fmt`, `validate` in every root, `plan -lock=false` in `gcp`, `github` and `keycloak`, `keycloak` with `-refresh=false` |
+| Merge to `main` | Pipeline `apply` (`Apply`) as `ci-infra/ci-infra-apply`: plans `gcp`, `github` and `keycloak` and applies them in full, deletions and replacements included, in that order |
 | Concurrency | The merge queue's `ci` runs and `apply` share the group `terraform` (policy `queue`) |
-| By hand (`make terraform <root>`) | `argocd` (bootstrap only), the first apply of new roles or tokens, and `keycloak` until the pipelines plan and apply it |
+| By hand (`make terraform <root>`) | `argocd` (bootstrap only), `keycloak`'s first apply, and the first apply of new roles or tokens |
 | `infra-plan-github-pat` | Fine-grained, resource owner `arikkfir-org`, all repositories: repository Administration and Metadata read, Contents read and write; organization Administration and Members read |
 | `infra-apply-github-pat` | Fine-grained, resource owner `arikkfir-org`, all repositories: repository Administration and Contents read and write, Metadata read; organization Administration and Members read and write |
-| `keycloak` | Root `terraform/keycloak`, state prefix `keycloak`: realm `hub` with its flows, identity provider, client and users, and the pipelines' clients in realm `master` ([Authentication](#authentication)). Applied by hand until `ci` plans it and `apply` applies it, after `gcp` and `github`. The first apply runs as the bootstrap admin through `kubectl -n keycloak port-forward svc/keycloak-service 8080`; the pipelines reach `http://keycloak-service.keycloak.svc.cluster.local:8080` |
-| Keycloak credentials | `ci-infra-plan` signs in as client `terraform-plan` (secret `infra-plan-keycloak-secret`): roles `view-realm`, `view-clients`, `view-users`, `view-identity-providers` and `view-events` of client `hub-realm`, `view-realm`, `view-clients` and `view-users` of client `master-realm` (`view-users` reads the pipelines' own service accounts' role mappings). `ci-infra-apply` signs in as `terraform-apply` (`infra-apply-keycloak-secret`): realm role `admin`. Both are service accounts in realm `master`, and the provider reads them from `KEYCLOAK_CLIENT_ID` and `KEYCLOAK_CLIENT_SECRET` |
+| `keycloak` | Root `terraform/keycloak`, state prefix `keycloak`: realm `hub` with its flows, identity provider, client and users, and the pipelines' clients in realm `master` ([Authentication](#authentication)). `ci` plans it and `apply` applies it, after `gcp` and `github`. The first apply runs as the bootstrap admin through `kubectl -n keycloak port-forward svc/keycloak-service 8080`; the pipelines reach `http://keycloak-service.keycloak.svc.cluster.local:8080` |
+| Keycloak credentials | `ci-infra-plan` signs in as client `terraform-plan` (secret `infra-plan-keycloak-secret`): roles `view-realm` and `view-clients` of client `master-realm`, which the root's data sources read. `ci`'s plans of `keycloak` don't refresh: Keycloak 26.8 shows a client's secret only to administrators who can manage clients, and the provider reads the secret to refresh a client. `ci-infra-apply` signs in as `terraform-apply` (`infra-apply-keycloak-secret`): realm role `admin`. Both are service accounts in realm `master`, and the provider reads them from `KEYCLOAK_CLIENT_ID` and `KEYCLOAK_CLIENT_SECRET` |
 
 Both tokens have Contents read and write because GitHub shows a repository's merge settings only to tokens with it
 ([design](designs/terraform-plan-apply.md#github-tokens)). The owner creates both tokens, adds them with
