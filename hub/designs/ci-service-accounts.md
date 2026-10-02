@@ -38,7 +38,7 @@ lives in `delivery`. `tooling` runs one PipelineRun file for both `ci` and `publ
 ServiceAccount a file names, so `ci-tooling-publish` must not appear in any file a pull request runs. The file splits
 into `.tekton/ci.yaml` (build and verify) and `.tekton/publish.yaml` (build, verify and upload).
 
-`ci-docs/pipeline` kept its roles on `arikkfir-docs` until ENG-49 moved the docs site's publishing to `docs-publisher` (arikkfir-org/infra#30).
+`ci-docs/pipeline` kept its roles on `arikkfir-docs` until ENG-49's last step dropped them (arikkfir-org/infra#30), after the docs site moved its publishing to `docs-publisher`.
 
 ## Decisions
 
