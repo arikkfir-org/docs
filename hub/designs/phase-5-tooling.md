@@ -23,7 +23,7 @@ flowchart LR
 | File | Purpose |
 | --- | --- |
 | `CLAUDE.md` | Lead with the answer; answer only what was asked; one to three lines by default; "Yes" or "No" first; findings without their evidence, in plain terms; terse, plain language; no preaching or hedging; how to answer review threads |
-| `settings.json` | Registers the hooks. Allows the repositories' checks, local git and the read-only GitHub tools without a prompt, and asks before `rm -r`, a push that deletes a branch, or a switch that discards changes or resets a branch |
+| `settings.json` | Registers the hooks. Allows the repositories' checks, local git and the read-only GitHub tools without a prompt, and asks before a push that deletes a branch or a switch that discards changes or resets a branch |
 | `hooks/guard.py` (`PreToolUse`, Bash) | Denies force-pushes and deletions targeting `main`/`master` (explicit, `HEAD`, or the checked-out branch) and recursive deletion of `/` or the home directory. Asks, even where an allow rule matches, before deleting any other remote branch and before a `git switch` that discards changes or resets a branch, however its options are spelled |
 | `hooks/commit_message.py` (`PreToolUse`, Bash) | In `arikkfir-org` repositories, denies a `git commit` whose message breaks the commit rules of `CONTRIBUTING.md`, listing what to fix |
 | `hooks/add_repo.py` (`PreToolUse`, the remote-session server's `add_repo` and `register_repo_root`) | Allows attaching one of `arikkfir-org`'s public repositories without a prompt; `fin` and a repository not listed yet still ask |
@@ -38,6 +38,8 @@ Hooks are stdlib-only Python, fail open (a bug never blocks the session) and are
 `commit_message.py`, `add_repo.py`, `pull_request.py`, `git_hooks.py`, `dockerd.py`, `guard.py`'s questions, the permissions and the new `CLAUDE.md` rules come with ENG-51 (arikkfir-org/tooling#11 to #17): each is live once its pull request merges and a session installs the new bundle.
 
 `bundle.py` comes with arikkfir-org/tooling#21.
+
+`rm -r` stops asking with arikkfir-org/tooling#31.
 
 ## Installation in a session
 
@@ -101,6 +103,7 @@ Bundles are immutable (`Cache-Control: immutable`); `setup.sh` is `no-cache`. Bo
 | Python hooks | Reliable JSON and shell tokenizing without `jq` | Bash hooks with `jq` |
 | Hooks in `hooks/arikkfir/` | The bundle can replace its own hooks without touching others | Mixing with user hooks |
 | Permissions in the bundle | Routine commands stop prompting in every session at once, and a test keeps every command the repositories forbid out of the allow list | A `.claude/settings.json` per repository, one copy each to keep in step |
+| `rm -r` runs without asking | Sessions run in throwaway sandboxes, where whatever a recursive delete removes can be rebuilt; `guard.py` still denies deleting `/` or the home directory | Ask rules for `rm -r` |
 | Commit rules checked before the commit runs (`PreToolUse`) | The session rewrites the message while that is free, in every `arikkfir-org` repository, with nothing installed per repository | A `commit-msg` git hook copied into every repository; a CI check, whose fix needs a force-push |
 | `add_repo.py` keyed to the remote-session server's exact tool names and the organization's public repositories | It grants permission: a same-named tool from another server, `fin`, or another organization's repository keeps the normal prompt. The hooks that only remind or configure match the tool from any server | A broad `mcp__.*__add_repo` matcher, or every `arikkfir-org` repository |
 | Work-losing git commands also asked about by `guard.py` | A glob can't tell `git switch -qf` from `git switch -c feature`, and a rule ending in `:*` is a trailing wildcard, not a literal colon; `guard.py` parses the command, clusters and `:branch` refspecs included. The ask rules stay for when the hook fails open | Ask rules alone |
