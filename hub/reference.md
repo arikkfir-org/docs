@@ -161,9 +161,10 @@ In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design
 | `gke-hub-nodes@` (GSA) | `roles/artifactregistry.reader` | repositories `images` and `previews` |
 | `claude-code@` (GSA) | `roles/viewer`, `roles/mcp.toolUser` | project |
 
-`claude-code@arikkfir.iam.gserviceaccount.com` is Claude Code on the web's identity, made by hand: the Claude Code
-environment holds its key, and its proxy adds it to requests for `*.googleapis.com`. Sessions read the hub cluster
-through GKE's MCP server, `https://container.googleapis.com/mcp` ([design](designs/claude-code-cluster-access.md)).
+`claude-code@arikkfir.iam.gserviceaccount.com` is Claude Code on the web's identity, made by hand and adopted by
+`terraform/gcp`: the Claude Code environment holds its key, made by hand, and its proxy adds it to requests for
+`*.googleapis.com`. Sessions read the hub cluster through GKE's MCP server, `https://container.googleapis.com/mcp`
+([design](designs/claude-code-cluster-access.md)).
 
 There is no Workload Identity Federation pool for workloads outside GCP: no GitHub Actions run, and CI runs in the
 cluster. The pre-existing `github-actions`, `greenstar` and `arikkfir.svc.id.goog` pools belong to other projects or

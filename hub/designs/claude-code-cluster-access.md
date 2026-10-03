@@ -19,7 +19,7 @@ flowchart LR
 
 | Piece | Value |
 | --- | --- |
-| Identity | `claude-code@arikkfir.iam.gserviceaccount.com`, made by hand; the Claude Code environment holds its key, and its proxy adds it to requests for `*.googleapis.com` |
+| Identity | `claude-code@arikkfir.iam.gserviceaccount.com`, made by hand and adopted by `infra` (`terraform/gcp`); the Claude Code environment holds its key, made by hand, and its proxy adds it to requests for `*.googleapis.com` |
 | Roles (`infra`, `terraform/gcp`) | `roles/viewer`: reads the project, the cluster's objects and pod logs included, but no Kubernetes Secret or Secret Manager payload, and changes nothing. `roles/mcp.toolUser`: calls Google's MCP servers' tools |
 | MCP server (`tooling`'s bundle) | `gke`, `https://container.googleapis.com/mcp`, at user scope in every session |
 | Without a prompt | its read tools: `get_*`, `list_*`, `describe_*` and `check_*` |
