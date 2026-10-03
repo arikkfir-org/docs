@@ -364,10 +364,12 @@ The server takes no arguments: environment variables configure it, and it exits 
 - Every GitHub request (installation tokens included) is retried when it fails for a reason that may pass: a connection
   error or timeout (30 s per attempt), a 5xx but 501, a 429, or a secondary rate limit (403 with `Retry-After`). Up to 6
   attempts, waits doubling from 1 s to 30 s or as `Retry-After` says (at most a minute), each retry logged as a warning
-  ([design](designs/octomaton-github-retries.md)). An event whose requests still fail is reported as a failed check:
-  `octomaton` when its configuration could not be read, the pipeline's when its run could not be started. Re-running
-  `octomaton` evaluates the event again and, when that works, concludes `octomaton` successfully. A failure report
-  outlives the webhook job's deadline and is retried the same way; one that still fails is logged as an error.
+  ([design](designs/octomaton-github-retries.md)). An event whose requests still fail is reported: a configuration that
+  could not be read fails `octomaton` (the scheduled pipeline's check when a schedule fires; a reply when a comment
+  command, which has no check, is declined), and a run whose check could not be opened fails a check of its pipeline's
+  name. Re-running a failed check tries again; `octomaton` is then concluded successfully when the event evaluates. Only
+  the periodic read of a repository's schedules just logs: the next read tries again. A failure report outlives the
+  webhook job's deadline and is retried the same way; one that still fails is logged as an error.
 
 Telemetry follows where the server runs. On GKE (a Kubernetes pod with a GCP metadata server), logs are JSON on stdout
 with the fields Cloud Logging reads, including the links to traces, and metrics and traces go to Cloud Monitoring and
@@ -478,7 +480,7 @@ ignored), on open pull requests, drafts included. Each request gets its own run.
 pending, so a re-request can't. Requesting a review takes triage or write access, so the request is the permission
 check; only new commits on the pull request's own branch, which take write access, run a pending one again.
 `review_requested` is not a `pull_request` type, and an invalid configuration is not reported on review requests: most
-are for people. A configuration GitHub would not serve is reported on every event, review requests included.
+are for people. A configuration GitHub would not serve is reported, review requests included.
 
 Forks are ignored: every event from a repository that is itself a fork, and every pull request whose head branch lives
 in another repository (or in one that no longer exists), whoever opened it. They get no check run and no run; comment
