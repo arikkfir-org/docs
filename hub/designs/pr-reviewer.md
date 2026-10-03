@@ -258,6 +258,9 @@ the volume, `.review/` included.
 - One problem per finding, with a new code for a new problem. Anchor it on the changed line that causes it or should
   fix it. Give it a priority, a severity and a likelihood.
 - Write plainly: simple English, short and concise; no praise, no filler.
+- Work in few turns: every call it already knows it needs in one turn (all of a step's files, independent searches
+  and commands together). Each turn waits on the model however little it does, and reviews read one file per turn,
+  so a 114-file pull request took 162 turns and 18 minutes.
 - Use the tools in the image: `git` in the checkouts; other repositories, pull requests and code (internal ones too)
   through the GitHub proxy on `127.0.0.1:8080`, cloned into `/tmp`.
 - Write `findings.json`, and nothing else: the repositories are read-only.
