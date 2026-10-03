@@ -370,6 +370,9 @@ The server takes no arguments: environment variables configure it, and it exits 
   name. Re-running a failed check tries again; `octomaton` is then concluded successfully when the event evaluates. Only
   the periodic read of a repository's schedules just logs: the next read tries again. A failure report outlives the
   webhook job's deadline and is retried the same way; one that still fails is logged as an error.
+- A replica drops a delivery it is handling or has handled in the last hour (by `X-GitHub-Delivery`, which a
+  redelivery keeps). A delivery whose GitHub or Kubernetes calls still failed and left part of its event undone is
+  forgotten, so redelivering it from the App's Recent deliveries handles it again, until one copy succeeds.
 
 Telemetry follows where the server runs. On GKE (a Kubernetes pod with a GCP metadata server), logs are JSON on stdout
 with the fields Cloud Logging reads, including the links to traces, and metrics and traces go to Cloud Monitoring and
