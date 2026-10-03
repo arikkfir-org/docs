@@ -462,8 +462,11 @@ without its own `.octomaton.yaml` still runs them, and an unreadable or invalid 
 stops every pipeline of the repository, reported on the `octomaton` check.
 
 A review request runs pipelines whose `review_request.reviewers` include the requested user (team requests are
-ignored), on open pull requests, drafts included. Each request gets its own run. Requesting a review takes triage or
-write access, so the request is the permission check. `review_requested` is not a `pull_request` type, and an invalid
+ignored), on open pull requests, drafts included. Each request gets its own run. New commits on the pull request
+(`synchronize`) while the review is still requested run those pipelines again at the new head, as the pending request
+(`.Action` stays `review_requested`), and supersede the older commit's run: GitHub sends no new request while one is
+pending, so a re-request can't. Requesting a review takes triage or write access, so the request is the permission
+check; only new commits on the pull request's own branch, which take write access, run a pending one again. `review_requested` is not a `pull_request` type, and an invalid
 configuration is not reported on review requests: most are for people.
 
 Forks are ignored: every event from a repository that is itself a fork, and every pull request whose head branch lives

@@ -64,6 +64,7 @@ sequenceDiagram
 | --- | --- |
 | Trigger `review_request` | A `pull_request` delivery with action `review_requested` and a requested user (not a team) in `reviewers`, on an open pull request; optional base-branch globs. `.Event` is `review_request`, `.ReviewRequest.Reviewer` the requested login, `.Revision` the head commit |
 | One run per request | A request is its own run, keyed by its webhook delivery, as a comment command is by its comment. Re-requesting at the same commit reviews again (the next attempt); a redelivery finds its run |
+| A pending request follows the head | New commits on the pull request (`synchronize`) while the review is still requested run the request's pipelines again at the new head, as that request (`.Action` stays `review_requested`), and supersede the older commit's run |
 | Definitions from the default branch | As for comment commands: `.octomaton.yaml` from the repository's default branch, the run at the head commit |
 | `pipelineRun` in another repository | `pipelineRun: {repository: tooling, path: reviewer/pipelinerun.yaml}` reads a repository of the same owner at its default branch. `octomaton-lint` checks the reference but can't render it |
 | `secrets` | Names Secrets the run may mount besides its token. Allowed only when every trigger is `comment`, `review_request` or `schedule` |
@@ -314,6 +315,7 @@ fixed, and the approval stands. The body holds the summary and one line of count
 
 | Decision | Why | Rejected |
 | --- | --- | --- |
+| New commits while the review is still requested review the new head | `report` refuses to post the review of a commit that is no longer the head, and GitHub sends no new request while one is pending, so a re-request did nothing: the review was lost until someone removed and re-added the reviewer (5 times on 2026-10-02 and 03) | Posting the older commit's review (it would approve code that isn't the head); `report` removing and re-adding the request; reviewing every push, requested or not (cost, noise) |
 | A review requested from a real user starts the pipeline, and that user posts the review | Only users can be requested as reviewers, and their review fulfils the request. Re-requesting after changes is GitHub's own loop | The Octomaton App reviewing (it can't be requested); every push (cost, noise); a comment command |
 | A fine-grained token of `arikkfir-reviewer`, contents and pull requests read and write | The review, replies and resolution need the user. GitHub resolves a thread only for a token with contents write, so the token can push branches and tags and manage releases: rulesets keep it off default branches, and a pull request it pushes to still needs another approval | A classic token (all of the user's rights); the App (not the user, and it would need contents write too); pull requests only (resolving fails) |
 | `arikkfir-reviewer` gets `push` through team `reviewers` | Resolving a thread takes write access, and an approval by a user with write access counts toward the one required approval | `triage` (can't resolve threads) |
@@ -372,7 +374,25 @@ fixed, and the approval stands. The body holds the summary and one line of count
   posted. Re-run the check, or re-request the review.
 - A lost node (a Spot preemption until arikkfir-org/infra#20): `report` retries twice (it can be repeated), `review`
   once, from its `clone`.
-- A new request for the same pull request supersedes the running review (Octomaton's default for pull requests).
+- A new request for the same pull request supersedes the running review (Octomaton's default for pull requests), and
+  so do new commits while the review is still requested: the review starts again at the new head.
+
+```mermaid
+sequenceDiagram
+  participant A as Author
+  participant GH as GitHub
+  participant O as Octomaton
+  participant R1 as review of abc
+  participant R2 as review of def
+  A->>GH: request a review from arikkfir-reviewer (head abc)
+  GH->>O: review_requested
+  O->>R1: start
+  A->>GH: push def
+  GH->>O: synchronize, arikkfir-reviewer still requested
+  O->>R2: start at def
+  O->>R1: cancel (superseded)
+  R2->>GH: the review of def, which fulfils the request
+```
 
 ## Rollout
 
