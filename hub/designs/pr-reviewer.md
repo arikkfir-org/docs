@@ -308,8 +308,8 @@ the body keeps a retried `report` from submitting twice.
 | None | Approve |
 
 A nit's thread stays open. The author either fixes it and requests another review, or resolves it to say it won't be
-fixed, and the approval stands. The body holds the summary and one line of counts (🔴 blocking, 🟡 non-blocking,
-🔵 nits, resolved). It never repeats a finding.
+fixed, and the approval stands. The body holds the summary and one line of counts, by priority (🔴 high for
+blocking, 🟡 medium for non-blocking, 🔵 low for nits, then resolved). It never repeats a finding.
 
 ## Decisions
 
