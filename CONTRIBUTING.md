@@ -161,7 +161,7 @@ Every meaningful unit of work (a new component, a change of architecture, a new 
 ## Code and configuration
 
 - **Formatting**: use the language's canonical formatter (`gofmt`, `terraform fmt`, `prettier` where configured) and linter. CI enforces them.
-- **Comments** explain why, not what. No commented-out code; no TODO without a Linear key.
+- **Comments** explain why, not what, except that a doc comment first says what its symbol is for (see Go). No commented-out code; no TODO without a Linear key.
   - Leave code you didn't change alone: no new comments, docs or type annotations on it.
   - When a change touches part of a comment, change only the words whose meaning changed. Don't reflow or rewrap the rest of it: the churn buries the real change in the diff.
   - Wrap a new comment at the width of the comments around it, not at a narrower default such as 72 columns.
@@ -175,10 +175,43 @@ Every meaningful unit of work (a new component, a change of architecture, a new 
 - **Refactor to align**: when things need to line up, change the existing code. Don't build abstractions or scaffolding around it to avoid the risk of touching it.
 - **The right thing, not the easy thing**, with some slack for urgency, or when the effort far outweighs the value.
 - **Go**:
-  - Check every error, without exception. Logging an error isn't handling it, except at the top of the call stack, where the error is either logged or actually handled (another route taken).
+  - Pass `ctx context.Context` first to every function that does I/O, blocks, or calls one that does; never store it in a struct.
+  - Check every error, without exception. Logging an error isn't handling it, except at the top of the call stack, where the error is either logged once (which reports it to Error Reporting) or actually handled (another route taken).
+  - Ignore an error only on purpose and in plain sight: assign it to `_` with a comment saying why, e.g. `_, _ = fmt.Fprintln(w, msg) // stdout is gone; nothing to tell`.
+  - Wrap every error you return with what the function was doing and the key/values it knows, so the error carries its chain from the entry point down to the root cause, each link with its message, location and values. Compare errors with `errors.Is` and `errors.As`; sentinel errors stay plain `errors.New` values.
+  - Start a span in every significant function, with the key/values that identify what it acts on as attributes, and carry them in the context, so the logs and errors beneath it name them too.
+  - A function fits on one screen, about 60 lines, and handles at most a couple of concerns; the rest becomes named helpers.
+  - Doc comments lead with what the symbol is for or what the function does, in one sentence that starts with its name; then why it's needed; then how it works; then who uses it, in general terms.
   - Configure programs with [`envconfig`](https://github.com/kelseyhightower/envconfig) (environment variables), not command-line flags.
-  - Start an OpenTelemetry span in every significant method.
-  - Log through `log/slog` only.
+  - Log through `log/slog` only, and only through its `*Context` methods.
+  - Layers: transports (HTTP handlers, message consumers) translate between the wire and domain calls and hold no business logic. Domain packages hold the logic, each behind one `Service` whose exported methods start a span and check authorization first. Generated storage code is imported by domain packages only. Shared code specific to the product goes in `common`; code any project could use goes in `util`, which imports nothing of the product's.
+  - golangci-lint runs errcheck, wrapcheck, contextcheck, sloglint (`context: all`), spancheck, depguard (the layers), funlen and gocognit.
+- **HTTP APIs**:
+  - Version each route in its path (`/v1/…`). A new version holds only the routes that changed; the rest stay where they are. A superseded route answers with `Deprecation` (RFC 9745) and `Sunset` (RFC 8594).
+  - The OpenAPI document is the contract: server interfaces and clients are generated from it, and CI fails on a breaking change within a version.
+  - Authenticate every request with a JWT. Authorize with permissions, never roles, in the domain layer, denying by default.
+  - GET reads: 200, or 304 when `If-None-Match` matches. POST creates (201 with `Location`) or starts work (202 with the `Location` of a status resource). PUT replaces and PATCH (`application/merge-patch+json`) changes: 200, or 202 when the work runs on. DELETE answers 204. HEAD comes with every GET.
+  - Every resource has a strong `ETag`, and GETs send `Cache-Control: private, no-cache`. PUT, PATCH and DELETE require `If-Match`: 428 without it, 412 when it no longer matches.
+  - Times travel as RFC 3339 in UTC, and clients show them in the viewer's time zone. A route that groups by day or month takes the viewer's zone as a parameter.
+  - Errors are RFC 9457 `application/problem+json`, with a stable `type` URI and the trace id.
+  - Lists page with an opaque cursor and `Link: rel="next"`.
+- **Databases**:
+  - Every access runs in a transaction, through one wrapper that sets the session's tenant, user and trace for row-level security and auditing; no code path gets a query handle any other way.
+  - Points in time are `timestamptz`. Every row that gets updated has a `version`, bumped by a trigger, which is its ETag.
+- **Messaging** (NATS JetStream):
+  - Delivery is at least once, so every consumer is idempotent: by natural key, or through an inbox written in the same transaction as the effect.
+  - An event that follows a database change goes through a transactional outbox and is published with `Nats-Msg-Id` set to the outbox row's id.
+  - Messages have a schema in which a missing field differs from a zero, and CI fails on a breaking change to it.
+  - Streams, consumers and buckets are declared with the deployment, never created by code.
+  - Subjects put the tenant in a fixed token. Headers carry `traceparent` and `tracestate`, in lowercase.
+  - A message that fails for good is terminated and recorded, never dropped silently.
+- **Observability**:
+  - Traces go to Cloud Trace, logs to Cloud Logging, errors to Error Reporting, metrics to Cloud Monitoring.
+  - On GKE, logs are JSON lines with Cloud Logging's field names: `severity`, `message`, `timestamp`, `logging.googleapis.com/sourceLocation`, and `logging.googleapis.com/trace`, `logging.googleapis.com/spanId` and `logging.googleapis.com/trace_sampled`, which link a line to its trace. Elsewhere logs are text.
+  - Spans: SERVER per HTTP route, INTERNAL per top-level domain method, CONSUMER per message, PRODUCER per publish, CLIENT per outbound call, the browser's requests included. End every span and record its error.
+  - Every span carries `service.name`, `service.namespace` (the Kubernetes namespace), `service.version`, `deployment.environment.name`, the module, and `enduser.id` once a user is known. W3C `traceparent` crosses every tier, HTTP and NATS alike, and never leaves our own services.
+  - A span attribute names what an operation acted on or how it ended, stays small, and is something you'd filter by. A span event marks a moment within it. A log entry narrates, repeats per item, must survive sampling, or is an error. Secrets go nowhere.
+  - Calls to language models follow OpenTelemetry's GenAI conventions (`gen_ai.*`).
 - **Shell**:
   - Start every script with `set -euo pipefail` (`set -eu` in POSIX `sh`).
   - Never let an exit code stand in for an answer. When a script needs to know something, ask for the data and branch three ways, failing on anything but the two answers you expect. `if cmd >/dev/null 2>&1` can't tell "no" from "the command broke":
