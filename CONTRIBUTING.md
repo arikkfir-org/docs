@@ -118,7 +118,7 @@ Closes ENG-123
 - Keep pull requests small and focused; one concern per pull request.
 - No pull request of documentation alone: documentation ships in the pull request whose changes it documents (`docs` takes its own changes straight to `main`).
 - Draft while incomplete; ready for review only when CI is green.
-- Every review conversation ends resolved: fixed, or answered with the reason it stays.
+- Every review conversation ends resolved: fixed, or answered with the reason it stays, then resolved by the reviewer (see [Answering a review](#answering-a-review)).
 - Re-request review after addressing changes; stale approvals are dismissed on push.
 - The author merges, through the merge queue.
 
@@ -127,6 +127,7 @@ Closes ENG-123
 A round ends in this order: push the fixes, reply on every thread, then request the review again.
 
 - **Reply on the thread**, in one line: `Done.` (naming the commit) when it's fixed, or one sentence on why it stays as it is.
+- **Leave resolving to the reviewer.** A review thread is the reviewer's to resolve, once its fix or its answer satisfies them. The one exception: when the reviewer's latest review approved and left only non-blocking findings open, the author may resolve those threads to merge the pull request. For `arikkfir-reviewer` these are its 🔵 nits; its 🟡 non-blocking findings come with a request for changes, so the exception never covers them. Never resolve a blocking finding's thread, or the thread of a finding you fixed before the reviewer has reviewed the fix.
 - **One reply at a time.** GitHub's secondary rate limit refuses replies fired at one repository in a burst, where the same replies spaced out go through. Post one, let it land, post the next. On a `403` that names the secondary limit, wait for `Retry-After` if it gives one, otherwise at least a minute, and wait longer each time it fails again ([GitHub's guidance](https://docs.github.com/en/rest/using-the-rest-api/rate-limits-for-the-rest-api#exceeding-the-rate-limit), which `reviewer/github.py` in `tooling` follows too).
 - **Request the review again** once every thread has its answer. `arikkfir-reviewer` starts its next round only when asked, and a pull request whose reviewer was never asked to look again is stranded: nothing red, nothing blocking, and nobody aware it's their turn.
 - **Agents reply through the GitHub connector** (`mcp__github__add_reply_to_pull_request_comment`), which writes as the developer. A raw `curl` to `api.github.com` from a cloud session is the last resort: the session's proxy replaces its credentials, so the reply is authored by `claude[bot]`. Say so in the session when you use it.
