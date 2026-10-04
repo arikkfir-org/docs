@@ -116,6 +116,7 @@ Closes ENG-123
 ```
 
 - Keep pull requests small and focused; one concern per pull request.
+- No pull request of documentation alone: documentation ships in the pull request whose changes it documents (`docs` takes its own changes straight to `main`).
 - Draft while incomplete; ready for review only when CI is green.
 - Every review conversation ends resolved: fixed, or answered with the reason it stays.
 - Re-request review after addressing changes; stale approvals are dismissed on push.
