@@ -174,6 +174,7 @@ Every meaningful unit of work (a new component, a change of architecture, a new 
 - **Less is more**: reuse what exists rather than duplicate it, unless there is a good reason not to.
 - **Refactor to align**: when things need to line up, change the existing code. Don't build abstractions or scaffolding around it to avoid the risk of touching it.
 - **The right thing, not the easy thing**, with some slack for urgency, or when the effort far outweighs the value.
+- **Go**, **HTTP APIs**, **Databases**, **Messaging** and **Observability** below follow one [design](hub/designs/service-conventions.md).
 - **Go**:
   - Pass `ctx context.Context` first to every function that does I/O, blocks, or calls one that does; never store it in a struct.
   - Check every error, without exception. Logging an error isn't handling it, except at the top of the call stack, where the error is either logged once (which reports it to Error Reporting) or actually handled (another route taken).
