@@ -165,7 +165,8 @@ Every meaningful unit of work (a new component, a change of architecture, a new 
   - Leave code you didn't change alone: no new comments, docs or type annotations on it.
   - When a change touches part of a comment, change only the words whose meaning changed. Don't reflow or rewrap the rest of it: the churn buries the real change in the diff.
   - Wrap a new comment at the width of the comments around it, not at a narrower default such as 72 columns.
-- **Tests** accompany behaviour changes. Bug fixes start with a failing test, in the same pull request as the fix, at the level where the bug lived: a bug in how a PipelineRun is rendered gets a test of the rendered run, not only of the code beneath it.
+- **Tests** accompany behaviour changes. Bug fixes start with a failing test, in the same pull request as the fix, at the level where the bug lived: a bug in how Octomaton renders a PipelineRun gets a test of the rendered run, not only of the code beneath it.
+  - Test application code only. Never write tests for CI/CD code or scripts, Kustomize, Helm, shell scripts, infrastructure code or developer-experience scripts.
 - **Infrastructure as code**: every cloud and cluster change goes through Terraform (`infra`) or Argo CD (`delivery`). Manual changes are for emergencies only and are back-ported to Git the same day.
 - **Secrets** never enter Git. Values live in Google Secret Manager; External Secrets Operator syncs them into the cluster.
 - **Least privilege**: grant the narrowest role on the narrowest resource to the narrowest identity (see [hub/reference.md](hub/reference.md)). In CI, Tekton's default ServiceAccount `pipeline` never gets a Google Cloud role. A pipeline that needs one names its own ServiceAccount, and one that publishes runs only from `main`

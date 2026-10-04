@@ -7,6 +7,7 @@ Knowledge base of the `arikkfir-org` hub, served with every other repository's `
 - Push changes straight to `main`: this repository takes no pull requests (`CONTRIBUTING.md`).
 - `hub/reference.md` is the contract between `infra`, `delivery`, `octomaton` and CI configs. When a name, address, identity or permission changes anywhere, update it here in the same unit of work.
 - Every meaningful unit of work gets a visual design doc under `<area>/designs/` (see `CONTRIBUTING.md`).
+- Test application code only, in every repository: never write tests for CI/CD code or scripts, Kustomize, Helm, shell scripts, infrastructure code or developer-experience scripts (`CONTRIBUTING.md`, "Code and configuration").
 - Markdown: one `#` heading per file (it becomes the page title), GitHub-flavoured Markdown, Mermaid code blocks for diagrams, relative links to other `.md` files (the site links them to their `.md.html` pages), kebab-case file names.
 - Never name a file `*.md.html`: that name belongs to a rendered page, and the `Docs` check refuses it.
 - No navigation, menus or generated index pages. Pages are reached by direct links.
