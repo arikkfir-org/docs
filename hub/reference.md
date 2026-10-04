@@ -177,7 +177,7 @@ In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design
 
 One Workload Identity Federation pool is managed here, `fin-pull-requests`, for [Fin](#fin)'s pull requests'
 environments: their namespaces come and go with the pull requests, and GKE's own pool grants only to namespaces named in
-advance. Its OIDC provider `hub` trusts the hub cluster's ServiceAccount tokens (issuer
+advance. Its OIDC provider `gke-hub` trusts the hub cluster's ServiceAccount tokens (issuer
 `https://container.googleapis.com/v1/projects/arikkfir/locations/me-west1-a/clusters/hub`, the provider's default
 audience) only from namespaces whose names start with `fin-pr-` (its attribute condition); `google.subject` is the
 token's `sub` and `attribute.namespace` its namespace. A pod presents a projected token of that audience through an
