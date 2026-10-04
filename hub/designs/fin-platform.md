@@ -46,16 +46,17 @@ flowchart LR
 - **Accepted risks**:
   - Every pull request can read and overwrite every other's objects in `arikkfir-fin-pull-requests`. They hold Demo Bank's data only.
   - Any pull request's code can call Vertex AI at the owner's cost. Fin's daily budget per person applies only to code that keeps it.
+  - A pull request's code reaches NATS as production's does, so it can read and publish on production's subjects: the admission policies stop it from redefining production's streams, not from using them. NATS accounts per environment would close this (see the open questions).
 - **The admission policies** stop a pull request from:
   - redefining another environment's streams;
   - pointing KEDA's operator at another host or another namespace's secrets;
   - forging the identity headers the hub's sign-in sets.
 
-  NATS itself takes no credentials, so NetworkPolicies decide which pods reach it.
+  NATS itself takes no credentials, so NetworkPolicy `nats/nats` decides which pods reach it: namespace `nats` and Fin's namespaces (`fin`, and those labelled `kfirs.com/pull-request: "true"`), on the client port only. No other tenant, CI's included, reaches it.
 
 ## Failure modes
 
-- A NATS client needs no credentials, so any pod that reaches the cluster can use any subject; the policies stop environments from redefining each other's streams, and NetworkPolicies decide which pods reach NATS.
+- A NATS client needs no credentials, so any pod that NetworkPolicy `nats/nats` admits can use any subject: Fin's environments can read and publish on each other's, and the admission policies only stop them from redefining each other's streams. A pod in any other namespace can't reach NATS at all.
 - A pull request's code decides what `components/pull-request` says, but it can only narrow: its identity's grants are fixed in `infra`, and its quota, hosts and labels come from `delivery`.
 - `delivery` lists `components/pull-request` with `ignoreMissingComponents: true`, so a pull request whose head predates the component still deploys, without the pool's credentials.
 - The pool's provider reads the cluster's signing keys from its public issuer; recreating the cluster changes the issuer, and the provider must follow.
@@ -64,6 +65,7 @@ flowchart LR
 
 - STS exchanging the hub cluster's tokens through a pool of its own: Google documents it for Kubernetes clusters outside GCP, and GKE publishes the issuer's keys; Fin's first pull request with the credential file proves it. If it fails, pull requests go without Google access until it's solved.
 - Whether pull requests' Vertex AI spend needs a cap of its own, such as a budget alert in `infra`, once the assistant and classification run there.
+- Whether production's NATS subjects need an account of their own, with credentials only production's pods hold, so that a pull request's code can't read or publish on them.
 
 ## Rollout
 
@@ -71,5 +73,5 @@ flowchart LR
 2. `infra`: the pipelines' roles for Workload Identity pools, applied by hand, since the pipelines can't change their own roles.
 3. `infra`: the pool, the grants, the buckets, the secret and Vertex AI's API; then the owner adds the sealing key's value and enables Claude Opus 5.5 in Model Garden.
 4. `fin`: `components/pull-request`.
-5. `delivery`: the admitted kinds and their policies, production's ServiceAccounts and images, and the component's listing.
+5. `delivery`: the admitted kinds and their policies, NetworkPolicy `nats/nats`, production's ServiceAccounts and images, and the component's listing.
 6. `fin`: the slices that use them. Once fin's `/api` route serves production, `infra` and `delivery` drop the `api` hosts.

@@ -238,6 +238,10 @@ Both tokens have Contents read and write because GitHub shows a repository's mer
 
 NATS clients, NACK included, connect to `nats://nats.nats.svc.cluster.local:4222`. JetStream streams may keep up to
 three replicas. The servers spread across system-pool nodes when there are several, but don't make the pool grow.
+NATS takes no credentials, so NetworkPolicy `nats` (namespace `nats`, from `delivery`'s `platform/nats/manifests`)
+decides who reaches the servers: anything in namespace `nats` (the servers' own routes, NACK, NUI and nats-box), and
+[Fin](#fin)'s namespaces on the client port only: `fin`, and every namespace labelled `kfirs.com/pull-request: "true"`.
+No other namespace reaches NATS, CI tenants included.
 
 Availability ([design](designs/disruption-budgets.md)): Traefik, oauth2-proxy, Keycloak, the docs site, Grafana, Octomaton,
 both `go-import`s (namespaces `octomaton` and `go-import`) and KEDA's operator, metrics server and webhooks run two replicas each. NATS runs three servers. Each has a
