@@ -106,6 +106,7 @@ Tekton runs land on the `ci` pool through Tekton's default pod template (node se
 | Bucket | `arikkfir-claude` (`ME-WEST1`, uniform access) | public object reads (no listing); `ci-tooling/ci-tooling-publish` writes |
 | Bucket | `arikkfir-fin` (`ME-WEST1`, uniform access, public access prevention enforced; objects deleted after 30 days) | private: [Fin](#fin) production's scrape videos, traces and raw statements, under `runs/<run>/`. `fin/scraper` creates objects; `fin/api` and `fin/worker` read them |
 | Bucket | `arikkfir-fin-pull-requests` (`ME-WEST1`, uniform access, public access prevention enforced; objects deleted after 7 days) | private: the same for every [Fin](#fin) pull request's environment, under `pr-<number>/`. Pool `fin-pull-requests` reads and writes objects |
+| Bucket | `arikkfir-fin-ci-cache` (`ME-WEST1`, uniform access, public access prevention enforced; objects deleted after 14 days) | private: [Fin](#fin)'s CI caches, `go.tar.gz` (Go's module and build caches) and `npm.tar.gz` (npm's), which `ci-fin/ci-fin-cache` writes from `main` and `ci-fin/ci-fin-ci`, `ci-fin/ci-fin-preview` and `ci-fin/ci-fin-release` read |
 
 Public URLs (`arikkfir-claude` only) are `https://storage.googleapis.com/<bucket>/<path>`.
 
@@ -139,7 +140,7 @@ Terraform (`terraform/gcp`) creates the secret containers. Values are added by h
 Kubernetes workloads use GKE Workload Identity Federation with direct principal bindings (no Google service accounts):
 `principal://iam.googleapis.com/projects/8909046976/locations/global/workloadIdentityPools/arikkfir.svc.id.goog/subject/ns/<namespace>/sa/<service-account>`.
 
-In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design](designs/ci-service-accounts.md)). A pipeline that needs Google Cloud names its own ServiceAccount, and one that publishes is annotated `octomaton.dev/branches: main`. The one exception is `ci-fin/ci-fin-preview`, which publishes pull requests' images, from their branches, to `previews`, which only pull requests' deployments pull from.
+In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design](designs/ci-service-accounts.md)). A pipeline that needs Google Cloud names its own ServiceAccount, and one that publishes is annotated `octomaton.dev/branches: main`. The one exception is `ci-fin/ci-fin-preview`, which publishes pull requests' images, from their branches, to `previews`, which only pull requests' deployments pull from. `ci-fin/ci-fin-ci`, the identity of Fin's `ci` on any branch, only reads Fin's CI caches, which only `main` writes.
 
 | Principal (namespace/KSA) | Role | Scope |
 | --- | --- | --- |
@@ -154,6 +155,8 @@ In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design
 | `ci-octomaton/ci-octomaton-release` | `roles/artifactregistry.writer` | repository `images` |
 | `ci-fin/ci-fin-release` | `roles/artifactregistry.writer` | repository `images` |
 | `ci-fin/ci-fin-preview` | `roles/artifactregistry.writer` | repository `previews` |
+| `ci-fin/ci-fin-cache` | `roles/storage.objectUser` | bucket `arikkfir-fin-ci-cache` |
+| `ci-fin/ci-fin-ci`, `ci-fin/ci-fin-preview`, `ci-fin/ci-fin-release` | `roles/storage.objectViewer` | bucket `arikkfir-fin-ci-cache` |
 | `fin/api`, `fin/worker`, `fin/scraper` | `roles/telemetry.tracesWriter`, `roles/telemetry.metricsWriter`, `roles/serviceusage.serviceUsageConsumer` | project |
 | `fin/worker` | `roles/aiplatform.user` | project |
 | `fin/api`, `fin/worker` | `roles/storage.objectViewer` | bucket `arikkfir-fin` |
@@ -350,7 +353,7 @@ Keycloak decides who signs in: the users `terraform/keycloak` declares in realm 
 | Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz` (all on 8080) |
 | Telemetry | On GKE: JSON logs on stdout to Cloud Logging; metrics to Cloud Monitoring and traces to Cloud Trace through the Telemetry API (`telemetry.googleapis.com`), as `octomaton/octomaton`. Elsewhere: text logs, nothing exported |
 | Check links | `https://tekton.dev.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
-| Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccounts `pipeline`, `docs-reader` and `docs-publisher` (only `docs-publisher` is annotated `octomaton.dev/branches: main`; see [docs site](#docs-site)) and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer). `ci-infra` also has ServiceAccounts `ci-infra-plan` and `ci-infra-apply` (only `ci-infra-apply` is annotated `octomaton.dev/branches: main`), `ci-tooling` has `ci-tooling-publish` and `ci-octomaton` has `ci-octomaton-release` (both annotated `octomaton.dev/branches: main`); `ci-fin` has `ci-fin-release` (annotated `octomaton.dev/branches: main`) and `ci-fin-preview` (not annotated: pull requests' branches use it) |
+| Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccounts `pipeline`, `docs-reader` and `docs-publisher` (only `docs-publisher` is annotated `octomaton.dev/branches: main`; see [docs site](#docs-site)) and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer). `ci-infra` also has ServiceAccounts `ci-infra-plan` and `ci-infra-apply` (only `ci-infra-apply` is annotated `octomaton.dev/branches: main`), `ci-tooling` has `ci-tooling-publish` and `ci-octomaton` has `ci-octomaton-release` (both annotated `octomaton.dev/branches: main`); `ci-fin` has `ci-fin-release` and `ci-fin-cache` (both annotated `octomaton.dev/branches: main`), and `ci-fin-preview` and `ci-fin-ci` (not annotated: pull requests' branches use them) |
 | Tenant permissions | `octomaton-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete); ServiceAccounts (get) |
 
 ### Server configuration
@@ -620,4 +623,4 @@ One URL space at `https://docs.dev.kfirs.com`, composed from every repository
 | Argo CD's GitHub App | `arikkfir-argocd`, App ID `5179565`, created by hand; Contents, Pull requests and Metadata read; installed on `fin` only. Secret `argocd/github-app`, repo-creds for `https://github.com/arikkfir-org/fin`, from `argocd-github-app-id` and `argocd-github-app-private-key`. Argo CD finds the installation itself |
 | Sign-in | The hub's interceptor guards every request ([Authentication](#authentication)): Keycloak's realm `hub`, with Google. Every route removes `Cookie` after it; the `/api` rules first copy the ID token through Middleware `id-token`, and fin-api validates it |
 | Go module | `fin.kfirs.com/apps/api` (`apps/api/go.mod`). `https://fin.kfirs.com/<path>?go-get=1` returns `<meta name="go-import" content="fin.kfirs.com git https://github.com/arikkfir-org/fin">`; any other request is redirected (302) to the repository. Served on the public gateway, since Go fetches it without signing in, by Deployment, Service and ConfigMap `go-import` in namespace `go-import` (Application `go-import`, `platform/go-import/manifests` in `delivery`, wave 4): two replicas with PodDisruptionBudget `go-import` (`maxUnavailable: 1`), and NetworkPolicy `go-import` admitting only the `traefik` namespace |
-| CI | Pipelines `ci` (check `Continuous Integration`: the API, the app, `deploy/` rendered as written and with `delivery`'s overrides, and the end-to-end suite), `preview` (check `Preview images`, as `ci-fin-preview`) and `release` (pushes to `main`, as `ci-fin-release`) |
+| CI | Pipelines `ci` (check `Continuous Integration`, as `ci-fin-ci`: the API, the app, `deploy/` rendered as written and with `delivery`'s overrides, and the end-to-end suite), `preview` (check `Preview images`, as `ci-fin-preview`), `release` (pushes to `main`, as `ci-fin-release`) and `cache` (pushes to `main`, as `ci-fin-cache`: Go's and npm's caches, built afresh into bucket `arikkfir-fin-ci-cache`, which the other three restore) |
