@@ -52,6 +52,8 @@ flowchart LR
   - pointing KEDA's operator at another host or another namespace's secrets;
   - forging the identity headers the hub's sign-in sets.
 
+  They check every create and every update to a live object. They skip one kind of update: an update to an object already being deleted that leaves the checked fields unchanged (the spec, or a namespace's labels). The garbage collector uses that update to drop the object's finalizer, so a policy tightened after the object was made can no longer stop its deletion. Before this exemption, one did, and pull request 6's environment stayed up for nearly two days ([arikkfir-org/delivery#40](https://github.com/arikkfir-org/delivery/pull/40)).
+
   NATS itself takes no credentials, so NetworkPolicy `nats/nats` decides which pods reach it: namespace `nats` and Fin's namespaces (`fin`, and those labelled `kfirs.com/pull-request: "true"`), on the client port only. No other tenant, CI's included, reaches it.
 
 ## Failure modes
