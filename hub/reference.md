@@ -240,8 +240,9 @@ Both tokens have Contents read and write because GitHub shows a repository's mer
 | `ci-<repo>` | CI tenants (one per repository) | `delivery` | n/a |
 | `fin`, `fin-pr-<number>` | [Fin](#fin): production and each pull request's deployment, PostgreSQL with pgvector, fin-worker, fin-scraper and their NATS streams included | `deploy/` in `fin` (Kustomize), deployed by `delivery` | The images of the deployed commit; PostgreSQL `docker.io/pgvector/pgvector:0.8.7-pg18-trixie` |
 
-NATS clients, NACK included, connect to `nats://nats.nats.svc.cluster.local:4222`. JetStream streams may keep up to
-three replicas. The servers spread across system-pool nodes when there are several, but don't make the pool grow.
+NATS clients, NACK included, connect to `nats://nats.nats.svc.cluster.local:4222`. NACK runs in its control-loop
+mode, the one that applies key-value buckets as well as streams and consumers. JetStream streams may keep up to three
+replicas. The servers spread across system-pool nodes when there are several, but don't make the pool grow.
 NATS takes no credentials, so NetworkPolicy `nats` (namespace `nats`, from `delivery`'s `platform/nats/manifests`)
 decides who reaches the servers: anything in namespace `nats` (the servers' own routes, NACK, NUI and nats-box), and
 [Fin](#fin)'s namespaces on the client port only: `fin`, and every namespace labelled `kfirs.com/pull-request: "true"`.
