@@ -73,7 +73,7 @@ flowchart LR
 
 1. This reference change.
 2. `infra`: the pipelines' roles for Workload Identity pools, applied by hand, since the pipelines can't change their own roles.
-3. `infra`: the pool, the grants, the buckets, the secret and Vertex AI's API; then the owner adds the sealing key's value and enables Claude Opus 5.5 in Model Garden.
+3. `infra`: the pool, the grants, the buckets, the secret and Vertex AI's API; then the owner adds the sealing key's value. Fin's models, Gemini's, need nothing enabled beyond the API.
 4. `fin`: `components/pull-request`.
 5. `delivery`: the admitted kinds and their policies, NetworkPolicy `nats/nats`, production's ServiceAccounts and images, and the component's listing.
 6. `fin`: the slices that use them. Once fin's `/api` route serves production, `infra` and `delivery` drop the `api` hosts.
