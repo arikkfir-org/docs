@@ -187,7 +187,7 @@ Every meaningful unit of work (a new component, a change of architecture, a new 
   - A function fits on one screen, about 60 lines, and handles at most a couple of concerns; the rest becomes named helpers.
   - Doc comments lead with what the symbol is for or what the function does, in one sentence that starts with its name; then why it's needed; then how it works; then who uses it, in general terms.
   - Write `any`, never `interface{}`.
-  - Configure programs with [`envconfig`](https://github.com/kelseyhightower/envconfig) (environment variables), not command-line flags.
+  - Configure programs with [`envconfig`](https://github.com/kelseyhightower/envconfig) (environment variables), not command-line flags. Flags name only what a one-off command acts on: a tool's input, or what an operator asks a deployed binary through `kubectl exec`, which can pass it nothing else.
   - Log through `log/slog` only, and only through its `*Context` methods.
   - Layers: transports (HTTP handlers, message consumers) translate between the wire and domain calls and hold no business logic. Domain packages hold the logic, each behind one `Service` whose exported methods start a span and check authorization first. Generated storage code is used by domain packages only, and the one database wrapper alone builds its queries. Shared code specific to the product goes in `common`; code any project could use goes in `util`, which imports nothing of the product's.
   - golangci-lint runs errcheck, wrapcheck, contextcheck, sloglint (`context: all`), spancheck, depguard (the layers), funlen, gocognit and revive (`use-any`).
