@@ -172,8 +172,8 @@ kubectl -n keycloak exec keycloak-0 -- bash -c '
 - `kubectl -n external-secrets get clustersecretstore gcp-secret-manager` is `Valid`, and every `ExternalSecret` is
   `SecretSynced`.
 - `https://argocd.dev.kfirs.com`, `https://grafana.dev.kfirs.com`, `https://tekton.dev.kfirs.com`,
-  `https://nui.dev.kfirs.com` and `https://traefik.dev.kfirs.com` go straight to Google, accept the Google account of
-  a user `terraform/keycloak` declares, and refuse any other.
+  `https://nui.dev.kfirs.com` and `https://traefik.dev.kfirs.com` show Keycloak's login page, sign in through Google
+  the account of a user `terraform/keycloak` declares in group `admins`, and refuse any other.
 
 ## 10. Verify CI
 
