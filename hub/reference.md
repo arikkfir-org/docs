@@ -236,9 +236,8 @@ Both tokens have Contents read and write because GitHub shows a repository's mer
 | `tekton-operator` | Tekton Operator | `tektoncd/operator` release manifest from `infra.tekton.dev` (Tekton's release host since v0.78) | `v0.81.1` |
 | `tekton-pipelines` | Pipelines, Triggers, Dashboard (via `TektonConfig`; Results, Chains, Pipelines-as-Code and the operator's NetworkPolicies off) | operator-managed | operator default |
 | `octomaton` | Octomaton | `me-west1-docker.pkg.dev/arikkfir/images/octomaton` | The short SHA of the `main` commit Argo CD deploys (`${ARGOCD_APP_REVISION_SHORT}`, see [Octomaton](#octomaton)). There are no version tags; every push to `main` publishes one, which is also the version the binary and its telemetry report |
-| `octomaton` | `go-import`: Caddy answering for `octomaton.dev` | `docker.io/library/caddy` | `2.11.4-alpine` |
 | `docs` | Docs site: Caddy overlaying the layers of `arikkfir-docs` (Cloud Storage FUSE mount) and rendering Markdown ([docs site](#docs-site)) | `docker.io/library/caddy` | `2.11.4-alpine` |
-| `go-import` | `go-import`: Caddy answering for `fin.kfirs.com`, [Fin](#fin)'s Go module path | `docker.io/library/caddy` | `2.11.4-alpine` |
+| `go-import` | `go-import`: Caddy answering for every hub domain that is a Go module path ([Go import pages](#go-import-pages)) | `docker.io/library/caddy` | `2.11.4-alpine` |
 | `ci-<repo>` | CI tenants (one per repository) | `delivery` | n/a |
 | `fin`, `fin-pr-<number>`, `fin-pr-<number>-merge` | [Fin](#fin): production, each pull request's deployment and each merge queue entry's, PostgreSQL with pgvector, fin-worker, fin-scraper and their NATS streams included | `deploy/` in `fin` (Kustomize), deployed by `delivery` | The images of the deployed commit; PostgreSQL `docker.io/pgvector/pgvector:0.8.7-pg18-trixie` |
 
@@ -251,7 +250,7 @@ decides who reaches the servers: anything in namespace `nats` (the servers' own 
 No other namespace reaches NATS, CI tenants included.
 
 Availability ([design](designs/disruption-budgets.md)): Traefik, oauth2-proxy, Keycloak, the docs site, Grafana, Octomaton,
-both `go-import`s (namespaces `octomaton` and `go-import`) and KEDA's operator, metrics server and webhooks run two replicas each. NATS runs three servers. Each has a
+`go-import` and KEDA's operator, metrics server and webhooks run two replicas each. NATS runs three servers. Each has a
 PodDisruptionBudget of `maxUnavailable: 1` and spreads its pods over nodes when the pool has several
 (`whenUnsatisfiable: ScheduleAnyway`). Grafana keeps its state in database `grafana` on StatefulSet `postgres` in its
 namespace, at `postgres.grafana.svc.cluster.local:5432` without TLS, and NetworkPolicy `postgres` admits only Grafana's
@@ -284,7 +283,7 @@ Certificates come from cert-manager (Let's Encrypt, DNS-01 through Cloud DNS, Cl
 | `fin/fin`, listener `app` (port 8443) | Production's hosts (below) | `fin` / `fin/fin-tls` |
 | `traefik/fin-pull-requests`, listener `app` (port 8443) | `*.app.dev.fin.kfirs.com` | `fin-pull-requests` (the wildcard) / `traefik/fin-pull-requests-tls` |
 
-The `octomaton-dev` listener accepts routes only from namespace `octomaton` (which also carries
+The `octomaton-dev` listener accepts routes only from namespaces `octomaton` and `go-import` (which also carry
 `kfirs.com/public-ingress=true`).
 
 | Host | Gateway | Backend |
@@ -299,8 +298,8 @@ The `octomaton-dev` listener accepts routes only from namespace `octomaton` (whi
 | `auth.kfirs.com` | public | `auth/oauth2-proxy:80`, path `/oauth2` |
 | `id.kfirs.com` | public | `keycloak/keycloak-service:8080`, paths `/realms/hub` and `/resources`, and `/realms/master` behind the hub's sign-in (Middleware `keycloak/oidc`, a ForwardAuth to oauth2-proxy): the admin console signs in against this frontend hostname. POSTs under `/realms/hub/login-actions`, the login page's forms, go through Middleware `keycloak/sign-in-attempts`: a rate limit of 30 a minute per client address, in bursts of up to 30, counted by each Traefik replica |
 | `legal.kfirs.com` | public | `docs/docs:80`, exact paths `/privacy.html`, `/tos.html` and their `.md.html` pages: the privacy policy and terms of service the Google OAuth app's branding links to |
-| `octomaton.dev` | public (listener `octomaton-dev`) | `octomaton/octomaton:80` for path `/github/hooks`; `octomaton/go-import:80` for everything else |
-| `fin.kfirs.com` | public | `go-import/go-import:80`: Fin's Go import page |
+| `octomaton.dev` | public (listener `octomaton-dev`) | `octomaton/octomaton:80` for path `/github/hooks`; `go-import/go-import:80` for everything else, Octomaton's [Go import page](#go-import-pages) |
+| `fin.kfirs.com` | public | `go-import/go-import:80`: Fin's [Go import page](#go-import-pages) |
 | `app.fin.kfirs.com` | `fin/fin` (protected entry point) | `fin/api:80` for `/api/` (through Middleware `fin/id-token`), `fin/web:80` for everything else |
 | `pr-<number>.app.dev.fin.kfirs.com` | `traefik/fin-pull-requests` (protected entry point) | `fin-pr-<number>/api:80` for `/api/` (through Middleware `fin-pr-<number>/id-token`), `fin-pr-<number>/web:80` for everything else |
 | `pr-<number>-merge.app.dev.fin.kfirs.com` | `traefik/fin-pull-requests` (protected entry point) | `fin-pr-<number>-merge/api:80` for `/api/` (through Middleware `fin-pr-<number>-merge/id-token`), `fin-pr-<number>-merge/web:80` for everything else |
@@ -309,6 +308,25 @@ DNS A records (TTL 300) point each host at its gateway's IP: in zone `kfirs-com`
 of zone `octomaton-dev` for `octomaton.dev`.
 
 [Fin](#fin)'s hosts need certificates of their own (`*.kfirs.com` covers one label), so they have Gateways of their own on the protected gateway's entry point (port 8443, `websecure`), and their routes get the same interceptor. Production's is `fin/fin`, whose listeners take routes from its own namespace only. Every pull request's environment shares `traefik/fin-pull-requests`, whose one certificate covers all their hosts, so a pull request issues no certificate (Let's Encrypt issues at most 50 a week for `kfirs.com`); its listeners take routes only from namespaces labelled `kfirs.com/pull-request=true`. Fin's routes never attach to `traefik/protected`. Fin's DNS records are `app.fin` and the wildcard `*.app.dev.fin`, which answers for every pull request's host, both at `ingress-protected`, and `fin`, its Go import page, at `ingress-public`. The API lives under `/api` on the app's host, one origin for the browser. The wildcard sits where the certificate's DNS-01 challenge record does (`_acme-challenge.app.dev.fin`): a wildcard higher up would stop answering below it while it exists. Pull requests' hosts lie under production's `.fin.kfirs.com`, so production's Gateway, certificate and routes are held to names outside `.dev.fin.kfirs.com`.
+
+### Go import pages
+
+Application `go-import` (`platform/go-import/manifests` in `delivery`, wave 4) answers for every hub domain that is a Go
+module path ([design](designs/go-import-pages.md)): Deployment, Service and ConfigMap `go-import` in namespace
+`go-import` (label `kfirs.com/public-ingress: "true"`; Service port 80 → container 8080), two replicas with
+PodDisruptionBudget `go-import` (`maxUnavailable: 1`), and NetworkPolicy `go-import` admitting only the `traefik`
+namespace. HTTPRoute `go-import` puts every domain on the public gateway, since Go fetches the pages without signing in.
+A request with `go-get=1`, on any path, gets `<meta name="go-import" content="<domain> git <repository>">`; any other
+request is redirected (302) to the domain's redirect URL, or to `https://github.com/arikkfir-org` when it has none, as
+is a request for any other host.
+
+| Domain | Listener | Repository | Redirect |
+| --- | --- | --- | --- |
+| `fin.kfirs.com` ([Fin](#fin)) | `public/public-websecure` | `https://github.com/arikkfir-org/fin` | The repository |
+| `octomaton.dev` ([Octomaton](#octomaton)) | `public/octomaton-dev` | `https://github.com/arikkfir-org/octomaton` | The repository |
+
+A new domain is a row in ConfigMap `go-import`'s table and a host name in its route. A domain outside `*.kfirs.com`
+also needs a listener and certificate of its own on the public gateway, admitting routes from namespace `go-import`.
 
 ## Authentication
 
@@ -350,8 +368,8 @@ Keycloak decides who signs in: the people `terraform/keycloak` declares in realm
 | Webhook URL | `https://octomaton.dev/github/hooks` |
 | Go module | `octomaton.dev`; repository `arikkfir-org/octomaton` |
 | Commands | `octomaton`, the server (no arguments); `octomaton-lint [-render] PATH...` validates `.octomaton.yaml` (`go install octomaton.dev/cmd/octomaton-lint@latest`; `-version`) |
-| Go import page | `https://octomaton.dev/<path>?go-get=1` returns `<meta name="go-import" content="octomaton.dev git https://github.com/arikkfir-org/octomaton">`; any other request is redirected (302) to the repository |
-| Kubernetes | namespace `octomaton` (label `pod-security.kubernetes.io/enforce: restricted`, version `latest`; `kfirs.com/public-ingress: "true"` from `delivery`; `argocd.argoproj.io/sync-options: Delete=false,Prune=false`), Deployment/ServiceAccount/Service `octomaton` (Service port 80 → container 8080); Deployment/Service/ConfigMap `go-import` for the import page (Service port 80 → container 8080); two replicas of each Deployment, with PodDisruptionBudgets `octomaton` and `go-import` (`maxUnavailable: 1`) |
+| Go import page | `https://octomaton.dev`, served by `delivery`'s `go-import` ([Go import pages](#go-import-pages)) |
+| Kubernetes | namespace `octomaton` (label `pod-security.kubernetes.io/enforce: restricted`, version `latest`; `kfirs.com/public-ingress: "true"` from `delivery`; `argocd.argoproj.io/sync-options: Delete=false,Prune=false`), Deployment/ServiceAccount/Service `octomaton` (Service port 80 → container 8080); two replicas, with PodDisruptionBudget `octomaton` (`maxUnavailable: 1`) |
 | Deployment | `deploy/` in `arikkfir-org/octomaton` (Kustomize): the hub's deployment as written, its Namespace and RBAC included ([design](designs/octomaton-deployment.md)) |
 | Application | In namespace `argocd`, from Application `octomaton-environment` (`platform/octomaton/manifests` in `delivery`, wave 4): Application `octomaton`, `deploy/` at `octomaton`'s `main`, without finalizer and without `CreateNamespace`. Its `kustomize` options: image `images/octomaton` at `${ARGOCD_APP_REVISION_SHORT}` (the synced commit's short SHA), and a patch labelling Namespace `octomaton` `kfirs.com/public-ingress: "true"` |
 | Project | `octomaton`: source `https://github.com/arikkfir-org/octomaton` only; destination `octomaton`; cluster-scoped, Namespace `octomaton`, ClusterRoles `octomaton` and `octomaton-tenant` and ClusterRoleBinding `octomaton` only; namespaced kinds `ServiceAccount`, `Role`, `RoleBinding`, `ConfigMap`, `external-secrets.io` `ExternalSecret`, `Deployment`, `PodDisruptionBudget`, `Service`, `gateway.networking.k8s.io` `HTTPRoute` and `NetworkPolicy` only. No admission policies: only `main` deploys |
@@ -631,5 +649,5 @@ One URL space at `https://docs.dev.kfirs.com`, composed from every repository
 | Namespace | Label `pod-security.kubernetes.io/enforce: restricted` (version `latest`), and for a pull request `kfirs.com/pull-request: "true"`; ResourceQuota `fin` (production: 6 CPUs and 12Gi requested, 24Gi limits, 40 pods, two volumes, 100Gi; a pull request: 2 CPUs, 4Gi, 8Gi, 15 pods, one volume, 5Gi). Production's carries `argocd.argoproj.io/sync-options: Delete=false,Prune=false` |
 | Argo CD's GitHub App | `arikkfir-argocd`, App ID `5179565`, created by hand; Contents, Pull requests and Metadata read; installed on `fin` only. Secret `argocd/github-app`, repo-creds for `https://github.com/arikkfir-org/fin`, from `argocd-github-app-id` and `argocd-github-app-private-key`. Argo CD finds the installation itself |
 | Sign-in | The hub's interceptor guards every request ([Authentication](#authentication)): Keycloak's realm `hub`, with Google. Every route removes `Cookie` after it; the `/api` rules first copy the ID token through Middleware `id-token`, and fin-api validates it |
-| Go module | `fin.kfirs.com/apps/api` (`apps/api/go.mod`). `https://fin.kfirs.com/<path>?go-get=1` returns `<meta name="go-import" content="fin.kfirs.com git https://github.com/arikkfir-org/fin">`; any other request is redirected (302) to the repository. Served on the public gateway, since Go fetches it without signing in, by Deployment, Service and ConfigMap `go-import` in namespace `go-import` (Application `go-import`, `platform/go-import/manifests` in `delivery`, wave 4): two replicas with PodDisruptionBudget `go-import` (`maxUnavailable: 1`), and NetworkPolicy `go-import` admitting only the `traefik` namespace |
+| Go module | `fin.kfirs.com/apps/api` (`apps/api/go.mod`); its import page is `https://fin.kfirs.com`, served by `delivery`'s `go-import` ([Go import pages](#go-import-pages)) |
 | CI | Pipelines `ci` (check `Continuous Integration`, as `ci-fin-ci`, on pull requests and merge queue groups: the API, the app, `deploy/` rendered as written and with `delivery`'s overrides, and the end-to-end suite against the commit's environment, `pr-<number>` or `pr-<number>-merge`), `preview` (check `Preview images`, as `ci-fin-preview`, on pull requests and merge queue groups), `release` (pushes to `main`, as `ci-fin-release`) and `e2e` (check `End-to-end in production`, as `ci-fin-ci`, on pushes to `main`, a newer push superseding a run: the end-to-end suite against production once it serves the commit). The end-to-end suite builds nothing: it makes its test users in group `fin-e2e` as client `fin-e2e`, through `keycloak/keycloak-service:8080`, and its Playwright report, with every test's trace, goes to the [docs site](#docs-site)'s reports and is linked from the task's log and the check's summary. Each other task restores the archives of the CI cache it builds with from bucket `arikkfir-fin-ci-cache` before it builds; only `release` saves them, once it has published |

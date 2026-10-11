@@ -44,7 +44,7 @@ sequenceDiagram
 | oauth2-proxy | 2 | `maxUnavailable: 1` | `delivery`: `platform/auth/values.yaml` | Sessions live in cookies |
 | Docs site | 2 | `maxUnavailable: 1` | `delivery`: `platform/docs/manifests/` | Each pod mounts the bucket read-only |
 | Octomaton | 2 | `maxUnavailable: 1` | `octomaton`: `deploy/` | Every replica serves webhooks; the Lease holder reports, schedules and cleans up |
-| `go-import` | 2 | `maxUnavailable: 1` | `octomaton`: `deploy/` | Static answers |
+| `go-import` | 2 | `maxUnavailable: 1` | `delivery`: `platform/go-import/manifests/` (Octomaton's `deploy/` until it moved, [design](go-import-pages.md)) | Static answers |
 | KEDA operator, metrics server, webhooks | 2 each | `maxUnavailable: 1` each | `delivery`: `platform/keda/values.yaml` | KEDA keeps one operator and one metrics server active and the other on standby; both webhook replicas serve |
 | NATS | 3 | `maxUnavailable: 1` (the chart's) | `delivery`: `platform/nats/values.yaml` | JetStream keeps a quorum with two of three servers |
 | Grafana | 2 | `maxUnavailable: 1` | `delivery`: `platform/grafana/`, its database too | State in PostgreSQL, shared; alert state gossiped between the replicas, so each alert notifies once |
