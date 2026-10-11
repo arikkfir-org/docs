@@ -3,7 +3,9 @@
 **Decision**: one Caddy, `delivery`'s `go-import`, answers Go's import requests for every hub domain that is a Go
 module path: `fin.kfirs.com` and `octomaton.dev`. A table in its configuration names each domain's repository and,
 optionally, where people who open the domain in a browser go; without one they go to `https://github.com/arikkfir-org`.
-Octomaton's own `go-import` goes. Names and wiring: [reference](../reference.md#go-import-pages).
+Octomaton's own `go-import` goes. Names and wiring: [reference](../reference.md#go-import-pages). Pull requests:
+[delivery#50](https://github.com/arikkfir-org/delivery/pull/50),
+[octomaton#27](https://github.com/arikkfir-org/octomaton/pull/27).
 
 ## Context
 
