@@ -18,12 +18,12 @@ flowchart LR
 
 1. **Start from a Linear issue** for anything beyond a trivial fix (see [Linear](#linear)).
 2. **Branch** from the default branch using the issue's branch name.
-3. **Write or update the design doc** for every meaningful unit of work, in the change's pull request (that repository's `docs/`) or on `docs`'s `main` (see
+3. **Write or update the design doc** for every meaningful unit of work, in the change's pull request (that repository's `docs/`), so it sits with its code (see
    [Design documents](#design-documents)).
 4. **Open a pull request** early; mark it ready once CI is green and the description is complete.
 5. **Merge through the merge queue**. Default branches accept merge commits only, after one approval, resolved conversations and a green `Continuous Integration` check. Nobody pushes directly to a protected default branch, except `docs`'s `main` (below).
 
-Changes to the `docs` repository are pushed directly to its `main`, without a pull request. The `Docs` check runs only on pull requests, so `docs-publish` finds a broken link or a collision only after the push: fix it at once. Every other repository changes through pull requests, which carry their docs in their own `docs/` unless those go to `docs`'s `main`.
+Changes to the `docs` repository are pushed directly to its `main`, without a pull request. The `Docs` check runs only on pull requests, so `docs-publish` finds a broken link or a collision only after the push: fix it at once. Every other repository changes through pull requests, which carry their docs in their own `docs/`.
 
 ## Linear
 
@@ -143,10 +143,10 @@ A round ends in this order: push the fixes, reply on every thread, then request 
 
 ## Design documents
 
-Every meaningful unit of work (a new component, a change of architecture, a new convention, anything someone will later ask "why is it like this?" about) gets a design document, written before or alongside the change and updated when the implementation diverges. It never gets a pull request of its own: it ships in the change's pull request, in that repository's `docs/`, so it merges with the code it describes, or it goes straight to `docs`'s `main`.
+Every meaningful unit of work (a new component, a change of architecture, a new convention, anything someone will later ask "why is it like this?" about) gets a design document, written before or alongside the change and updated when the implementation diverges. It never gets a pull request of its own: it ships in the change's pull request, in that repository's `docs/`, so it sits and merges with the code it describes. Only a design with no code of its own goes straight to `docs`'s `main`.
 
 - **Where**: `<area>/designs/<slug>.md` on the site (e.g. `hub/designs/phase-2-octomaton.md`). Every repository's `docs/` maps to the site root, so `docs/hub/designs/x.md` in `infra` is `hub/designs/x.md`. Rich visual pages may be HTML.
-- **Across repositories**: put the design in the leading repository or on `docs`'s `main`, or split it into one document per repository, each in the pull request of that repository's part. A directory groups the parts (`hub/designs/<slug>/`): every repository's `docs/` composes into the one URL space at `docs.dev.kfirs.com` ([design](hub/designs/docs-site-composition.md)), so the parts read as one design. Repositories share directories, never file paths.
+- **Across repositories**: put the design in the leading repository, or split it into one document per repository, each in the pull request of that repository's part. A directory groups the parts (`hub/designs/<slug>/`): every repository's `docs/` composes into the one URL space at `docs.dev.kfirs.com` ([design](hub/designs/docs-site-composition.md)), so the parts read as one design. Repositories share directories, never file paths.
 - **Links**: the `Docs` check resolves relative links against the other repositories' `main`, so a part links only to pages already merged or in its own pull request. Later parts link back to earlier ones.
 - **Visual first**: at least one diagram (Mermaid in Markdown, or SVG/HTML) showing the moving parts.
 - **Contents**: context and goal; the design; decisions with their rationale and rejected alternatives; security and failure modes; rollout and manual steps; open questions.
