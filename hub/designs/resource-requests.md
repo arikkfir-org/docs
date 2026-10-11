@@ -42,7 +42,7 @@ Use is each container's over the week to 11 October, from Cloud Monitoring: the 
 
 A scrape job lives 10 to 30 seconds, too short for Cloud Monitoring's per-minute samples: its use is the node's CPU above its sampled containers while scrapes ran, about 11 CPU-seconds a scrape, and its memory peak is of the scrapes that were sampled.
 
-delivery's part is arikkfir-org/delivery#49; fin's follows in its own pull request.
+delivery's part is arikkfir-org/delivery#49, fin's fin#117.
 
 ## Decisions
 
