@@ -28,7 +28,7 @@ flowchart LR
 | Traces | Playwright records a trace for every test, and its HTML reporter writes the report, traces included, to `playwright-report/`, next to the list in the log | fin, `apps/e2e/playwright.config.ts` |
 | Upload | After the tests, whether they passed or not, the e2e step uploads the report with the CI identity's token and prints the link. A failed upload is reported in the log and the check, and never fails the check | fin, `.tekton/ci.yaml` |
 | Link in the check | The e2e task writes the link to its `check-summary` result and the pipeline passes it on. Octomaton puts it at the top of the check's summary, also when the task fails | fin, `.tekton/ci.yaml`; [Octomaton](../reference.md#octomaton) |
-| Storage | `gs://arikkfir-docs/.reports/fin/<run>/`, where `<run>` is the PipelineRun's name, so every run, re-run and merge group gets its own folder. Objects under `.reports/` are deleted after 30 days | infra, `terraform/gcp/storage.tf` |
+| Storage | `gs://arikkfir-docs/.reports/fin/<run>/`, where `<run>` is the PipelineRun's name and UID, `<name>-<uid>`, so every run, re-run and merge group gets its own folder. Objects under `.reports/` are deleted after 30 days | infra, `terraform/gcp/storage.tf` |
 | Writer | `ci-fin/ci-fin-ci` may create objects under `.reports/fin/`, and nowhere else. It can't change or delete them | infra, `terraform/gcp/iam.tf` |
 | Serving | `/reports/*` serves `.reports/` as it is, apart from the layers. A folder serves its `index.html` and is never listed; a hidden path is a 404 | delivery, `platform/docs` |
 
@@ -39,6 +39,7 @@ flowchart LR
 | The docs bucket and site | Both are already private, behind the hub's sign-in, and served from the cluster: no new bucket, host or certificate | A bucket and host of their own |
 | Playwright's HTML report, not the bare trace files | The report lists every test, and opens each trace in Playwright's trace viewer on the same site. trace.playwright.dev can't fetch a trace from behind the sign-in | Links to trace.playwright.dev |
 | A folder apart from the layers | `docs-publish` makes each layer a copy of the repository's `docs/` on `main`, so it would delete reports, and the `Docs` check would check them as pages | A layer for reports |
+| A run's folder is its name and UID | Octomaton numbers a commit's runs after those Tekton still has, so a re-run after they are pruned can take an earlier run's name. On 10 October, a re-run of fin#106 was named `fin-ci-ae8dc27-1`, as the commit's first run had been: its folder held that run's report, which the writer can't overwrite, so every upload was refused and the run's failing test left no trace. A UID is never reused, and the name says which run a folder holds | The name alone; the UID alone, which says nothing of the run; Octomaton never reusing a name, which needs it to remember the runs Tekton pruned |
 | A trace for every test, kept 30 days | A failure is easier to understand next to a passing run of the same test. 30 days outlasts most pull requests | Traces of failed tests only; keeping them forever |
 | Pull requests' runs upload reports too | That's where tests fail first. Only people who can push to fin can start a run | Reports from `main` and merge groups only |
 

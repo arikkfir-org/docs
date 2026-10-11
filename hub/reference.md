@@ -603,7 +603,7 @@ One URL space at `https://docs.dev.kfirs.com`, composed from every repository
 | Check | Organization pipeline `docs`, check `Docs`, on pull requests and merge groups, as `docs-reader`: no `*.md.html` sources, relative links resolve against the composed site, no collisions |
 | Publish | Organization pipeline `docs-publish`, on pushes to `main`, as `docs-publisher`: mirror the layer, then the same checks |
 | Definitions | `tooling`: `.octomaton.yaml` (`organization.pipelines`) and `docs-site/` |
-| Reports | `/reports/<repository>/<run>/`: a CI run's report, served as it is from `gs://arikkfir-docs/.reports/<repository>/<run>/`, apart from the layers. A folder serves its `index.html` and is never listed. No layer may publish under `reports/`, which the reports' route hides. Fin's e2e task writes one each run ([design](designs/ci-reports.md)) |
+| Reports | `/reports/<repository>/<run>/`: a CI run's report, served as it is from `gs://arikkfir-docs/.reports/<repository>/<run>/`, apart from the layers, where `<run>` is the PipelineRun's name and UID, `<name>-<uid>`. A folder serves its `index.html` and is never listed. No layer may publish under `reports/`, which the reports' route hides. Fin's e2e task writes one each run ([design](designs/ci-reports.md)) |
 | Serving | `delivery`, `platform/docs`: the Caddyfile and page template; its layer list is the overlay order |
 
 ## Fin
