@@ -91,7 +91,7 @@ From arikkfir-org/infra#19 on, `terraform/github` also manages the `arikkfir-org
 | Gateway API | GKE-managed Gateway API disabled; CRDs and Traefik installed by Argo CD |
 | Add-ons | Cloud Storage FUSE CSI driver (docs site). HTTP load balancing (GKE Ingress) is disabled |
 | Node service account | `gke-hub-nodes@arikkfir.iam.gserviceaccount.com` |
-| Autoscaling profile | `optimize-utilization` from arikkfir-org/infra#60 on (`balanced`, GKE's default, before it): a pod goes to the fullest node that fits it, and empty nodes go sooner ([design](designs/node-autoscaling.md)) |
+| Autoscaling profile | `optimize-utilization` from arikkfir-org/infra#60 on (`balanced`, GKE's default, before it): a pod goes to the fullest node that fits it, and empty nodes go sooner |
 | Node pool `system` | `e2-standard-4`, on-demand, `me-west1-a`, autoscaling 1-3, label `kfirs.com/pool=system` |
 | Node pool `ci` | `e2-standard-8`, autoscaling 0-5, from arikkfir-org/infra#61 on (`e2-standard-4`, 0-10, before it: no two of Fin's 2-CPU tasks fit one node), on-demand from arikkfir-org/infra#20 on (Spot before it: preemptions failed most runs on 2026-10-01), `me-west1-a` (the cluster's zone) from arikkfir-org/infra#21 on (`me-west1-a/b/c` before it: a run's zonal disk mounts only on nodes in its own zone), label `kfirs.com/pool=ci`, taint `kfirs.com/pool=ci:NoSchedule` |
 
