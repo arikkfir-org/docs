@@ -368,17 +368,17 @@ Keycloak decides who signs in: the people `terraform/keycloak` declares in realm
 | App events | `push`, `pull_request`, `issue_comment`, `check_suite`, `check_run`, `merge_group`; also `pull_request_review`, `pull_request_review_comment` and `pull_request_review_thread`, which Octomaton ignores |
 | Webhook URL | `https://octomaton.dev/github/hooks` |
 | Go module | `octomaton.dev`; repository `arikkfir-org/octomaton` |
-| Commands | `octomaton`, the server (no arguments); `octomaton-lint [-render] PATH...` validates `.octomaton.yaml` (`go install octomaton.dev/cmd/octomaton-lint@latest`; `-version`) |
+| Commands | `octomaton`, the server (no arguments); `octomaton-logs`, the [step logs server](#step-logs-server-configuration) (no arguments); `octomaton-lint [-render] PATH...` validates `.octomaton.yaml` (`go install octomaton.dev/cmd/octomaton-lint@latest`; `-version`) |
 | Go import page | `https://octomaton.dev`, served by `delivery`'s `go-import` ([Go import pages](#go-import-pages)) |
-| Kubernetes | namespace `octomaton` (label `pod-security.kubernetes.io/enforce: restricted`, version `latest`; `kfirs.com/public-ingress: "true"` from `delivery`; `argocd.argoproj.io/sync-options: Delete=false,Prune=false`), Deployment/ServiceAccount/Service `octomaton` (Service port 80 → container 8080); two replicas, with PodDisruptionBudget `octomaton` (`maxUnavailable: 1`) |
+| Kubernetes | namespace `octomaton` (label `pod-security.kubernetes.io/enforce: restricted`, version `latest`; `kfirs.com/public-ingress: "true"` from `delivery`; `argocd.argoproj.io/sync-options: Delete=false,Prune=false`), Deployment/ServiceAccount/Service `octomaton` (Service port 80 → container 8080); two replicas, with PodDisruptionBudget `octomaton` (`maxUnavailable: 1`). Deployment/ServiceAccount/Service/NetworkPolicy `octomaton-logs` (Service port 80 → container 8080): one replica without a PodDisruptionBudget, a ServiceAccount that mounts no token, and a NetworkPolicy admitting only the Tekton Dashboard's pods (namespace `tekton-pipelines`, label `app.kubernetes.io/name: dashboard`) on 8080 |
 | Deployment | `deploy/` in `arikkfir-org/octomaton` (Kustomize): the hub's deployment as written, its Namespace and RBAC included ([design](designs/octomaton-deployment.md)) |
-| Application | In namespace `argocd`, from Application `octomaton-environment` (`platform/octomaton/manifests` in `delivery`, wave 4): Application `octomaton`, `deploy/` at `octomaton`'s `main`, without finalizer and without `CreateNamespace`. Its `kustomize` options: image `images/octomaton` at `${ARGOCD_APP_REVISION_SHORT}` (the synced commit's short SHA), and a patch labelling Namespace `octomaton` `kfirs.com/public-ingress: "true"` |
+| Application | In namespace `argocd`, from Application `octomaton-environment` (`platform/octomaton/manifests` in `delivery`, wave 4): Application `octomaton`, `deploy/` at `octomaton`'s `main`, without finalizer and without `CreateNamespace`. Its `kustomize` options: images `images/octomaton` and `images/octomaton-logs` at `${ARGOCD_APP_REVISION_SHORT}` (the synced commit's short SHA), a patch labelling Namespace `octomaton` `kfirs.com/public-ingress: "true"`, and a patch putting every Deployment on node pool `system` (node selector `kfirs.com/pool: system` and a toleration of `components.gke.io/gke-managed-components=true:NoSchedule`) |
 | Project | `octomaton`: source `https://github.com/arikkfir-org/octomaton` only; destination `octomaton`; cluster-scoped, Namespace `octomaton`, ClusterRoles `octomaton` and `octomaton-tenant` and ClusterRoleBinding `octomaton` only; namespaced kinds `ServiceAccount`, `Role`, `RoleBinding`, `ConfigMap`, `external-secrets.io` `ExternalSecret`, `Deployment`, `PodDisruptionBudget`, `Service`, `gateway.networking.k8s.io` `HTTPRoute` and `NetworkPolicy` only. No admission policies: only `main` deploys |
 | Validation | `octomaton`'s `ci` (check `Continuous Integration`) renders `deploy/` as written and with the `kustomize` options of every Application in `delivery`'s `main` that deploys it (`deploy/manifests.sh`, `make manifests`), and validates both with kubeconform; a patch whose target matches nothing in `deploy/` fails it |
-| Config | Environment variables only ([server configuration](#server-configuration)): ConfigMap `octomaton` through `envFrom`; `OCTOMATON_POD_NAME` and `OCTOMATON_POD_NAMESPACE` from the downward API; `OTEL_RESOURCE_ATTRIBUTES` with the pod, namespace and container names; `enableServiceLinks: false` |
+| Config | Environment variables only ([server configuration](#server-configuration)): ConfigMap `octomaton` through `envFrom`; `OCTOMATON_POD_NAME` and `OCTOMATON_POD_NAMESPACE` from the downward API; `OTEL_RESOURCE_ATTRIBUTES` with the pod, namespace and container names; `enableServiceLinks: false`. `octomaton-logs`: the Deployment's own `env` ([step logs server configuration](#step-logs-server-configuration)), the same `OTEL_RESOURCE_ATTRIBUTES` and `enableServiceLinks: false` |
 | GitHub secret | Secret `octomaton-github`: keys `app-id`, `private-key`, `webhook-secret` as `OCTOMATON_GITHUB_APP_ID`, `OCTOMATON_GITHUB_PRIVATE_KEY`, `OCTOMATON_GITHUB_WEBHOOK_SECRET` |
-| Endpoints | `POST /github/hooks`, `GET /healthz`, `GET /readyz` (all on 8080) |
-| Telemetry | On GKE: JSON logs on stdout to Cloud Logging; metrics to Cloud Monitoring and traces to Cloud Trace through the Telemetry API (`telemetry.googleapis.com`), as `octomaton/octomaton`. Elsewhere: text logs, nothing exported |
+| Endpoints | `octomaton`: `POST /github/hooks`, `GET /healthz`, `GET /readyz` (all on 8080). `octomaton-logs`: `GET /logs/<namespace>/<pod>/<container>?startTime=…&completionTime=…`, `GET /healthz`, `GET /readyz` (all on 8080) |
+| Telemetry | On GKE: JSON logs on stdout to Cloud Logging; metrics to Cloud Monitoring and traces to Cloud Trace through the Telemetry API (`telemetry.googleapis.com`), as `octomaton/octomaton` and `octomaton/octomaton-logs`. Elsewhere: text logs, nothing exported |
 | Check links | `https://tekton.dev.kfirs.com/#/namespaces/<namespace>/pipelineruns/<name>` |
 | Tenant namespaces | `ci-<repository>` for every repository but `.github`, which has no CI; each has ServiceAccounts `pipeline`, `docs-reader` and `docs-publisher` (only `docs-publisher` is annotated `octomaton.dev/branches: main`; see [docs site](#docs-site)) and RoleBinding `octomaton` → ClusterRole `octomaton-tenant`, plus the [reviewer's objects](#pull-request-reviewer). `ci-infra` also has ServiceAccounts `ci-infra-plan` and `ci-infra-apply` (only `ci-infra-apply` is annotated `octomaton.dev/branches: main`), `ci-tooling` has `ci-tooling-publish` and `ci-octomaton` has `ci-octomaton-release` (both annotated `octomaton.dev/branches: main`); `ci-fin` has `ci-fin-release` (annotated `octomaton.dev/branches: main`), and `ci-fin-preview` and `ci-fin-ci` (not annotated: pull requests' branches use them) |
 | Tenant permissions | `octomaton-tenant`: PipelineRuns (create, get, list, watch, patch, update, delete); TaskRuns (get, list, watch); Secrets (create, get, patch, update, delete); Pods (get, list); `pods/log` (get); PersistentVolumeClaims (get, list, delete); ServiceAccounts (get) |
@@ -442,6 +442,33 @@ The hub's ConfigMap `octomaton` sets:
 | `OCTOMATON_ORGANIZATION_REPOSITORY` | `tooling` |
 | `OCTOMATON_RELAY_URLS` | `http://argocd-server.argocd.svc.cluster.local/api/webhook` (Argo CD refreshes on pushes) |
 | `OCTOMATON_RETENTION_FREE_PVCS_AFTER` | `1h` |
+
+### Step logs server configuration
+
+`octomaton-logs` serves the Tekton Dashboard's external logs: the log of a container whose pod is gone, read from Cloud
+Logging ([design](https://github.com/arikkfir-org/octomaton/blob/main/docs/octomaton/designs/archived-step-logs.md)).
+It takes no arguments: environment variables configure it, and it exits at startup listing every problem.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `OCTOMATON_LOGS_VIEW` | required | the log view read, `projects/<project>/locations/<location>/buckets/<bucket>/views/<view>`; its project is the quota project of the reads |
+| `OCTOMATON_LOGS_CLUSTER`, `OCTOMATON_LOGS_LOCATION` | required | the GKE cluster whose containers' logs are served, and its zone or region |
+| `OCTOMATON_LOGS_NAMESPACE_PREFIX` | `ci-` | only namespaces whose names start with it are served; it can't be empty |
+| `OCTOMATON_LOGS_ADDRESS` | `:8080` | address of `/logs`, `/healthz` and `/readyz` |
+| `OCTOMATON_LOG_LEVEL` | `info` | `debug`, `info`, `warn` or `error` |
+| `OTEL_SERVICE_NAME`, `OTEL_RESOURCE_ATTRIBUTES` | `octomaton-logs` | added to the resource of exported metrics and traces |
+
+It calls Cloud Logging's `entries:list` as its Kubernetes ServiceAccount, `octomaton/octomaton-logs`, and bills the
+reads to the view's project (`X-Goog-User-Project`); its roles are in
+[GCP identities and permissions](#gcp-identities-and-permissions). A namespace outside the prefix answers 404.
+
+The hub's Deployment `octomaton-logs` sets:
+
+| Variable | Value |
+| --- | --- |
+| `OCTOMATON_LOGS_VIEW` | `projects/arikkfir/locations/global/buckets/_Default/views/_Default` |
+| `OCTOMATON_LOGS_CLUSTER` | `hub` |
+| `OCTOMATON_LOGS_LOCATION` | `me-west1-a` |
 
 ### Repository configuration (`.octomaton.yaml`)
 
