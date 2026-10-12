@@ -25,9 +25,9 @@ Use is each container's over the week to 11 October, from Cloud Monitoring: the 
 | --- | --- | --- | --- | --- | --- |
 | Fin's scrape job, a pull request's | 100m, 512Mi; limit 2Gi | 500m, 512Mi; limits 1 CPU, 2Gi | about 500–700m while it runs | 386Mi | fin, `deploy/components/pull-request` |
 | Fin's scrape job, production's | 500m, 1Gi; limit 2Gi | 500m, 512Mi; limits 1 CPU, 2Gi | too short to sample | 361Mi | fin, `deploy/scraper.yaml` |
-| Fin's PostgreSQL, a pull request's | 20m, 128Mi; limit 1Gi | 100m, 128Mi; limit 1Gi | 115m, 143m | 156Mi | fin, `deploy/components/pull-request` |
-| Fin's API, a pull request's | 10m, 32Mi; limit 256Mi | 20m, 48Mi; limit 256Mi | 44m, 67m | 41Mi | fin, `deploy/components/pull-request` |
-| Fin's web | 5m, 32Mi (a pull request's 16Mi); limit 128Mi | 20m, 32Mi; limit 128Mi | 19m, 28m | 88Mi | fin, `deploy/web.yaml` and `deploy/components/pull-request` |
+| Fin's PostgreSQL, a pull request's | 20m, 128Mi; limit 1Gi | 100m, 128Mi; limit 1Gi; 150m since fin#120 | 115m, 143m | 156Mi | fin, `deploy/components/pull-request` |
+| Fin's API, a pull request's | 10m, 32Mi; limit 256Mi | 20m, 48Mi; limit 256Mi; 75m since fin#120 | 44m, 67m | 41Mi | fin, `deploy/components/pull-request` |
+| Fin's web | 5m, 32Mi (a pull request's 16Mi); limit 128Mi | 20m, 32Mi (a pull request's 35m since fin#120); limit 128Mi | 19m, 28m | 88Mi | fin, `deploy/web.yaml` and `deploy/components/pull-request` |
 | Argo CD's application controller | nothing | 200m, 1Gi; limit 2560Mi | 185m, 933m | 1873Mi | delivery, `platform/argocd/values.yaml` |
 | Grafana | nothing | 50m, 256Mi; limit 512Mi | 83m, 98m | 342Mi | delivery, `platform/grafana/values.yaml` |
 | Traefik | nothing | 50m, 128Mi; limit 256Mi | 46m, 115m | 119Mi | delivery, `platform/traefik/values.yaml` |
@@ -42,7 +42,7 @@ Use is each container's over the week to 11 October, from Cloud Monitoring: the 
 
 A scrape job lives 10 to 30 seconds, too short for Cloud Monitoring's per-minute samples: its use is the node's CPU above its sampled containers while scrapes ran, about 11 CPU-seconds a scrape, and its memory peak is of the scrapes that were sampled.
 
-delivery's part is arikkfir-org/delivery#49, fin's fin#117.
+delivery's part is arikkfir-org/delivery#49, fin's fin#117. fin#120 then raised a pull request's API, app, worker and PostgreSQL to the 90th percentile of what they used while its suites ran, above production's, after four suites at once saturated the one system node on 11 October ([Fin environments](../../fin/designs/environments.md)).
 
 ## Decisions
 
@@ -59,5 +59,5 @@ delivery's part is arikkfir-org/delivery#49, fin's fin#117.
 
 - A week of use is short. Argo CD's controller grows with the number of open pull requests, and a peak above a memory limit kills the pod, which restarts and rebuilds its cache.
 - Keycloak's heap shrinks from up to 1434Mi to 952Mi. Its guide sizes that for 10,000 sessions, far more than the hub has.
-- A pull request's scrape jobs ask for five times more CPU than before. With the requests freed elsewhere, the system node fits about two at once, so a suite's third scrape, or another suite's, waits for the autoscaler to add a node and for the node to pull the scraper's image: a minute or two each, then about 45 seconds, out of the three minutes the tests give a scrape. Should that run short, the pool's minimum can rise to two nodes (infra).
+- A pull request's scrape jobs ask for five times more CPU than before. With the requests freed elsewhere, the system node fits about two at once, and fewer since fin#120 raised each open pull request's other pods by about 0.15 CPU, so a suite's third scrape, or another suite's, waits for the autoscaler to add a node and for the node to pull the scraper's image: a minute or two each, then about 45 seconds, out of the three minutes the tests give a scrape. Should that run short, the pool's minimum can rise to two nodes (infra).
 - Rollout: each workload restarts once as Argo CD syncs it. Keycloak, Traefik, Grafana and KEDA roll one replica at a time; Argo CD's controller and Tekton's pipelines controller restart, and runs they reconcile wait meanwhile. Fin's environments take theirs on their next deployment.
