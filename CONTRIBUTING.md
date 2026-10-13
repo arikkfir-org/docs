@@ -116,7 +116,7 @@ Closes ENG-123
 ```
 
 - Keep pull requests small and focused; one concern per pull request.
-- No pull request of documentation alone: documentation ships in the pull request whose changes it documents (`docs` takes its own changes straight to `main`).
+- No pull request of documentation alone: documentation ships in the pull request whose changes it documents (`docs` takes its own changes straight to `main`). The one exception moves a page into the repository it describes, which documents no change of its own.
 - Draft while incomplete; ready for review only when CI is green.
 - Every review conversation ends resolved: fixed, or answered with the reason it stays, then resolved by the reviewer (see [Answering a review](#answering-a-review)).
 - Re-request review after addressing changes; stale approvals are dismissed on push.
@@ -145,8 +145,8 @@ A round ends in this order: push the fixes, reply on every thread, then request 
 
 Every meaningful unit of work (a new component, a change of architecture, a new convention, anything someone will later ask "why is it like this?" about) gets a design document, written before or alongside the change and updated when the implementation diverges. It never gets a pull request of its own: it ships in the change's pull request, in that repository's `docs/`, so it sits and merges with the code it describes. Only a design with no code of its own goes straight to `docs`'s `main`.
 
-- **Where**: `<area>/designs/<slug>.md` on the site (e.g. `hub/designs/phase-2-octomaton.md`). Every repository's `docs/` maps to the site root, so `docs/hub/designs/x.md` in `infra` is `hub/designs/x.md`. Rich visual pages may be HTML.
-- **Across repositories**: put the design in the leading repository, or split it into one document per repository, each in the pull request of that repository's part. A directory groups the parts (`hub/designs/<slug>/`): every repository's `docs/` composes into the one URL space at `docs.dev.kfirs.com` ([design](hub/designs/docs-site-composition.md)), so the parts read as one design. Repositories share directories, never file paths.
+- **Where**: in the repository the design is about, under its own directory of the site: `docs/<repository>/designs/<slug>.md` there. Every repository's `docs/` maps to the site root, so `docs/octomaton/designs/architecture.md` in `octomaton` is `octomaton/designs/architecture.md`. `docs` keeps only what is about no one repository: these house rules, the hub reference, the templates and the hub-wide designs ([design](hub/designs/docs-ownership.md)). Rich visual pages may be HTML.
+- **Across repositories**: split the design into one document per repository, each in the pull request of that repository's part, under the same slug in each repository's directory (`infra/designs/node-pools.md` and `delivery/designs/node-pools.md`): every repository's `docs/` composes into the one URL space at `docs.dev.kfirs.com` ([design](hub/designs/docs-site-composition.md)), so the parts read as one design. Only a design that loses its value in parts stays whole, in the leading repository: the one whose change the others serve.
 - **Links**: the `Docs` check resolves relative links against the other repositories' `main`, so a part links only to pages already merged or in its own pull request. Later parts link back to earlier ones.
 - **Visual first**: at least one diagram (Mermaid in Markdown, or SVG/HTML) showing the moving parts.
 - **Contents**: context and goal; the design; decisions with their rationale and rejected alternatives; security and failure modes; rollout and manual steps; open questions.

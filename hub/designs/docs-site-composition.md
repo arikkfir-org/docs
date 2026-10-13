@@ -98,7 +98,7 @@ pipeline or render scripts of its own, and nothing pushes to its `main` directly
   `/guide.md.html`.
 - Link with relative paths against the composed site. A link from `infra/docs/x.md` to `../hub/reference.md` resolves
   on the site, though not on GitHub.
-- Hub-wide pages, such as the reference, stay in `docs`. A design ships with its change, in that repository's `docs/`; one that spans repositories goes in the leading one, or is split under a shared directory ([Design documents](../../CONTRIBUTING.md#design-documents)).
+- Hub-wide pages, such as the reference, stay in `docs`. Every other page lives in the repository it describes, under `docs/<repository>/` there, and a design ships with its change; one that spans repositories is split into a part per repository, or, when it can't be, goes in the leading one ([Design documents](../../CONTRIBUTING.md#design-documents), [docs ownership](docs-ownership.md)).
 
 ## Decisions
 

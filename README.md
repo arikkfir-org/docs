@@ -1,7 +1,9 @@
 # docs
 
-The knowledge base of the `arikkfir-org` development hub: designs, architecture, runbooks and conventions. Every
-meaningful unit of work gets a visual design document, here or in the `docs/` of the repository it changes.
+The hub-wide part of the `arikkfir-org` knowledge base: conventions, the hub reference, and the designs and runbooks
+that are about no one repository. Every repository keeps the pages about it in its own `docs/<repository>/`, and the
+pages here that belong to one are moving there ([docs ownership](hub/designs/docs-ownership.md)). Every meaningful unit
+of work gets a visual design document in the repository it changes.
 
 ## Start here
 
@@ -16,6 +18,7 @@ Designs:
 | Phase | Design |
 | --- | --- |
 | 0 | [Documentation](hub/designs/phase-0-documentation.md) |
+| 0 | [Each repository owns its docs](hub/designs/docs-ownership.md) |
 | 1 | [Foundations: Terraform, GKE, Argo CD](hub/designs/phase-1-foundations.md) |
 | 2 | [Octomaton](hub/designs/phase-2-octomaton.md) |
 | 2 | [octomaton.dev: domain, webhook and Go module](hub/designs/octomaton-dev.md) |
