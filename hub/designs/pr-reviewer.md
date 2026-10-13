@@ -1,7 +1,7 @@
 # Pull request reviewer
 
-**Decision**: requesting a review from the GitHub user `arikkfir-reviewer` runs a two-task Tekton pipeline through
-Octomaton:
+**Decision**: requesting a review from the GitHub user `arikkfir-reviewer` runs a one-task Tekton pipeline through
+Octomaton, one pod per review:
 
 - `review` checks out the pull request's repository on a 50Gi volume, with the pull request's full state at its root,
   then runs opencode with DeepSeek in a sandbox, in the hub's reviewer image (opencode plus bash, python3, git and the
@@ -9,7 +9,8 @@ Octomaton:
   nothing but the internet. Their `github` sidecar holds a token that reads every repository's code and pull
   requests, and reads GitHub for the model, which clones the hub's other repositories as it needs them and can follow a
   change into an internal repository (`fin`) without the token.
-- `report` turns the findings into one GitHub review by `arikkfir-reviewer`, with one thread per finding.
+- Its last step, `report`, turns the findings into one GitHub review by `arikkfir-reviewer`, with one thread per
+  finding, from the one container that holds the reviewer's token, taking nothing from the volume but the findings.
 
 Each finding carries a short code (`IAM-3`), so later rounds reply to its thread or resolve it. Names and wiring:
 [reference](../reference.md#pull-request-reviewer).
