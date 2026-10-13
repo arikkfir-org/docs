@@ -1,5 +1,10 @@
 # Disruption budgets
 
+**Superseded for single replicas** by delivery's `docs/delivery/designs/disruption-budgets.md`
+([delivery#53](https://github.com/arikkfir-org/delivery/pull/53)): every hub workload now has a budget of
+`maxUnavailable: 1`, single replicas included, and every Deployment rolls out by surging. Read "No budget for a single
+replica" below as history; the current budgets are in that design and the manifests it names.
+
 **Decision**: every service the others depend on runs two replicas, spread over nodes when the pool has several, with
 a PodDisruptionBudget of `maxUnavailable: 1`. That covers Traefik, oauth2-proxy, the docs site, Grafana, Octomaton and
 its `go-import` page, and KEDA's three components. NATS keeps its chart's budget over three servers. Grafana moves its
