@@ -79,7 +79,7 @@ sequenceDiagram
 
 ### Still in docs
 
-Each is about several repositories, or its home needs a decision. Proposed homes, for review:
+Each is about several repositories, or its home needs a decision. Proposed homes, for review; none moves in this change. Moving a page that a house rule or a repository's `CLAUDE.md` cites is a change of its own, which rewrites that rule first:
 
 | Page | Proposed | Open point |
 | --- | --- | --- |
@@ -96,7 +96,7 @@ Each is about several repositories, or its home needs a decision. Proposed homes
 | [Disruption budgets](disruption-budgets.md) | delivery, merged into its own `disruption-budgets.md`, which already supersedes part of it | Same name as delivery's page: merge, or rename |
 | [Resource requests](resource-requests.md) | Split: delivery (eleven workloads), fin (five), and its rule into `CONTRIBUTING.md` | delivery's and fin's manifests cite it as the hub's rule |
 | [Bootstrap runbook](../runbooks/bootstrap.md) | infra, whole: infra's README links it, and most of its steps apply infra's roots | One sequence across every repository |
-| [Hub reference](../reference.md) | Split by section into each repository (Octomaton's server configuration and `.octomaton.yaml` schema into octomaton, Fin's section into fin), keeping the hub-wide facts here | Every repository's `CLAUDE.md` names it as the contract |
+| [Hub reference](../reference.md) | Undecided: whole here, or split by section into each repository (Octomaton's server configuration and `.octomaton.yaml` schema into octomaton, Fin's section into fin), keeping the hub-wide facts here | It is the contract: a name changes here first (`CONTRIBUTING.md`, "Facts in one place"), and every repository's `CLAUDE.md` names it. A split rewrites those rules first, and still changes each fact in one place |
 
 ## Decisions
 
