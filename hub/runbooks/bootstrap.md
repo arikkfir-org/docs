@@ -1,8 +1,8 @@
 # Bootstrap runbook
 
 Bringing the hub up from nothing, in order. Names and values: [reference](../reference.md). Designs:
-[phase 1](../designs/phase-1-foundations.md), [phase 2](../designs/phase-2-octomaton.md),
-[phase 3](../designs/phase-3-ingress-and-auth.md), [Keycloak](../designs/keycloak.md).
+[phase 1](../designs/phase-1-foundations.md), [phase 2](../../octomaton/designs/phase-2-octomaton.md),
+[phase 3](../../delivery/designs/phase-3-ingress-and-auth.md), [Keycloak](../designs/keycloak.md).
 
 ```mermaid
 flowchart TD
@@ -118,7 +118,7 @@ make image    # tags the image with HEAD's short SHA
 ```
 
 Build it from the head of `main`: Argo CD deploys that commit, with the image tagged with its short SHA
-([Octomaton deployment](../designs/octomaton-deployment.md)).
+([Octomaton deployment](../../octomaton/designs/deployment.md)).
 
 ## 7. Argo CD
 
