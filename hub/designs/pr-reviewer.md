@@ -33,7 +33,7 @@ sequenceDiagram
   participant R as review: the model (sandbox)
   participant G as github sidecar
   participant DS as DeepSeek API
-  participant P as report
+  participant P as review: report
   A->>GH: request a review from arikkfir-reviewer
   GH->>OCT: pull_request (review_requested)
   OCT->>GH: read the repository's and tooling's .octomaton.yaml, and tooling's reviewer/pipelinerun.yaml (default branches)
@@ -51,7 +51,7 @@ sequenceDiagram
 | Piece | Where | What |
 | --- | --- | --- |
 | Trigger | `tooling`: `organization.pipelines` in `.octomaton.yaml` (the organization repository), read at its default branch | Pipeline `review` (`AI Review`) for every repository, on `review_request` from `arikkfir-reviewer`; params from the template context; a read-only installation token for every repository; the two Secrets it may mount |
-| Pipeline | `tooling`: `reviewer/pipelinerun.yaml` | The PipelineRun: tasks `review`, `report`; the 50Gi volume; ServiceAccount, sandbox label, DNS and resources per task; the reviewer image for every step and the sidecar, so a node pulls one image for a review. Octomaton reads it at `tooling`'s default branch for every repository |
+| Pipeline | `tooling`: `reviewer/pipelinerun.yaml` | The PipelineRun: task `review`, whose last step `report` posts the review; the 50Gi volume; ServiceAccount, sandbox label, DNS and resources; the reviewer image for every step and the sidecar, so a node pulls one image for a review. Octomaton reads it at `tooling`'s default branch for every repository |
 | Scripts and prompt | `tooling`: `reviewer/` | `state.py` writes `pr.json`, `findings.py` checks `findings.json`, `report.py` posts the review, `github_proxy.py` serves GitHub in the `github` sidecar. Also `prompt.md` and `opencode.json`. Standard-library Python, tested in `tooling`'s CI. `report` and the sidecar run their own fresh copies, never the volume's |
 | Image | `octomaton`: `images/reviewer/`, pipelines `reviewer-image` and `reviewer-image-check` | opencode's image plus the model's tools, published to Artifact Registry as `ci-octomaton-release` |
 | Octomaton | `octomaton` | The `review_request` trigger; `pipelineRun` in another repository; `secrets` a pipeline may mount; `githubToken.repositories: all`; remote Tekton references refused; organization pipelines |
@@ -78,8 +78,7 @@ sequenceDiagram
 
 | Task | Identity and credentials | Network | Steps |
 | --- | --- | --- | --- |
-| `review` | ServiceAccount `reviewer`; the installation token (contents and pull requests: read, every repository) as workspace `github-token`, an isolated workspace that only `clone`, `state` and the sidecar `github` mount (at `/var/run/github-token` in the steps, outside the `/workspace` they all share); `DEEPSEEK_API_KEY` from Secret `reviewer-deepseek-api-key` in `review` and `fix` only | Internet only | Sidecar `github`: [the GitHub proxy](#the-github-proxy), started before the steps. Every step starts in the volume's root, made when the pod starts; the model's cd into the checkout. `clone`: the pull request's repository at the head commit, into `<name>/`, with the installation token as an HTTP header on git's command line, never on the volume; refused if its root already has a `pr.json`, `pr.diff`, `pr.log` or `findings.json` (a link included); `pr.diff` and `pr.log` from it, at its root; `reviewer/` from `tooling`'s default branch, cloned anonymously, into `.review/` beside it. `state`: `<name>/pr.json` from GitHub's REST and GraphQL APIs. `review`: `opencode run` with `prompt.md` ([opencode](#opencode)), refusing to start if the token is mounted. `check`: `findings.py`. `fix`: `opencode run --continue` with the errors, only when `check` found any. `recheck`: `findings.py` again, failing the task if anything is still wrong |
-| `report` | ServiceAccount `reviewer`; `GITHUB_TOKEN` from Secret `reviewer-github-pat` (`arikkfir-reviewer`'s token) | Internet only | `fetch`: `reviewer/` from `tooling`'s default branch into the task's own `emptyDir`. `report`: that copy of `report.py` reads `<name>/findings.json` from the volume, posts the review, resolves threads and writes the `check-title` and `check-summary` results |
+| `review` | ServiceAccount `reviewer`; the installation token (contents and pull requests: read, every repository) as workspace `github-token`, an isolated workspace that only `clone`, `state` and the sidecar `github` mount (at `/var/run/github-token` in the steps, outside the `/workspace` they all share); `DEEPSEEK_API_KEY` from Secret `reviewer-deepseek-api-key` in `review` and `fix` only; `GITHUB_TOKEN` from Secret `reviewer-github-pat` in `report` only | Internet only | Sidecar `github`: [the GitHub proxy](#the-github-proxy), started before the steps. Every step starts in the volume's root, made when the pod starts; the model's cd into the checkout. `clone`: the pull request's repository at the head commit, into `<name>/`, with the installation token as an HTTP header on git's command line, never on the volume; refused if its root already has a `pr.json`, `pr.diff`, `pr.log` or `findings.json` (a link included); `pr.diff` and `pr.log` from it, at its root; `reviewer/` from `tooling`'s default branch, cloned anonymously, into `.review/` beside it. `state`: `<name>/pr.json` from GitHub's REST and GraphQL APIs. `review`: `opencode run` with `prompt.md` ([opencode](#opencode)), refusing to start if the token is mounted. `check`: `findings.py`. `fix`: `opencode run --continue` with the errors, only when `check` found any. `recheck`: `findings.py` again, failing the task if anything is still wrong. `report`: in its own container, the only one with `GITHUB_TOKEN` from Secret `reviewer-github-pat` (`arikkfir-reviewer`'s token), started once the model's steps are done: clones `tooling`'s default branch into its filesystem and runs that `report.py`, with `HOME` and its working directory there too and python without user site-packages or `PYTHON*` variables (`-s -E`); reads only `<name>/findings.json` from the volume, posts the review, resolves threads and writes the `check-title` and `check-summary` results |
 
 The ServiceAccount has no RoleBinding and doesn't mount its token, and its Workload Identity principal has no IAM
 role. Every pod carries `kfirs.com/sandbox=true`, which NetworkPolicy `sandbox` confines to public addresses. The pods
@@ -95,8 +94,8 @@ flowchart LR
       S[clone, state]
       R[the model's steps]
       G[github sidecar]
+      P[report]
     end
-    P[report]
     V[(volume 50Gi)]
     S --> V
     V --> R
@@ -146,6 +145,10 @@ only (`contents: read`, `pull_requests: read`), so even a request that slipped t
 `github-token` workspace is named only in the sidecar and in `clone` and `state`, which finish before the model starts
 (Tekton's isolated workspaces, beta: without them the run is refused), and the `review` and `fix` steps refuse to start
 the model if it is mounted in them anyway.
+
+Tekton stops the sidecar once the last step is done by swapping its image, which the kubelet does with SIGTERM. The
+proxy is PID 1 in its container, which gets no default action for a signal, so it handles SIGTERM and exits at once:
+without the handler it lived to the 30 s grace period's SIGKILL after every review, holding the pod and its volume.
 
 ### The volume
 
@@ -264,6 +267,16 @@ the volume, `.review/` included.
   so a 114-file pull request took 162 turns and 18 minutes.
 - Use the tools in the image: `git` in the checkouts; other repositories, pull requests and code (internal ones too)
   through the GitHub proxy on `127.0.0.1:8080`, cloned into `/tmp`.
+- Stay on the review. The transcripts of 496 reviews (2026-10-04 to 13) showed a fifth of the model's time on side
+  trips, each now ruled out: `pr.json`, `pr.diff` and `pr.log` are complete, so never fetch the pull request again
+  from the API (30% of reviews did); the image has no node, go, npm, helm, kubectl or terraform, so never look for
+  them or try to build, test or render (63%); read `pr.json` by key with `jq`, never whole (94%); clone only the
+  repositories the change touches, not all five (65%); read `hub/reference.md`'s relevant sections, not the whole
+  file (55%); read a whole file once rather than sizing it and slicing it (every review) or reading it again; find
+  with `rg`, not by listing trees (46%); leave the repository's other branches and pull requests alone (63%); never
+  read `.review/`, `/tekton` or the reviewer's own design and scripts, which hold no expected answer (16%); fetch
+  what a claim about an upstream tool needs from the web in one command; and read `findings.json` back by eye rather
+  than writing a checker (60%), since the pipeline checks it.
 - Write `findings.json`, and nothing else: the repositories are read-only.
 
 The code guidelines (reuse over duplication, refactoring over scaffolding, the right thing over the easy one, and the
@@ -326,7 +339,7 @@ blocking, 🟡 medium for non-blocking, 🔵 low for nits, then resolved). It ne
 | A repository can't redefine an organization pipeline | No repository can skip the reviewer or point `review` at another definition | Repository pipelines overriding organization ones by name |
 | Octomaton lets a pipeline mount the Secrets it declares, only if all its triggers read default-branch definitions | Head-commit definitions still can't name a Secret, so a pull request can't reach the reviewer's token | A server-wide allowlist: any pull request's CI could mount the token |
 | Octomaton refuses remote Tekton references (`pipelineRef`, resolvers, bundles) | The guard only sees inline definitions; a remote one would slip past it. No repository uses them | Resolving them first (Octomaton would fetch and trust what Tekton fetches) |
-| Every reviewer pod is sandboxed, not just `review` | None of them needs the cluster; each holds one credential | `report` on the CI default network |
+| `report` is the `review` task's last step, in its pod, and its container is the only one with `arikkfir-reviewer`'s token | A task of its own was a second pod: 50 s of scheduling and a volume move in half the reviews, after the sidecar's 30 s stop. In one pod, the model's containers can't read `report`'s environment (the pod shares no process namespace) and finish before it starts its work; the step takes nothing from the volume but `findings.json`, running its own clone of `tooling` with `HOME` and its working directory in its container and python without user site-packages. The pod is sandboxed: it needs nothing of the cluster | A `report` task of its own (the second pod); the token in a workspace (every step would see it); `report` on the CI default network |
 | `clone` clones the pull request's repository, and fetches the pull request, with the installation token, given to git as an HTTP header on its command line (`git -c http.extraHeader=…`). `tooling`, for `reviewer/`, stays anonymous | Internal and private repositories (`fin`) refuse anonymous clones. The token is already in the `review` task's `clone` and `state`: read-only, an hour at most. Given on the command line, it never reaches the volume the model reads. Used for every pull request, not only for non-public repositories: one path runs on every review, with no visibility check | The token in the remote's URL or in a credential helper's file (both on the volume); an anonymous attempt first, then the token (its path would run only for internal repositories); a second, read-only personal access token for every clone (every repository, for up to a year, on a volume an internet-connected model reads) |
 | The model works in the pull request's checkout, with the pull request's files at its root, and clones other repositories itself through the proxy | It starts in what it reviews, with its history, and fetches the one or two repositories a change touches in one command. `.review/` sits beside the checkout, out of the model's way: in its working directory, models spent minutes of every review reading the scripts and opencode's session for the expected answer | Cloning the hub's five repositories into `repos/` before the model starts (most go unread, and only the hub's); ignoring the pull request's files in each repository's `.gitignore` or `.git/info/exclude` (ripgrep, so opencode's grep, glob and list, skips ignored files, and `.gitignore` needs a change in every repository, `fin` included) |
 | `clone` and `state` are the `review` task's first steps, not a task of their own | A task of its own started a second pod before the model, and its volume moved whenever the next pod landed on another node: 15-89 s in 11 of 18 reviews | The affinity assistant, which pins a run's pods to the volume's node (turned off in `delivery`: pinned pods wait on a full node rather than letting the autoscaler add one) |
@@ -354,7 +367,9 @@ blocking, 🟡 medium for non-blocking, 🔵 low for nits, then resolved). It ne
   the one a merge needs, so a member can steer it into approving their own change, as they can steer any reviewer
   with what they write.
 - The model can write anywhere on the volume, so nothing that holds a credential runs code from it. `report` runs
-  `report.py` from its own copy of `tooling`, and reads only `findings.json` from the volume, as data. It checks the
+  `report.py` from its own copy of `tooling`, in its own container, with `HOME` and its working directory there (git
+  and python read configuration under `HOME`) and python without user site-packages or `PYTHON*` variables, and reads
+  only `findings.json` from the volume, as data. It checks the
   schema, sizes, codes and anchors again against the diff and threads it fetches itself, and never follows
   instructions from the file. `clone` and `state` run before the model does. The worst a steered model can do is post
   a wrong review, and a human reads it before merging.
@@ -367,13 +382,15 @@ blocking, 🟡 medium for non-blocking, 🔵 low for nits, then resolved). It ne
   internal ones (`fin`) included, and send what it reads anywhere on the internet: the price of a reviewer that checks
   a change against the rest of the organization.
 - `arikkfir-reviewer`'s token lives only in the `ci-*` namespaces as Secret `reviewer-github-pat`. Octomaton lets
-  only `review` mount it. It expires within a year; renewing it is a manual step. Its contents write, which resolving
+  only `review` mount it, and only the `report` step's container has it: the model's steps run before it in the same
+  pod and can't read another container's environment. It expires within a year; renewing it is a manual step. Its contents write, which resolving
   threads needs, would let a stolen token push branches and tags and manage releases, but never push to a default
   branch.
 - DeepSeek unreachable, a timeout or a second invalid `findings.json` fails `review` and the check, and no review is
   posted. Re-run the check, or re-request the review.
-- A lost node (a Spot preemption until arikkfir-org/infra#20): `report` retries twice (it can be repeated), `review`
-  once, from its `clone`.
+- A lost node (a Spot preemption until arikkfir-org/infra#20): `review` retries once, from its `clone`, `report`
+  with it. `report`'s GitHub calls retry on their own (`github.py`), so only an outage or a refusal (the head moved,
+  which supersedes the run anyway) fails the task there.
 - A new request for the same pull request supersedes the running review (Octomaton's default for pull requests), and
   so do new commits while the review is still requested: the review starts again at the new head.
 
