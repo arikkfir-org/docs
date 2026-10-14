@@ -271,7 +271,7 @@ A later round's brief says what the round reviews:
 | --- | --- | --- |
 | First | No submitted review by `arikkfir-reviewer` | Reviews everything |
 | Incremental | The change since the last review is at most 300 lines and at most half the lines the pull request changes | Gets that change and the files it touched; judges it first, and reviews the whole pull request again if it is significant or risky (new behaviour, a security or data path, an interface others rely on, a rewrite) or it can't tell |
-| Whole again | A larger change, or the reviewed commit is gone (a rebase) | Reviews everything |
+| Whole again | A larger change, the reviewed commit is gone (a rebase), or git fails to work out the change (an empty diff would read as no change, and `report` would resolve every finding the model then leaves out) | Reviews everything |
 
 Every later round answers every earlier thread and raises again each finding that still holds, since `report` resolves
 those it leaves out. The summary opens with what the round reviewed ("The changes since `abc1234`: …" or "The whole
