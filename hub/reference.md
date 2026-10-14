@@ -102,7 +102,7 @@ Workloads pick their pool with a node selector and a toleration: the hub's servi
 | --- | --- | --- |
 | Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomaton/ci-octomaton-release` and `ci-fin/ci-fin-release` write. Images: `octomaton` and `octomaton-logs` (Octomaton's `release`) and `reviewer` (Octomaton's `reviewer-image`, the [pull request reviewer](#pull-request-reviewer)'s image), each tagged with the commit's short SHA and `main`; `fin-api`, `fin-worker`, `fin-scraper`, `fin-web` and `fin-migrations` ([Fin](#fin)'s `release`), tagged with the commit's short SHA |
 | Docker repository | `me-west1-docker.pkg.dev/arikkfir/previews` | nodes read; `ci-fin/ci-fin-preview` writes, from any branch. Images: `fin-api`, `fin-worker`, `fin-scraper`, `fin-web` and `fin-migrations` of [Fin](#fin)'s pull requests (its `preview`), tagged with the commit's short SHA. Versions older than 14 days are deleted, except each image's 20 newest |
-| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private, one layer per repository under `.layers/<repository>/` ([docs site](#docs-site)): `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; each tenant's `docs-publisher` writes its own layer, and `docs-reader` lists names. CI runs' reports went under `.reports/` until ENG-122 moved them to `arikkfir-tests` |
+| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private, one layer per repository under `.layers/<repository>/` ([docs site](#docs-site)): `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; `claude-code@` reads it for Claude Code's sessions; each tenant's `docs-publisher` writes its own layer, and `docs-reader` lists names. CI runs' reports went under `.reports/` until ENG-122 moved them to `arikkfir-tests` |
 | Bucket | `arikkfir-tests` (`ME-WEST1`, uniform access, public access prevention enforced; objects deleted after 30 days) | private: CI runs' reports, under `reports/<repository>/<run>/` ([tests site](#tests-site)). `tests/tests` reads and serves it at `https://tests.dev.kfirs.com`; `ci-fin/ci-fin-ci` creates Fin's |
 | Bucket | `arikkfir-claude` (`ME-WEST1`, uniform access) | public object reads (no listing); `ci-tooling/ci-tooling-publish` writes |
 | Bucket | `arikkfir-fin` (`ME-WEST1`, uniform access, public access prevention enforced; objects deleted after 30 days) | private: [Fin](#fin) production's scrape videos, traces and raw statements, under `runs/<run>/`. `fin/scraper` creates objects; `fin/api` and `fin/worker` read them |
@@ -178,11 +178,13 @@ In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design
 | `gke-hub-nodes@` (GSA) | `roles/container.defaultNodeServiceAccount` | project |
 | `gke-hub-nodes@` (GSA) | `roles/artifactregistry.reader` | repositories `images` and `previews` |
 | `claude-code@` (GSA) | `roles/viewer`, `roles/mcp.toolUser` | project |
+| `claude-code@` (GSA) | `roles/storage.objectViewer` | bucket `arikkfir-docs` |
 
 `claude-code@arikkfir.iam.gserviceaccount.com` is Claude Code on the web's identity, made by hand and adopted by
 `terraform/gcp`: the Claude Code environment holds its key, made by hand, and its proxy adds it to requests for
-`*.googleapis.com`. Sessions read the hub cluster through GKE's MCP server, `https://container.googleapis.com/mcp`
-([design](designs/claude-code-cluster-access.md)).
+`*.googleapis.com`. Sessions read the hub cluster through GKE's MCP server, `https://container.googleapis.com/mcp`,
+and the [docs site](#docs-site)'s pages from its bucket ([design](designs/claude-code-cluster-access.md)), without
+cloning other repositories.
 
 One Workload Identity Federation pool is managed here, `fin-pull-requests`, for [Fin](#fin)'s pull requests'
 environments: their namespaces come and go with the pull requests, and GKE's own pool grants only to namespaces named in
@@ -656,6 +658,7 @@ One URL space at `https://docs.dev.kfirs.com`, composed from every repository
 | Definitions | `tooling`: `.octomaton.yaml` (`organization.pipelines`) and `docs-site/` |
 | Reports | `/reports/*` redirects (`301`) to the same path on the [tests site](#tests-site), where CI runs' reports moved, so links to their old addresses keep working. No layer may publish under `reports/`, which the redirect hides |
 | Serving | `delivery`, `platform/docs`: the Caddyfile and page template; its layer list is the overlay order |
+| Claude Code | Sessions read pages from the bucket as `claude-code@`, past the sign-in: `https://docs.dev.kfirs.com/X` is `gs://arikkfir-docs/.layers/<repository>/X` of the first layer in the overlay order that has it, which for a path under `<repository>/` is that repository's (`gcloud storage cat`; `gcloud storage ls 'gs://arikkfir-docs/.layers/*/X'` lists the layers that have it) |
 
 ## Tests site
 
