@@ -17,13 +17,13 @@ flowchart LR
   P["Pull request its diff<br/>can't explain"] --> W["Walkthrough<br/>walkthroughs/repository/pr-number.md"]
   R --> V{"About an internal<br/>repository?"}
   W --> V
-  V -->|no| D["docs (public)<br/>straight to main"]
+  V -->|no| D["docs (public)<br/>a pull request of its own"]
   V -->|yes| F["That repository's docs/<br/>through a pull request"]
   D --> S["docs.dev.kfirs.com<br/>same paths, behind sign-in"]
   F --> S
 ```
 
-A write-up describes what is, so in `docs` it goes straight to `main`, as `CONTRIBUTING.md` allows for the present. A walkthrough goes there once its pull request exists, like a design for work in flight. In an internal repository both go through pull requests, its default branch's only way in, and a walkthrough rides the pull request it explains.
+A write-up describes what is, so in `docs` it goes in a pull request of its own, which documents no change. A walkthrough goes there in one too, once the pull request it explains exists, like a design for work in flight. In an internal repository both go through pull requests, its default branch's only way in, and a walkthrough rides the pull request it explains.
 
 ## Decisions
 
