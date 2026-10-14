@@ -4,7 +4,7 @@ A walkthrough guides a reviewer through a pull request they can't follow from it
 
 - **When**: a pull request that changes behaviour across more than one component, or that a reviewer can't follow from its description and diff. Not for a typo, a version bump, a lint fix or a regenerated file.
 - **Where**: `walkthroughs/<repository>/pr-<number>.md`, in a repository as visible as the pull request. Link it from the pull request's `## Summary`, and update it when a push changes the story.
-  - **A public repository's pull request**: in this repository, pushed to `main` once the pull request exists, like a design for work in flight.
+  - **A public repository's pull request**: in this repository, in a pull request of its own opened once the pull request it explains exists, like a design for work in flight.
   - **An internal repository's** (`fin`): in that repository's own `docs/`, committed in the pull request it explains. This repository is public, so anything in it is readable by anyone on GitHub.
 - **Not a design**: the design doc says why the system is shaped this way and stays; a walkthrough explains one diff and is done when the pull request merges.
 - **Visuals**: the [writing toolkit](toolkit.md).

@@ -4,7 +4,7 @@ Knowledge base of the `arikkfir-org` hub, served with every other repository's `
 
 ## Rules
 
-- Push changes straight to `main`: this repository takes no pull requests (`CONTRIBUTING.md`).
+- Changes go through pull requests and the merge queue, like every repository's (`CONTRIBUTING.md`).
 - `hub/reference.md` is the contract between `infra`, `delivery`, `octomaton` and CI configs. When a name, address, identity or permission changes anywhere, update it here in the same unit of work.
 - Every meaningful unit of work gets a visual design doc under `<area>/designs/` (see `CONTRIBUTING.md`).
 - A page about one repository belongs in that repository, under `docs/<repository>/`; a page about several is split into a part per repository, or kept whole in the leading one only when it loses its value in parts. This repository keeps only what is about no one repository, and its other pages move out ([design](hub/designs/docs-ownership.md)): never add one here.
@@ -14,6 +14,8 @@ Knowledge base of the `arikkfir-org` hub, served with every other repository's `
 - No navigation, menus or generated index pages. Pages are reached by direct links.
 - Hidden paths (any file or directory name starting with `.`) are never published.
 - Lead with the decision; facts in tables; flows as diagrams; no filler.
+- Link a page by its place on the site, never as "file X in repository Y": a relative link inside a page, `https://docs.dev.kfirs.com/<path>.md` anywhere else.
+- Read another repository's page from the site's bucket rather than cloning it: `curl -fsS https://storage.googleapis.com/arikkfir-docs/.layers/<repository>/<path>`, where `<repository>` is the path's first segment when it names a repository (`infra/terraform/gcp.md` is `infra`'s) and `docs` otherwise.
 
 ## Site mechanics
 

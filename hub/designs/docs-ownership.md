@@ -67,6 +67,15 @@ sequenceDiagram
 | `hub/designs/phase-3-ingress-and-auth.md` | [delivery/designs/phase-3-ingress-and-auth.md](../../delivery/designs/phase-3-ingress-and-auth.md) | arikkfir-org/delivery#58 |
 | `hub/designs/phase-5-tooling.md` | [tooling/designs/phase-5-tooling.md](../../tooling/designs/phase-5-tooling.md) | arikkfir-org/tooling#36 |
 | `hub/designs/ci-reports.md` | Split, as the reports moved to their own server (ENG-122): [fin/designs/ci-reports.md](../../fin/designs/ci-reports.md), how Fin's are made and opened, and [delivery/designs/docs-and-tests-servers.md](../../delivery/designs/docs-and-tests-servers.md), how both servers serve | arikkfir-org/fin#139, arikkfir-org/delivery#59 |
+| `hub/designs/terraform-plan-apply.md` | [infra/designs/terraform-plan-apply.md](../../infra/designs/terraform-plan-apply.md), the CI only; Octomaton's ServiceAccount branch check into [octomaton/designs/phase-2-octomaton.md](../../octomaton/designs/phase-2-octomaton.md#serviceaccount-branches) | arikkfir-org/infra#69, arikkfir-org/octomaton#31 |
+| `hub/designs/phase-1-foundations.md` | Merged into a page per Terraform root: [gcp](../../infra/terraform/gcp.md), [argocd](../../infra/terraform/argocd.md), [github](../../infra/terraform/github.md) | arikkfir-org/infra#69 |
+| `hub/runbooks/bootstrap.md` | [infra/runbooks/bootstrap.md](../../infra/runbooks/bootstrap.md), whole | arikkfir-org/infra#69 |
+| `hub/designs/keycloak.md` | Split: [infra/terraform/keycloak.md](../../infra/terraform/keycloak.md), its configuration, and [delivery/designs/keycloak.md](../../delivery/designs/keycloak.md), its deployment | arikkfir-org/infra#69, arikkfir-org/delivery#60 |
+| `hub/designs/fin-platform.md` | Rewritten as [fin/designs/hub.md](../../fin/designs/hub.md), Fin's architecture on the hub | arikkfir-org/fin#141 |
+| `hub/designs/ci-service-accounts.md` | Merged into [octomaton/designs/phase-2-octomaton.md](../../octomaton/designs/phase-2-octomaton.md#tenancy-and-identity), "Tenancy and identity" | arikkfir-org/octomaton#31 |
+| `hub/designs/disruption-budgets.md` | Merged into [delivery/designs/disruption-budgets.md](../../delivery/designs/disruption-budgets.md) | arikkfir-org/delivery#60 |
+| `hub/designs/resource-requests.md` | Split: [delivery/designs/resource-requests.md](../../delivery/designs/resource-requests.md), the hub's components, and [fin/designs/resource-requests.md](../../fin/designs/resource-requests.md), Fin's; the rule into `CONTRIBUTING.md`, "Code and configuration" | arikkfir-org/delivery#60, arikkfir-org/fin#141 |
+| `hub/designs/pr-reviewer.md` | Split: [tooling/designs/pr-reviewer.md](../../tooling/designs/pr-reviewer.md), the reviewer and how authors work with it, and [octomaton/designs/pr-reviewer.md](../../octomaton/designs/pr-reviewer.md), Octomaton's part | arikkfir-org/tooling#41, arikkfir-org/octomaton#31 |
 
 ### Staying in docs
 
@@ -74,29 +83,19 @@ sequenceDiagram
 | --- | --- |
 | `CONTRIBUTING.md`, `README.md`, `hub/templates/` | The house rules and their templates, for every repository |
 | [Service conventions](service-conventions.md), [pull request titles](pull-request-titles.md), [writing issues](writing-issues.md), [investigations and walkthroughs](investigations-and-walkthroughs.md) | The designs of `CONTRIBUTING.md`'s rules, which live here |
-| [Phase 0](phase-0-documentation.md), [phase 4](phase-4-docs-site.md) | This repository's own designs: the knowledge base, and how it first published |
+| [Phase 0](phase-0-documentation.md), [phase 4](phase-4-docs-site.md), [docs site composition](docs-site-composition.md) | This repository's own designs: the knowledge base, how it first published, and the site it is served on |
+| [Hub reference](../reference.md) | The contract every repository's `CLAUDE.md` names. Whether to split it by owner is the next round's question |
 | [Hub overview](../overview.html) | The whole hub on one page |
 | `privacy.md`, `tos.md` | `legal.kfirs.com` serves them from this layer, which the site overlays first, so no other repository can replace them |
 
 ### Still in docs
 
-Each is about several repositories, or its home needs a decision. Proposed homes, for review; none moves in this change. Moving a page that a house rule or a repository's `CLAUDE.md` cites is a change of its own, which rewrites that rule first:
+Proposed homes, not yet decided:
 
 | Page | Proposed | Open point |
 | --- | --- | --- |
-| [Go import pages](go-import-pages.md) | delivery, whole: `platform/go-import` | None. It and `octomaton-dev.md` link each other, so it moves once that one is published |
+| [Go import pages](go-import-pages.md) | delivery, whole: `platform/go-import` | None: `octomaton-dev.md`, which it links, is published now |
 | [Claude Code cluster and docs access](claude-code-cluster-access.md) | tooling, whole: the `gke` MCP server, reading the docs, and their permissions | infra holds the identity and its roles, nearly half the design |
-| [Pull request reviewer](pr-reviewer.md) | tooling (`reviewer/`), with its Octomaton section split into octomaton | Octomaton's part: review requests, `secrets`, `githubToken.repositories`, remote references refused, organization pipelines |
-| [Terraform plan and apply](terraform-plan-apply.md) | infra (`ci` and `apply`), with "ServiceAccount branches" split into octomaton | |
-| [Keycloak](keycloak.md) | Split: infra (`terraform/keycloak`, its secrets, the pipelines' clients), delivery (the operator, PostgreSQL, the routes, oauth2-proxy's sign-out) | Its rollout runs across both as one sequence |
-| [Phase 1](phase-1-foundations.md) | Split: infra (the roots, GCP's topology, the rulesets), delivery (Argo CD and the components) | |
-| [Fin on the hub](fin-platform.md) | Split: delivery (the admitted kinds and their policies, production's ServiceAccounts, NATS's policy), infra (pool `fin-pull-requests`, the grants, the buckets), fin (`components/pull-request`) | Three ways |
-| [Docs site composition](docs-site-composition.md) | Split: tooling (`docs-site/`: the check and publishing), delivery (`platform/docs`: serving), infra (the two ServiceAccounts' roles); or whole in tooling | This repository's `CLAUDE.md` and `CONTRIBUTING.md` lean on it |
-| [CI ServiceAccounts](ci-service-accounts.md) | Split: delivery (the ServiceAccounts and their annotation), infra (their roles) | `CONTRIBUTING.md`'s least-privilege rule cites it, so it could stay as that rule's design |
-| [Disruption budgets](disruption-budgets.md) | delivery, merged into its own `disruption-budgets.md`, which already supersedes part of it | Same name as delivery's page: merge, or rename |
-| [Resource requests](resource-requests.md) | Split: delivery (eleven workloads), fin (five), and its rule into `CONTRIBUTING.md` | delivery's and fin's manifests cite it as the hub's rule |
-| [Bootstrap runbook](../runbooks/bootstrap.md) | infra, whole: infra's README links it, and most of its steps apply infra's roots | One sequence across every repository |
-| [Hub reference](../reference.md) | Undecided: whole here, or split by section into each repository (Octomaton's server configuration and `.octomaton.yaml` schema into octomaton, Fin's section into fin), keeping the hub-wide facts here | It is the contract: a name changes here first (`CONTRIBUTING.md`, "Facts in one place"), and every repository's `CLAUDE.md` names it. A split rewrites those rules first, and still changes each fact in one place |
 
 ## Decisions
 
@@ -107,6 +106,10 @@ Each is about several repositories, or its home needs a decision. Proposed homes
 | No pages left behind at the old paths | `docs` is meant to empty out, and every such page would wait for a cleanup of its own | A page per old path pointing at the new one, which would keep links from outside the repositories working |
 | The clear cases first, the rest after review | A page in the wrong home costs a round of pull requests in several repositories to move again | Every page at once |
 | Names without the repository's prefix | Inside `octomaton/`, `octomaton-` says nothing; `fin/designs/architecture.md` already reads so | The names as they were |
+| What `infra` provisions is described once, a page per Terraform root; other repositories list what they use and link those pages | One place to change when the infrastructure changes, in the pull request that changes it | Each repository describing the infrastructure it relies on |
+| A page is linked by its place on the docs site, never as "file X in repository Y"; outside the site, by its URL | Claude Code's sessions read the site from its bucket, so a link is all they need, where a path in another repository meant cloning it | Paths in named repositories |
+| The reviewer's design in `tooling`, beside its code (`reviewer/`), with only Octomaton's part in `octomaton` | A change to the reviewer's findings schema changes its design in the same pull request, which `tooling`'s `CLAUDE.md` asks for | The reviewer's mechanics in `octomaton` |
+| `docs` takes pull requests too | Its pages get the same review and the same `Docs` check before they merge, instead of after a push to `main` | Pushing to `main` directly, as until this round |
 
 ## Failure modes
 
@@ -118,9 +121,9 @@ Each is about several repositories, or its home needs a decision. Proposed homes
 
 1. arikkfir-org/octomaton#30, arikkfir-org/tooling#36 and arikkfir-org/delivery#58: the pages in their new homes, in any order.
 2. `docs`: this design, the house rules (`CONTRIBUTING.md`, `CLAUDE.md`, `README.md`, the docs site's design), and the old copies dropped and relinked, once all three are published.
-3. The pages under [Still in docs](#still-in-docs), a round at a time, as their homes are decided.
+3. The second round: infra (arikkfir-org/infra#69) and tooling (arikkfir-org/tooling#41); then fin (arikkfir-org/fin#141) and octomaton (arikkfir-org/octomaton#31); then delivery (arikkfir-org/delivery#60); then `docs`, which drops the old copies, takes pull requests from now on, and puts the resource requests rule in `CONTRIBUTING.md`. Every repository's `CLAUDE.md` says where its pages are and how a session reads the site.
+4. The pages under [Still in docs](#still-in-docs), and whether to split the hub reference, a round at a time.
 
 ## Open questions
 
 - Root-cause write-ups and walkthroughs: their templates put a public repository's in `docs`. By this design, a write-up would live in the repository it is about and a walkthrough in the pull request it explains, but a write-up that ships no fix would be a pull request of documentation alone.
-- Whether each repository's `CLAUDE.md` should say where its pages live, as delivery's and fin's already name theirs; `CONTRIBUTING.md` says it once for every repository.
