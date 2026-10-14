@@ -89,7 +89,7 @@ From arikkfir-org/infra#19 on, `terraform/github` also manages the `arikkfir-org
 | Nodes | private (no external IPs), egress through Cloud NAT |
 | Control plane access | DNS-based endpoint (IAM-authenticated); no external IP endpoint |
 | Gateway API | GKE-managed Gateway API disabled; CRDs and Traefik installed by Argo CD |
-| Add-ons | Cloud Storage FUSE CSI driver (docs site). HTTP load balancing (GKE Ingress) and the Filestore CSI driver are disabled: nothing mounts a shared volume, and a claim on a `*-rwx` storage class would create a Filestore instance |
+| Add-ons | Cloud Storage FUSE CSI driver (docs and tests sites). HTTP load balancing (GKE Ingress) and the Filestore CSI driver are disabled: nothing mounts a shared volume, and a claim on a `*-rwx` storage class would create a Filestore instance |
 | Node service account | `gke-hub-nodes@arikkfir.iam.gserviceaccount.com` |
 | Autoscaling profile | `optimize-utilization` from arikkfir-org/infra#60 on (`balanced`, GKE's default, before it): a pod goes to the fullest node that fits it, and empty nodes go sooner |
 | Node pools | `system`, `ci` and `fin`, in `me-west1-a`, each labelled `kfirs.com/pool=<pool>` and tainted `NoSchedule` so that only its own workloads run there: `system` with GKE's own `components.gke.io/gke-managed-components=true`, which GKE's managed components and the hub's services tolerate (from arikkfir-org/infra#64 on; untainted before), `ci` with `kfirs.com/pool=ci`, `fin` with `kfirs.com/pool=fin` (from arikkfir-org/infra#62 on). Machine types, Spot or on-demand, and bounds: infra's `README.md` and `docs/infra/designs/node-pools.md` |
@@ -660,7 +660,7 @@ One URL space at `https://docs.dev.kfirs.com`, composed from every repository
 
 ## Tests site
 
-CI runs' reports, at `https://tests.dev.kfirs.com`, behind the hub's sign-in, for group `admins` only (ENG-122).
+CI runs' reports, at `https://tests.dev.kfirs.com`, behind the hub's sign-in, for group `admins` only: how Fin's are made and opened, [CI reports](../fin/designs/ci-reports.md); how the server serves them, [the docs and tests servers](../delivery/designs/docs-and-tests-servers.md).
 
 | Item | Value |
 | --- | --- |
