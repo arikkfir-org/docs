@@ -248,4 +248,4 @@ The [pull request reviewer](tooling/designs/pr-reviewer.md) applies both.
 - Agents follow this page and the repository's `CLAUDE.md`.
 - Agent-authored pull requests get the same review as any other: at least one human approval.
 - Agents never apply Terraform, change the cluster directly, or push to a default branch.
-- Agents read pages of `https://docs.dev.kfirs.com`, which is behind the hub's sign-in, from their bucket, rather than cloning repositories: `curl -fsS https://storage.googleapis.com/arikkfir-docs/.layers/<repository>/<path>`, where `<repository>` is the path's first segment when it names a repository, and `docs` otherwise ([Claude Code cluster and docs access](hub/designs/claude-code-cluster-access.md#docs)).
+- Agents read pages of `https://docs.dev.kfirs.com`, which is behind the hub's sign-in, from their bucket, rather than cloning repositories: `curl -fsS https://storage.googleapis.com/arikkfir-docs/.layers/<repository>/<path>`, where `<repository>` is the path's first segment when it names a repository, and `docs` otherwise ([Claude Code cluster and docs access](tooling/designs/claude-code-cluster-access.md#docs)).

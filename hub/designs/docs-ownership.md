@@ -50,7 +50,7 @@ sequenceDiagram
 - A page keeps its title and its text, and its name without its repository's prefix: `octomaton-architecture.md` is now `octomaton/designs/architecture.md`. Only its links change: to pages that moved with it, by their new paths; to pages still in `docs`, through `../../hub/`.
 - The new home's pull request also points that repository's own README and comments at the page, and merges first. `docs` drops the old copy and points its own pages at the new path once every new home of its round has merged, so its links resolve.
 - The `Docs` check reads only the links of the repository under test. A repository that still links an old path fails its next check once `docs` drops it, so a round updates every repository's links to the pages it moves.
-- Two pages that move to two repositories in one round and link each other can't both link the other's new path: neither is published before the other merges. One of them moves in a later round, once the other is published. That is why `go-import-pages.md` waits for `octomaton-dev.md`.
+- Two pages that move to two repositories in one round and link each other can't both link the other's new path: neither is published before the other merges. One of them moves in a later round, once the other is published. That is why `go-import-pages.md` moved a round after `octomaton-dev.md`.
 - A move is the one pull request of documentation alone (`CONTRIBUTING.md`, "Pull requests"): it documents no change of its own.
 
 ### Moved
@@ -76,6 +76,8 @@ sequenceDiagram
 | `hub/designs/disruption-budgets.md` | Merged into [delivery/designs/disruption-budgets.md](../../delivery/designs/disruption-budgets.md) | arikkfir-org/delivery#60 |
 | `hub/designs/resource-requests.md` | Split: [delivery/designs/resource-requests.md](../../delivery/designs/resource-requests.md), the hub's components, and [fin/designs/resource-requests.md](../../fin/designs/resource-requests.md), Fin's; the rule into `CONTRIBUTING.md`, "Code and configuration" | arikkfir-org/delivery#60, arikkfir-org/fin#141 |
 | `hub/designs/pr-reviewer.md` | Split: [tooling/designs/pr-reviewer.md](../../tooling/designs/pr-reviewer.md), the reviewer and how authors work with it, and [octomaton/designs/pr-reviewer.md](../../octomaton/designs/pr-reviewer.md), Octomaton's part | arikkfir-org/tooling#41, arikkfir-org/octomaton#31 |
+| `hub/designs/go-import-pages.md` | [delivery/designs/go-import-pages.md](../../delivery/designs/go-import-pages.md), whole | arikkfir-org/delivery#61 |
+| `hub/designs/claude-code-cluster-access.md` | [tooling/designs/claude-code-cluster-access.md](../../tooling/designs/claude-code-cluster-access.md), whole; infra's [root gcp](../../infra/terraform/gcp.md) describes the identity and its roles | arikkfir-org/tooling#45 |
 
 ### Staying in docs
 
@@ -90,12 +92,7 @@ sequenceDiagram
 
 ### Still in docs
 
-Proposed homes, not yet decided:
-
-| Page | Proposed | Open point |
-| --- | --- | --- |
-| [Go import pages](go-import-pages.md) | delivery, whole: `platform/go-import` | None: `octomaton-dev.md`, which it links, is published now |
-| [Claude Code cluster and docs access](claude-code-cluster-access.md) | tooling, whole: the `gke` MCP server, reading the docs, and their permissions | infra holds the identity and its roles, nearly half the design |
+None: the last two pages moved in the third round ([Moved](#moved)). Only the hub reference's split is still open ([Staying in docs](#staying-in-docs)).
 
 ## Decisions
 
@@ -109,6 +106,7 @@ Proposed homes, not yet decided:
 | What `infra` provisions is described once, a page per Terraform root; other repositories list what they use and link those pages | One place to change when the infrastructure changes, in the pull request that changes it | Each repository describing the infrastructure it relies on |
 | A page is linked by its place on the docs site, never as "file X in repository Y"; outside the site, by its URL | Claude Code's sessions read the site from its bucket, so a link is all they need, where a path in another repository meant cloning it | Paths in named repositories |
 | The reviewer's design in `tooling`, beside its code (`reviewer/`), with only Octomaton's part in `octomaton` | A change to the reviewer's findings schema changes its design in the same pull request, which `tooling`'s `CLAUDE.md` asks for | The reviewer's mechanics in `octomaton` |
+| Claude Code's cluster and docs access in `tooling`, whole | `tooling`'s bundle declares the `gke` MCP server and the permissions of its tools, and its sessions are what reads the docs; infra's root `gcp` page already describes `claude-code@` and its roles, and links it | A split with infra's half in `infra`: that half is already its root page |
 | `docs` takes pull requests too | Its pages get the same review and the same `Docs` check before they merge, instead of after a push to `main` | Pushing to `main` directly, as until this round |
 
 ## Failure modes
@@ -122,7 +120,8 @@ Proposed homes, not yet decided:
 1. arikkfir-org/octomaton#30, arikkfir-org/tooling#36 and arikkfir-org/delivery#58: the pages in their new homes, in any order.
 2. `docs`: this design, the house rules (`CONTRIBUTING.md`, `CLAUDE.md`, `README.md`, the docs site's design), and the old copies dropped and relinked, once all three are published.
 3. The second round: infra (arikkfir-org/infra#69) and tooling (arikkfir-org/tooling#41); then fin (arikkfir-org/fin#141) and octomaton (arikkfir-org/octomaton#31); then delivery (arikkfir-org/delivery#60); then `docs`, which drops the old copies, takes pull requests from now on, and puts the resource requests rule in `CONTRIBUTING.md`. Every repository's `CLAUDE.md` says where its pages are and how a session reads the site.
-4. The pages under [Still in docs](#still-in-docs), and whether to split the hub reference, a round at a time.
+4. The third round: delivery (arikkfir-org/delivery#61) and tooling (arikkfir-org/tooling#45); then octomaton (arikkfir-org/octomaton#32) and infra (arikkfir-org/infra#72) relink them; then `docs` drops the last two pages.
+5. Whether to split the hub reference by owner.
 
 ## Open questions
 

@@ -61,7 +61,7 @@ answered from the first layer that has the path.
 The page template and the Caddyfile live in `delivery` (`platform/docs`, [the docs and tests servers](../../delivery/designs/docs-and-tests-servers.md)), and the list of layers there is the overlay
 order. A repository that isn't listed publishes its layer, but nothing of it is served.
 
-Claude Code's sessions can't pass the hub's sign-in, so they read the layers from the bucket, as `claude-code@`, which may read objects: `https://storage.googleapis.com/arikkfir-docs/.layers/<repository>/<path>` ([Claude Code cluster and docs access](claude-code-cluster-access.md#docs)).
+Claude Code's sessions can't pass the hub's sign-in, so they read the layers from the bucket, as `claude-code@`, which may read objects: `https://storage.googleapis.com/arikkfir-docs/.layers/<repository>/<path>` ([Claude Code cluster and docs access](../../tooling/designs/claude-code-cluster-access.md#docs)).
 
 ### Collisions
 
