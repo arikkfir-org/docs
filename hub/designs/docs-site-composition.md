@@ -56,9 +56,12 @@ answered from the first layer that has the path.
   browser. The template reads the Markdown with `readFile`, which never executes it as a template, so a `{{ … }}` in a
   document stays text.
 - Hidden paths and directories answer 404. A missing `X.html` redirects to `X.md.html`.
+- `/reports/…`, where CI reports were until ENG-122, redirects to the same path on `tests.dev.kfirs.com`.
 
-The page template and the Caddyfile live in `delivery` (`platform/docs`), and the list of layers there is the overlay
+The page template and the Caddyfile live in `delivery` (`platform/docs`, [the docs and tests servers](../../delivery/designs/docs-and-tests-servers.md)), and the list of layers there is the overlay
 order. A repository that isn't listed publishes its layer, but nothing of it is served.
+
+Claude Code's sessions can't pass the hub's sign-in, so they read the layers from the bucket, as `claude-code@`, which may read objects: `https://storage.googleapis.com/arikkfir-docs/.layers/<repository>/<path>` ([Claude Code cluster and docs access](claude-code-cluster-access.md#docs)).
 
 ### Collisions
 
@@ -97,7 +100,8 @@ pipeline or render scripts of its own, and nothing pushes to its `main` directly
 - Put a repository's docs under its `docs/<repository>/` directory. `docs/` appears at the site root, so
   `docs/infra/guide.md` in `infra` is at `/infra/guide.md.html`.
 - Link with relative paths against the composed site. A link from `docs/infra/x.md` in `infra` to `../hub/reference.md`
-  resolves on the site, though not on GitHub.
+  resolves on the site, though not on GitHub. Outside the site (a README, a `CLAUDE.md`, a code comment), link the page's
+  URL, `https://docs.dev.kfirs.com/<path>.md`, never "file X in repository Y".
 - Hub-wide pages, such as the reference, stay in `docs`. Every other page lives in the repository it describes, under `docs/<repository>/` there, and a design ships with its change; one that spans repositories is split into a part per repository, or, when it can't be, goes in the leading one ([Design documents](../../CONTRIBUTING.md#design-documents), [docs ownership](docs-ownership.md)).
 
 ## Decisions
@@ -129,6 +133,8 @@ pipeline or render scripts of its own, and nothing pushes to its `main` directly
 - **Internal repositories:** every repository takes part, `fin` (internal) included. Its pages are served behind the
   hub's sign-in, whose users the owner manages, like every other hub tool. The names of its files, but not their
   content, are visible to every tenant's `docs-reader`, since listing can't be limited to a prefix.
+- **Readers:** only the docs server (`docs/docs`) and Claude Code's sessions (`claude-code@`) read objects, every
+  layer, `fin`'s included.
 
 ## Failure modes
 
@@ -148,4 +154,4 @@ pipeline or render scripts of its own, and nothing pushes to its `main` directly
 4. `tooling`: the organization pipelines `docs` and `docs-publish`. Each repository publishes its layer on its next push to `main` (arikkfir-org/tooling#10).
 5. `infra`: `Docs` becomes a required check (arikkfir-org/infra#29).
 6. `docs`: drop its `publish` pipeline and `.site/`, leaving `ci` with nothing to check; links to `*.html` pages become `*.md.html` (arikkfir-org/docs#39).
-7. `delivery`: drop the fallback (arikkfir-org/delivery#24). The owner deletes the old root objects with `gcloud storage ls gs://arikkfir-docs/ | grep -v '/\.layers/$' | xargs gcloud storage rm -r`, and `infra` drops `ci-docs/pipeline`'s roles, the last a `pipeline` ServiceAccount holds (arikkfir-org/infra#30, [CI ServiceAccounts](ci-service-accounts.md)).
+7. `delivery`: drop the fallback (arikkfir-org/delivery#24). The owner deletes the old root objects with `gcloud storage ls gs://arikkfir-docs/ | grep -v '/\.layers/$' | xargs gcloud storage rm -r`, and `infra` drops `ci-docs/pipeline`'s roles, the last a `pipeline` ServiceAccount holds (arikkfir-org/infra#30, [Octomaton's tenancy and identity](../../octomaton/designs/phase-2-octomaton.md#tenancy-and-identity)).

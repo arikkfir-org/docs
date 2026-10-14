@@ -9,7 +9,7 @@ of work gets a visual design document in the repository it changes.
 
 - [Hub overview](hub/overview.html): the whole platform on one page
 - [Hub reference](hub/reference.md): every name, address, identity and permission (the contract between repositories)
-- [Bootstrap runbook](hub/runbooks/bootstrap.md): bringing the hub up from nothing
+- [Bootstrap runbook](infra/runbooks/bootstrap.md): bringing the hub up from nothing
 - [Octomaton rename runbook](octomaton/runbooks/rename.md): the one-off move from Octomatron to Octomaton
 - [Contributing](CONTRIBUTING.md): commits, pull requests, Linear, design docs
 
@@ -19,7 +19,7 @@ Designs:
 | --- | --- |
 | 0 | [Documentation](hub/designs/phase-0-documentation.md) |
 | 0 | [Each repository owns its docs](hub/designs/docs-ownership.md) |
-| 1 | [Foundations: Terraform, GKE, Argo CD](hub/designs/phase-1-foundations.md) |
+| 1 | Foundations: the Terraform roots [gcp](infra/terraform/gcp.md), [argocd](infra/terraform/argocd.md), [github](infra/terraform/github.md) and [keycloak](infra/terraform/keycloak.md) |
 | 2 | [Octomaton](octomaton/designs/phase-2-octomaton.md) |
 | 2 | [octomaton.dev: domain, webhook and Go module](octomaton/designs/octomaton-dev.md) |
 | 3 | [Ingress and authentication](delivery/designs/phase-3-ingress-and-auth.md) |

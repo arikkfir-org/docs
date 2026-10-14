@@ -21,9 +21,7 @@ flowchart LR
 3. **Write or update the design doc** for every meaningful unit of work, in the change's pull request (that repository's `docs/`), so it sits with its code (see
    [Design documents](#design-documents)).
 4. **Open a pull request** early; mark it ready once CI is green and the description is complete.
-5. **Merge through the merge queue**. Default branches accept merge commits only, after one approval, resolved conversations and a green `Continuous Integration` check. Nobody pushes directly to a protected default branch, except `docs`'s `main` (below).
-
-Changes to the `docs` repository are pushed directly to its `main`, without a pull request. The `Docs` check runs only on pull requests, so `docs-publish` finds a broken link or a collision only after the push: fix it at once. Every other repository changes through pull requests, which carry their docs in their own `docs/`.
+5. **Merge through the merge queue**. Default branches accept merge commits only, after one approval, resolved conversations and green `Continuous Integration` and `Docs` checks. Nobody pushes directly to a default branch, `docs`'s included.
 
 ## Linear
 
@@ -116,7 +114,7 @@ Closes ENG-123
 ```
 
 - Keep pull requests small and focused; one concern per pull request.
-- No pull request of documentation alone: documentation ships in the pull request whose changes it documents (`docs` takes its own changes straight to `main`). The one exception moves a page into the repository it describes, which documents no change of its own.
+- No pull request of documentation alone: documentation ships in the pull request whose changes it documents. The exceptions: `docs`'s own pull requests, whose changes are its pages, and a pull request that moves a page into the repository it describes, which documents no change of its own.
 - Draft while incomplete; ready for review only when CI is green.
 - Every review conversation ends resolved: fixed, or answered with the reason it stays, then resolved by the reviewer (see [Answering a review](#answering-a-review)).
 - Re-request review after addressing changes; stale approvals are dismissed on push.
@@ -143,14 +141,14 @@ A round ends in this order: push the fixes, reply on every thread, then request 
 
 ## Design documents
 
-Every meaningful unit of work (a new component, a change of architecture, a new convention, anything someone will later ask "why is it like this?" about) gets a design document, written before or alongside the change and updated when the implementation diverges. It never gets a pull request of its own: it ships in the change's pull request, in that repository's `docs/`, so it sits and merges with the code it describes. Only a design with no code of its own goes straight to `docs`'s `main`.
+Every meaningful unit of work (a new component, a change of architecture, a new convention, anything someone will later ask "why is it like this?" about) gets a design document, written before or alongside the change and updated when the implementation diverges. It never gets a pull request of its own: it ships in the change's pull request, in that repository's `docs/`, so it sits and merges with the code it describes. Only a design with no code of its own goes to `docs`, in a pull request there.
 
 - **Where**: in the repository the design is about, under its own directory of the site: `docs/<repository>/designs/<slug>.md` there. Every repository's `docs/` maps to the site root, so `docs/octomaton/designs/architecture.md` in `octomaton` is `octomaton/designs/architecture.md`. `docs` keeps only what is about no one repository: these house rules, the hub reference, the templates and the hub-wide designs ([design](hub/designs/docs-ownership.md)). Rich visual pages may be HTML.
 - **Across repositories**: split the design into one document per repository, each in the pull request of that repository's part, under the same slug in each repository's directory (`infra/designs/node-pools.md` and `delivery/designs/node-pools.md`): every repository's `docs/` composes into the one URL space at `docs.dev.kfirs.com` ([design](hub/designs/docs-site-composition.md)), so the parts read as one design. Only a design that loses its value in parts stays whole, in the leading repository: the one whose change the others serve.
-- **Links**: the `Docs` check resolves relative links against the other repositories' `main`, so a part links only to pages already merged or in its own pull request. Later parts link back to earlier ones.
+- **Links**: link a page by where it is on the docs site, never as "file X in repository Y". Inside a page, a relative link (`../../infra/terraform/gcp.md`); outside the site (a README, a `CLAUDE.md`, a code comment), its URL, `https://docs.dev.kfirs.com/<path>.md`. The `Docs` check resolves relative links against the other repositories' `main`, so a part links only to pages already merged or in its own pull request. Later parts link back to earlier ones.
 - **Visual first**: at least one diagram (Mermaid in Markdown, or SVG/HTML) showing the moving parts.
 - **Contents**: context and goal; the design; decisions with their rationale and rejected alternatives; security and failure modes; rollout and manual steps; open questions.
-- **Facts in one place**: names, addresses, identities and permissions belong in the area's reference page (for the hub, [hub/reference.md](hub/reference.md)). Designs link to it instead of copying. The hub reference lives only in `docs`, so a change that adds a name to it pushes the reference to `docs`'s `main` first.
+- **Facts in one place**: names, addresses, identities and permissions belong in the area's reference page (for the hub, [hub/reference.md](hub/reference.md)). Designs link to it instead of copying. The hub reference lives only in `docs`, so a change that adds a name to it merges the reference change to `docs` first. What `infra` provisions is described once, in its pages ([the Terraform roots](infra/terraform/gcp.md)): another repository may list the resources it uses, its own included, and links those pages for the rest.
 - Link the design from the pull request, and the pull request from the design once it exists.
 
 ## Investigations and walkthroughs
@@ -169,10 +167,10 @@ Every meaningful unit of work (a new component, a change of architecture, a new 
   - Wrap a new comment at the width of the comments around it, not at a narrower default such as 72 columns.
 - **Tests** accompany behaviour changes. Bug fixes start with a failing test, in the same pull request as the fix, at the level where the bug lived: a bug in how Octomaton renders a PipelineRun gets a test of the rendered run, not only of the code beneath it.
   - Test application code only. Never write tests for CI/CD code or scripts, Kustomize, Helm, shell scripts, infrastructure code or developer-experience scripts.
+- **Resource requests**: every container requests the CPU and memory it typically uses, as measured, and limits its memory above its peak, unless its runtime sizes itself to the limit (Java's heap). CPU stays unlimited, except for batch work that would starve its neighbours. The scheduler places pods, and the cluster autoscaler grows a pool, by requests only: a request below use packs a node past its CPU, one above use reserves room nobody uses, and a pod without requests is the first evicted. The hub's components: delivery's [resource requests](delivery/designs/resource-requests.md); Fin's: [fin's](fin/designs/resource-requests.md). CI tasks: [Continuous integration](#continuous-integration).
 - **Infrastructure as code**: every cloud and cluster change goes through Terraform (`infra`) or Argo CD (`delivery`). Manual changes are for emergencies only and are back-ported to Git the same day.
 - **Secrets** never enter Git. Values live in Google Secret Manager; External Secrets Operator syncs them into the cluster.
-- **Least privilege**: grant the narrowest role on the narrowest resource to the narrowest identity (see [hub/reference.md](hub/reference.md)). In CI, Tekton's default ServiceAccount `pipeline` never gets a Google Cloud role. A pipeline that needs one names its own ServiceAccount, and one that publishes runs only from `main`
-  ([CI ServiceAccounts](hub/designs/ci-service-accounts.md)).
+- **Least privilege**: grant the narrowest role on the narrowest resource to the narrowest identity (see [hub/reference.md](hub/reference.md)). In CI, Tekton's default ServiceAccount `pipeline` never gets a Google Cloud role. A pipeline that needs one names its own ServiceAccount, and one that publishes runs only from `main`.
 - **Names**: lower-case, hyphenated (`ingress-public`, `ci-docs`); labels and annotations use the `kfirs.com/` prefix. A product with a domain of its own uses that domain instead: Octomaton writes `octomaton.dev/` labels.
 - **Less is more**: reuse what exists rather than duplicate it, unless there is a good reason not to.
 - **Refactor to align**: when things need to line up, change the existing code. Don't build abstractions or scaffolding around it to avoid the risk of touching it.
@@ -237,7 +235,7 @@ Every meaningful unit of work (a new component, a change of architecture, a new 
   - Keep tables borders formatted.
 
 A repository's own rules (its `CLAUDE.md` and `README.md`) come on top of these house rules and win where they conflict.
-The [pull request reviewer](hub/designs/pr-reviewer.md) applies both.
+The [pull request reviewer](tooling/designs/pr-reviewer.md) applies both.
 
 ## Releases
 
@@ -249,4 +247,5 @@ The [pull request reviewer](hub/designs/pr-reviewer.md) applies both.
 
 - Agents follow this page and the repository's `CLAUDE.md`.
 - Agent-authored pull requests get the same review as any other: at least one human approval.
-- Agents never apply Terraform, change the cluster directly, or push to protected default branches other than `docs`'s `main`.
+- Agents never apply Terraform, change the cluster directly, or push to a default branch.
+- Agents read pages of `https://docs.dev.kfirs.com`, which is behind the hub's sign-in, from their bucket, rather than cloning repositories: `curl -fsS https://storage.googleapis.com/arikkfir-docs/.layers/<repository>/<path>`, where `<repository>` is the path's first segment when it names a repository, and `docs` otherwise ([Claude Code cluster and docs access](hub/designs/claude-code-cluster-access.md#docs)).
