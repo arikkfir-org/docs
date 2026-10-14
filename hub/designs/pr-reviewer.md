@@ -360,7 +360,7 @@ blocking, 🟡 medium for non-blocking, 🔵 low for nits, then resolved). It ne
   that run anything (forks are ignored) and request reviews, and only the comments, reviews and replies of
   organization members and people with write access reach the model (anyone else's are dropped from `pr.json`), so the
   key's exposure is the price of an internet-connected model. Failed steps' logs reach the check run through
-  Octomaton's [redaction](check-run-redaction.md), which removes the key by value. Revoke and rotate it in DeepSeek's
+  Octomaton's [redaction](../../octomaton/designs/check-run-redaction.md), which removes the key by value. Revoke and rotate it in DeepSeek's
   console and Secret Manager if needed.
 - A pull request can steer the model through what it reads: its diff, its comments, and an `AGENTS.md` or
   `CONTEXT.md` in a subdirectory, which opencode's `read` tool presents as instructions (none of the hub's repositories

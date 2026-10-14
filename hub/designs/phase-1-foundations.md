@@ -98,7 +98,7 @@ flowchart LR
 | --- | --- |
 | External Secrets Operator | Syncs Secret Manager values into Kubernetes Secrets (`ClusterSecretStore gcp-secret-manager`) |
 | cert-manager | Let's Encrypt certificates via DNS-01 on Cloud DNS |
-| Gateway API CRDs + Traefik | Ingress on L4 load balancers (see [phase 3](phase-3-ingress-and-auth.md)) |
+| Gateway API CRDs + Traefik | Ingress on L4 load balancers (see [phase 3](../../delivery/designs/phase-3-ingress-and-auth.md)) |
 | KEDA | Event-driven autoscaling for future workloads |
 | NATS (JetStream), NACK, NUI | Messaging on a three-server JetStream cluster, JetStream resources as CRDs, and a UI |
 | Stakater Reloader | Restarts workloads when their ConfigMaps/Secrets change |

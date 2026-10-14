@@ -11,7 +11,7 @@ Octomaton's own `go-import` goes. Names and wiring: [reference](../reference.md#
 
 The `go` command resolves a module path such as `octomaton.dev/cmd/octomaton` by fetching
 `https://octomaton.dev/cmd/octomaton?go-get=1` and reading its `go-import` tag, which names the repository
-([octomaton.dev](octomaton-dev.md#go-module-resolution)). Octomaton's `deploy/` ran a Caddy for `octomaton.dev`, and
+([octomaton.dev](../../octomaton/designs/octomaton-dev.md#go-module-resolution)). Octomaton's `deploy/` ran a Caddy for `octomaton.dev`, and
 `delivery` added a second for `fin.kfirs.com`: Fin's `deploy/` can't serve its own, since it also deploys from pull
 requests and its namespaces are held off the public gateway. Two workloads, four pods, gave the same static answer for
 two domains.
