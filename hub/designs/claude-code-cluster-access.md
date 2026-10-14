@@ -8,14 +8,14 @@ A session diagnosed a deployment from the outside only: when `https://fin.kfirs.
 
 kubectl can't reach the cluster from a session. The cluster answers only on its DNS-based endpoint (`*.gke.goog`), and the sessions' proxy adds the Google credential only to requests for `*.googleapis.com`. gcloud has no login of its own in a session either. GKE's remote MCP server, `https://container.googleapis.com/mcp`, is under `*.googleapis.com`, so the credential the proxy already adds authenticates it, and nothing is left to configure in a session.
 
-A session in one repository that needed another's docs had to clone that repository: `https://docs.dev.kfirs.com` is behind the hub's sign-in, which a session can't pass. The docs site's pages are files in a bucket, and `storage.googleapis.com` is under `*.googleapis.com` too: gcloud in a session sends a placeholder token, which the proxy replaces with this credential.
+A session in one repository that needed another's docs had to clone that repository: `https://docs.dev.kfirs.com` is behind the hub's sign-in, which a session can't pass. The docs site's pages are files in a bucket, and `storage.googleapis.com` is under `*.googleapis.com` too: the proxy adds this credential to a session's requests there as well.
 
 ## Design
 
 ```mermaid
 flowchart LR
   S[Claude Code session] -->|"MCP server gke, read tools only"| P[Session proxy]
-  S -->|"gcloud storage cat"| P
+  S -->|"curl, gcloud storage ls"| P
   P -->|"adds claude-code@'s credential"| M["container.googleapis.com/mcp"]
   P -->|"adds claude-code@'s credential"| G["storage.googleapis.com"]
   M -->|"claude-code@'s IAM"| K[GKE cluster hub]
@@ -35,22 +35,24 @@ flowchart LR
 A page at `https://docs.dev.kfirs.com/X` is the object `.layers/<repository>/X` of the first layer that has it, in the site's overlay order: `docs` first, then the others alphabetically ([docs site composition](docs-site-composition.md)). Each repository publishes under its own name, so a path under `infra/` is infra's layer, and the rest, `hub/` included, is `docs`'s.
 
 ```bash
-gcloud storage cat gs://arikkfir-docs/.layers/infra/infra/designs/node-pools.md
-gcloud storage cat gs://arikkfir-docs/.layers/docs/hub/reference.md
+curl -fsS https://storage.googleapis.com/arikkfir-docs/.layers/infra/infra/designs/node-pools.md
+curl -fsS https://storage.googleapis.com/arikkfir-docs/.layers/docs/hub/reference.md
 gcloud storage ls 'gs://arikkfir-docs/.layers/*/X'   # the layers that have path X
 ```
 
-Sessions read the Markdown as written, which is what a model reads best; `X.md.html` is only the site's rendering.
+Reads go through Cloud Storage's XML API, `https://storage.googleapis.com/<bucket>/<object>`: the JSON API that `gcloud storage cat` uses names an object with escaped slashes (`.layers%2Fdocs%2F…`), which the session proxy unescapes, so those reads answer 404. Listing works either way. Sessions read the Markdown as written, which is what a model reads best; `X.md.html` is only the site's rendering.
 
 ## Decisions
 
 | Decision | Why | Rejected |
 | --- | --- | --- |
 | Read the docs from the bucket as `claude-code@` | The proxy already adds its credential, so a session needs no secret and no network change, and the hub's sign-in stays as it is | A Keycloak service account whose tokens oauth2-proxy accepts: every protected host would start accepting bearer tokens, the environment would hold a new secret, and WebFetch still couldn't send one |
-| `roles/storage.objectViewer` on the whole bucket | Listing can't be limited to a prefix, and the bucket holds only the layers | A role conditioned on `.layers/`: it can't cover listing |
+| An explicit `roles/storage.objectViewer` on the bucket, though `claude-code@` already reads it | It reads it today only through Cloud Storage's convenience binding for project Viewers (below), which nothing in `infra` shows and which a lockdown of the buckets would remove. The grant says what is meant, and keeps the docs readable if that binding goes | Relying on the convenience binding |
+| On the whole bucket | Listing can't be limited to a prefix, and the bucket holds only the layers | A role conditioned on `.layers/`: it can't cover listing |
 
 ## Risks
 
 - The key reads the whole project, ConfigMaps and logs included, and every repository's docs, `fin`'s (internal) included. Revoke it by disabling or deleting the key of `claude-code@`.
+- As a project Viewer, `claude-code@` also reads objects through the bindings Cloud Storage adds to a bucket created with uniform access: `projectViewer` gets `roles/storage.legacyBucketReader` and `roles/storage.legacyObjectReader`. It read `arikkfir-docs` before its own grant, so it reads every bucket `terraform/gcp` creates the same way, `arikkfir-fin`'s raw statements, scrape videos and traces included, until those bindings are removed (ENG-127).
 - Google may rename the MCP server's tools; a renamed read tool then asks for permission, and a renamed write tool is still refused by IAM.
 - A session reads a layer as `main` last published it: a page changed in an open pull request isn't there yet.

@@ -658,7 +658,7 @@ One URL space at `https://docs.dev.kfirs.com`, composed from every repository
 | Definitions | `tooling`: `.octomaton.yaml` (`organization.pipelines`) and `docs-site/` |
 | Reports | `/reports/*` redirects (`301`) to the same path on the [tests site](#tests-site), where CI runs' reports moved, so links to their old addresses keep working. No layer may publish under `reports/`, which the redirect hides |
 | Serving | `delivery`, `platform/docs`: the Caddyfile and page template; its layer list is the overlay order |
-| Claude Code | Sessions read pages from the bucket as `claude-code@`, past the sign-in: `https://docs.dev.kfirs.com/X` is `gs://arikkfir-docs/.layers/<repository>/X` of the first layer in the overlay order that has it, which for a path under `<repository>/` is that repository's (`gcloud storage cat`; `gcloud storage ls 'gs://arikkfir-docs/.layers/*/X'` lists the layers that have it) |
+| Claude Code | Sessions read pages from the bucket as `claude-code@`, past the sign-in: `https://docs.dev.kfirs.com/X` is `gs://arikkfir-docs/.layers/<repository>/X` of the first layer in the overlay order that has it, which for a path under `<repository>/` is that repository's (`curl https://storage.googleapis.com/arikkfir-docs/.layers/<repository>/X`, through the XML API, since the session proxy unescapes the JSON API's `%2F` and its reads answer 404; `gcloud storage ls 'gs://arikkfir-docs/.layers/*/X'` lists the layers that have it) |
 
 ## Tests site
 
