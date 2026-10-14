@@ -1,6 +1,6 @@
 # Each repository owns its docs
 
-**Decision**: a page about one repository lives in that repository, under its own `docs/<repository>/`, and changes in the pull requests of the code it describes. A page about several repositories is split into one part per repository, under the same name in each; only one that loses its value in parts stays whole, in the leading repository: the one whose change the others serve. `docs` keeps what is about no one repository and, over time, little else. Pages move a round at a time, the clear cases first; the rest wait for review ([Still in docs](#still-in-docs)). Tracked in ENG-121.
+**Decision**: a page about one repository lives in that repository, under its own `docs/<repository>/`, and changes in the pull requests of the code it describes. A page about several repositories is split into one part per repository, under the same name in each; only one that loses its value in parts stays whole, in the leading repository: the one whose change the others serve. `docs` keeps what is about no one repository and, over time, little else. Pages moved a round at a time, the clear cases first, until none was left ([Moved](#moved)). The hub reference went last: each of its facts now lives in the pages of the repository that creates it. Tracked in ENG-121.
 
 ## Why
 
@@ -19,7 +19,7 @@ flowchart LR
     F["fin/designs, infra/designs"]
   end
   subgraph H["docs: about no one repository"]
-    C["CONTRIBUTING.md and its templates,<br/>the hub reference, the legal pages"]
+    C["CONTRIBUTING.md and its templates,<br/>the legal pages"]
   end
   R --> S["docs.dev.kfirs.com<br/>one URL space"]
   H --> S
@@ -30,7 +30,7 @@ flowchart LR
 | One repository | That repository's `docs/<repository>/` | `/<repository>/…` |
 | Several repositories | A part in each one's `docs/<repository>/`, under the same name, linking the others | `/<repository>/…` of each |
 | Several, and worth less in parts | The leading repository's `docs/<repository>/` | `/<repository>/…` |
-| No one repository: the house rules, their templates, the hub reference, the legal pages | `docs` | `/…` and `/hub/…` |
+| No one repository: the house rules, their templates, the legal pages | `docs` | `/…` and `/hub/…` |
 
 ### Moving a page
 
@@ -50,7 +50,7 @@ sequenceDiagram
 - A page keeps its title and its text, and its name without its repository's prefix: `octomaton-architecture.md` is now `octomaton/designs/architecture.md`. Only its links change: to pages that moved with it, by their new paths; to pages still in `docs`, through `../../hub/`.
 - The new home's pull request also points that repository's own README and comments at the page, and merges first. `docs` drops the old copy and points its own pages at the new path once every new home of its round has merged, so its links resolve.
 - The `Docs` check reads only the links of the repository under test. A repository that still links an old path fails its next check once `docs` drops it, so a round updates every repository's links to the pages it moves.
-- Two pages that move to two repositories in one round and link each other can't both link the other's new path: neither is published before the other merges. One of them moves in a later round, once the other is published. That is why `go-import-pages.md` moved a round after `octomaton-dev.md`.
+- Two pages that move to two repositories in one round and link each other can't both link the other's new path: neither is published before the other merges. One of them moves in a later round, once the other is published. That is why `go-import-pages.md` moved two rounds after `octomaton-dev.md`.
 - A move is the one pull request of documentation alone (`CONTRIBUTING.md`, "Pull requests"): it documents no change of its own.
 
 ### Moved
@@ -78,6 +78,7 @@ sequenceDiagram
 | `hub/designs/pr-reviewer.md` | Split: [tooling/designs/pr-reviewer.md](../../tooling/designs/pr-reviewer.md), the reviewer and how authors work with it, and [octomaton/designs/pr-reviewer.md](../../octomaton/designs/pr-reviewer.md), Octomaton's part | arikkfir-org/tooling#41, arikkfir-org/octomaton#31 |
 | `hub/designs/go-import-pages.md` | [delivery/designs/go-import-pages.md](../../delivery/designs/go-import-pages.md), whole | arikkfir-org/delivery#61 |
 | `hub/designs/claude-code-cluster-access.md` | [tooling/designs/claude-code-cluster-access.md](../../tooling/designs/claude-code-cluster-access.md), whole; infra's [root gcp](../../infra/terraform/gcp.md) describes the identity and its roles | arikkfir-org/tooling#45 |
+| `hub/reference.md` | Split by owner, each fact into the pages of the repository that creates it: infra's roots [gcp](../../infra/terraform/gcp.md), [github](../../infra/terraform/github.md) and [keycloak](../../infra/terraform/keycloak.md) and its [Terraform plan and apply](../../infra/designs/terraform-plan-apply.md); delivery's [platform](../../delivery/platform.md) and its designs; Octomaton's [deployment](../../octomaton/designs/deployment.md), [octomaton.dev](../../octomaton/designs/octomaton-dev.md) and [README](https://github.com/arikkfir-org/octomaton#repository-configuration-octomatonyaml); the [pull request reviewer](../../tooling/designs/pr-reviewer.md); Fin's [environments](../../fin/designs/environments.md); and the [docs site](docs-site-composition.md) here. Then deleted | arikkfir-org/infra#73, arikkfir-org/delivery#62, arikkfir-org/octomaton#33, arikkfir-org/tooling#46, arikkfir-org/fin#143 |
 
 ### Staying in docs
 
@@ -86,13 +87,12 @@ sequenceDiagram
 | `CONTRIBUTING.md`, `README.md`, `hub/templates/` | The house rules and their templates, for every repository |
 | [Service conventions](service-conventions.md), [pull request titles](pull-request-titles.md), [writing issues](writing-issues.md), [investigations and walkthroughs](investigations-and-walkthroughs.md) | The designs of `CONTRIBUTING.md`'s rules, which live here |
 | [Phase 0](phase-0-documentation.md), [phase 4](phase-4-docs-site.md), [docs site composition](docs-site-composition.md) | This repository's own designs: the knowledge base, how it first published, and the site it is served on |
-| [Hub reference](../reference.md) | The contract every repository's `CLAUDE.md` names. Whether to split it by owner is the next round's question |
 | [Hub overview](../overview.html) | The whole hub on one page |
 | `privacy.md`, `tos.md` | `legal.kfirs.com` serves them from this layer, which the site overlays first, so no other repository can replace them |
 
 ### Still in docs
 
-None: the last two pages moved in the third round ([Moved](#moved)). Only the hub reference's split is still open ([Staying in docs](#staying-in-docs)).
+None: the last two pages moved in the third round, and the hub reference was split in the fourth ([Moved](#moved)).
 
 ## Decisions
 
@@ -108,6 +108,7 @@ None: the last two pages moved in the third round ([Moved](#moved)). Only the hu
 | The reviewer's design in `tooling`, beside its code (`reviewer/`), with only Octomaton's part in `octomaton` | A change to the reviewer's findings schema changes its design in the same pull request, which `tooling`'s `CLAUDE.md` asks for | The reviewer's mechanics in `octomaton` |
 | Claude Code's cluster and docs access in `tooling`, whole | `tooling`'s bundle declares the `gke` MCP server and the permissions of its tools, and its sessions are what reads the docs; infra's root `gcp` page already describes `claude-code@` and its roles, and links it | A split with infra's half in `infra`: that half is already its root page |
 | `docs` takes pull requests too | Its pages get the same review and the same `Docs` check before they merge, instead of after a push to `main` | Pushing to `main` directly, as until this round |
+| The hub reference split by owner, then deleted | Its owners' pages already repeated most of it (about 80% of Octomaton's section, 90% of the reviewer's, 94% of Fin's), so it was one more copy to keep true: half of `docs`'s commits changed it, each a second change in a second repository that had to land before the code's. It drifted anyway: nothing checked it against the code, and it described a stream and a subject that were never built. The site already puts every repository's pages in one URL space, so a name is still one link away | Keeping it as the contract; a slim index of names, which would drift the same way |
 
 ## Failure modes
 
@@ -121,7 +122,7 @@ None: the last two pages moved in the third round ([Moved](#moved)). Only the hu
 2. `docs`: this design, the house rules (`CONTRIBUTING.md`, `CLAUDE.md`, `README.md`, the docs site's design), and the old copies dropped and relinked, once all three are published.
 3. The second round: infra (arikkfir-org/infra#69) and tooling (arikkfir-org/tooling#41); then fin (arikkfir-org/fin#141) and octomaton (arikkfir-org/octomaton#31); then delivery (arikkfir-org/delivery#60); then `docs`, which drops the old copies, takes pull requests from now on, and puts the resource requests rule in `CONTRIBUTING.md`. Every repository's `CLAUDE.md` says where its pages are and how a session reads the site.
 4. The third round: delivery (arikkfir-org/delivery#61) and tooling (arikkfir-org/tooling#45); then octomaton (arikkfir-org/octomaton#32) and infra (arikkfir-org/infra#72) relink them; then `docs` drops the last two pages.
-5. Whether to split the hub reference by owner.
+5. The fourth round: the hub reference split by owner. infra (arikkfir-org/infra#73), delivery (arikkfir-org/delivery#62), octomaton (arikkfir-org/octomaton#33) and fin (arikkfir-org/fin#143), in any order: each repository's pages take the facts it creates, its rules name its own pages instead of the reference, and its links point at the owners' pages. Then tooling (arikkfir-org/tooling#46), whose reviewer from then on checks shared names against those pages instead of the reference. Then `docs` deletes the reference and points its own pages and rules at the owners'.
 
 ## Open questions
 

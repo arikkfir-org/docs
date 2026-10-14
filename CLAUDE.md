@@ -5,7 +5,7 @@ Knowledge base of the `arikkfir-org` hub, served with every other repository's `
 ## Rules
 
 - Changes go through pull requests and the merge queue, like every repository's (`CONTRIBUTING.md`).
-- `hub/reference.md` is the contract between `infra`, `delivery`, `octomaton` and CI configs. When a name, address, identity or permission changes anywhere, update it here in the same unit of work.
+- A name, address, identity or permission is documented by the repository that creates it, in its pages under `docs/<repository>/`, and changes there with its code; a page here links that page rather than repeat it ([design](hub/designs/docs-ownership.md)).
 - Every meaningful unit of work gets a visual design doc under `<area>/designs/` (see `CONTRIBUTING.md`).
 - A page about one repository belongs in that repository, under `docs/<repository>/`; a page about several is split into a part per repository, or kept whole in the leading one only when it loses its value in parts. This repository keeps only what is about no one repository, and its other pages move out ([design](hub/designs/docs-ownership.md)): never add one here.
 - Test application code only, in every repository: never write tests for CI/CD code or scripts, Kustomize, Helm, shell scripts, infrastructure code or developer-experience scripts (`CONTRIBUTING.md`, "Code and configuration").

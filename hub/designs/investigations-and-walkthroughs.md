@@ -7,7 +7,7 @@
 - An investigation done in a session ends in its chat, where the next person can't find it, so they investigate again.
 - A diff lists files alphabetically. A reviewer facing a change across components gets the files, not the story, and the description has to stay short: it becomes the merge commit's body.
 - `weesp-ai`, another GitHub organization the owner works in, settled both with fixed-shape pages. These templates adapt them to the hub.
-- `docs` is public; `fin` is internal, visible only to the organization's enterprise members ([reference](../reference.md)). The docs site composes every repository's `docs/` into one URL space behind sign-in, `fin`'s included ([docs site composition](docs-site-composition.md)).
+- `docs` is public; `fin` is internal, visible only to the organization's enterprise members ([repositories](../../infra/terraform/github.md#repositories)). The docs site composes every repository's `docs/` into one URL space behind sign-in, `fin`'s included ([docs site composition](docs-site-composition.md)).
 
 ## Design
 
