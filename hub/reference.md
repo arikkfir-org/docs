@@ -102,7 +102,7 @@ Workloads pick their pool with a node selector and a toleration: the hub's servi
 | --- | --- | --- |
 | Docker repository | `me-west1-docker.pkg.dev/arikkfir/images` | nodes read; `ci-octomaton/ci-octomaton-release` and `ci-fin/ci-fin-release` write. Images: `octomaton` and `octomaton-logs` (Octomaton's `release`) and `reviewer` (Octomaton's `reviewer-image`, the [pull request reviewer](#pull-request-reviewer)'s image), each tagged with the commit's short SHA and `main`; `fin-api`, `fin-worker`, `fin-scraper`, `fin-web` and `fin-migrations` ([Fin](#fin)'s `release`), tagged with the commit's short SHA |
 | Docker repository | `me-west1-docker.pkg.dev/arikkfir/previews` | nodes read; `ci-fin/ci-fin-preview` writes, from any branch. Images: `fin-api`, `fin-worker`, `fin-scraper`, `fin-web` and `fin-migrations` of [Fin](#fin)'s pull requests (its `preview`), tagged with the commit's short SHA. Versions older than 14 days are deleted, except each image's 20 newest |
-| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced; objects under `.reports/` deleted after 30 days) | private, one layer per repository under `.layers/<repository>/` ([docs site](#docs-site)): `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; each tenant's `docs-publisher` writes its own layer, and `docs-reader` lists names. CI runs' reports went under `.reports/<repository>/<run>/` until they moved to `arikkfir-tests` (ENG-122): `ci-fin/ci-fin-ci` may write Fin's there until the move ends, which deletes `.reports/`, that grant and that rule |
+| Bucket | `arikkfir-docs` (`ME-WEST1`, uniform access, public access prevention enforced) | private, one layer per repository under `.layers/<repository>/` ([docs site](#docs-site)): `docs/docs` reads and serves it at `https://docs.dev.kfirs.com`; each tenant's `docs-publisher` writes its own layer, and `docs-reader` lists names. CI runs' reports went under `.reports/` until ENG-122 moved them to `arikkfir-tests` |
 | Bucket | `arikkfir-tests` (`ME-WEST1`, uniform access, public access prevention enforced; objects deleted after 30 days) | private: CI runs' reports, under `reports/<repository>/<run>/` ([tests site](#tests-site)). `tests/tests` reads and serves it at `https://tests.dev.kfirs.com`; `ci-fin/ci-fin-ci` creates Fin's |
 | Bucket | `arikkfir-claude` (`ME-WEST1`, uniform access) | public object reads (no listing); `ci-tooling/ci-tooling-publish` writes |
 | Bucket | `arikkfir-fin` (`ME-WEST1`, uniform access, public access prevention enforced; objects deleted after 30 days) | private: [Fin](#fin) production's scrape videos, traces and raw statements, under `runs/<run>/`. `fin/scraper` creates objects; `fin/api` and `fin/worker` read them |
@@ -156,7 +156,6 @@ In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design
 | `ci-<repository>/docs-publisher` | `roles/storage.objectUser` on objects under `.layers/<repository>/` (IAM condition), `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
 | `ci-<repository>/docs-reader` | `roles/storage.legacyBucketReader` | bucket `arikkfir-docs` |
 | `ci-fin/ci-fin-ci` | `roles/storage.objectCreator` on objects under `reports/fin/` (IAM condition) | bucket `arikkfir-tests` |
-| `ci-fin/ci-fin-ci` | `roles/storage.objectCreator` on objects under `.reports/fin/` (IAM condition), until the reports' move ends (ENG-122) | bucket `arikkfir-docs` |
 | `ci-fin/ci-fin-ci` | `roles/secretmanager.secretAccessor` | secret `ci-fin-e2e-keycloak-secret` |
 | `ci-tooling/ci-tooling-publish` | `roles/storage.objectUser`, `roles/storage.legacyBucketReader` | bucket `arikkfir-claude` |
 | `ci-octomaton/ci-octomaton-release` | `roles/artifactregistry.writer` | repository `images` |
@@ -668,7 +667,7 @@ CI runs' reports, at `https://tests.dev.kfirs.com`, behind the hub's sign-in, fo
 | URLs | Paths are the bucket's object names: `/reports/<repository>/<run>/` is a CI run's report, where `<run>` is the PipelineRun's name and UID, `<name>-<uid>`. A folder serves its `index.html` and is never listed; hidden paths answer 404 |
 | Writers | `ci-fin/ci-fin-ci`: Fin's e2e task, one report each run, under `reports/fin/` |
 | Serving | `delivery`, `platform/tests`: Deployment, Service, ConfigMap (the Caddyfile) and ServiceAccount `tests` in namespace `tests`, two replicas, NetworkPolicy `tests` admitting only the `traefik` namespace, and HTTPRoute `tests` on the protected gateway through Middleware `admins` |
-| Earlier | `https://docs.dev.kfirs.com/reports/<repository>/<run>/`, from `gs://arikkfir-docs/.reports/`, until ENG-122 moved them; the docs site redirects those addresses here |
+| Earlier | `https://docs.dev.kfirs.com/reports/<repository>/<run>/`, from `gs://arikkfir-docs/.reports/`, until ENG-122 moved them here; the docs site redirects those addresses to the same paths here |
 
 ## Fin
 
