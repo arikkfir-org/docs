@@ -183,7 +183,7 @@ In CI tenants, Tekton's default ServiceAccount `pipeline` holds no role ([design
 `claude-code@arikkfir.iam.gserviceaccount.com` is Claude Code on the web's identity, made by hand and adopted by
 `terraform/gcp`: the Claude Code environment holds its key, made by hand, and its proxy adds it to requests for
 `*.googleapis.com`. Sessions read the hub cluster through GKE's MCP server, `https://container.googleapis.com/mcp`,
-and the [docs site](#docs-site)'s pages from its bucket ([design](designs/claude-code-cluster-access.md)), without
+and the [docs site](#docs-site)'s pages from its bucket ([design](../tooling/designs/claude-code-cluster-access.md)), without
 cloning other repositories.
 
 One Workload Identity Federation pool is managed here, `fin-pull-requests`, for [Fin](#fin)'s pull requests'
@@ -318,7 +318,7 @@ of zone `octomaton-dev` for `octomaton.dev`.
 ### Go import pages
 
 Application `go-import` (`platform/go-import/manifests` in `delivery`, wave 4) answers for every hub domain that is a Go
-module path ([design](designs/go-import-pages.md)): Deployment, Service and ConfigMap `go-import` in namespace
+module path ([design](../delivery/designs/go-import-pages.md)): Deployment, Service and ConfigMap `go-import` in namespace
 `go-import` (label `kfirs.com/public-ingress: "true"`; Service port 80 → container 8080), two replicas, and
 NetworkPolicy `go-import` admitting only the `traefik` namespace. HTTPRoute `go-import` puts every domain on the public
 gateway, since Go fetches the pages without signing in.
