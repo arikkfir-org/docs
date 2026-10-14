@@ -5,9 +5,9 @@ Octomaton, one pod per review:
 
 - `review` checks out the pull request's repository on a 50Gi volume, with the pull request's full state at its root,
   then runs opencode with DeepSeek in a sandbox, in the hub's reviewer image (opencode plus bash, python3, git and the
-  usual command-line tools), in that checkout, starting from a brief of what every review reads first; on a later
-  round, a small change since the last review is reviewed on its own. The model's steps hold no credential but its API key and can reach
-  nothing but the internet. Their `github` sidecar holds a token that reads every repository's code and pull
+  usual command-line tools), in that checkout, starting from a brief of what every review reads first; on a later round,
+  a small change since the last review is reviewed on its own. The model's steps hold no credential but its API key and
+  can reach nothing but the internet. Their `github` sidecar holds a token that reads every repository's code and pull
   requests, and reads GitHub for the model, which clones the hub's other repositories as it needs them and can follow a
   change into an internal repository (`fin`) without the token.
 - Its last step, `report`, turns the findings into one GitHub review by `arikkfir-reviewer`, with one thread per
@@ -42,7 +42,9 @@ sequenceDiagram
   OCT->>S: start the PipelineRun, with check "AI Review" on the head commit
   S->>GH: clone the pull request's repository (with the token) and tooling's reviewer/, read the pull request, reviews and threads
   S->>S: write pr.json, pr.diff and pr.log at the checkout's root
-  R->>DS: opencode run in the checkout: prompt, pr.json
+  R->>G: clone docs into /tmp/docs
+  R->>R: brief.py writes the first message: the prompt, then pr.json, pr.diff, pr.log, the rules and the changed files
+  R->>DS: opencode run in the checkout, from the brief
   R->>G: other repositories (clones into /tmp), pull requests and code, on 127.0.0.1:8080
   G->>GH: reads, with the read-only token
   R->>R: write findings.json, checked against the diff (one correction round)
@@ -54,7 +56,7 @@ sequenceDiagram
 | --- | --- | --- |
 | Trigger | `tooling`: `organization.pipelines` in `.octomaton.yaml` (the organization repository), read at its default branch | Pipeline `review` (`AI Review`) for every repository, on `review_request` from `arikkfir-reviewer`; params from the template context; a read-only installation token for every repository; the two Secrets it may mount |
 | Pipeline | `tooling`: `reviewer/pipelinerun.yaml` | The PipelineRun: task `review`, whose last step `report` posts the review; the 50Gi volume; ServiceAccount, sandbox label, DNS and resources; the reviewer image for every step and the sidecar, so a node pulls one image for a review. Octomaton reads it at `tooling`'s default branch for every repository |
-| Scripts and prompt | `tooling`: `reviewer/` | `state.py` writes `pr.json`, `findings.py` checks `findings.json`, `report.py` posts the review, `github_proxy.py` serves GitHub in the `github` sidecar. Also `prompt.md` and `opencode.json`. Standard-library Python, tested in `tooling`'s CI. `report` and the sidecar run their own fresh copies, never the volume's |
+| Scripts and prompt | `tooling`: `reviewer/` | `state.py` writes `pr.json`, `brief.py` writes the model's first message ([the brief](#the-brief)), `findings.py` checks `findings.json`, `report.py` posts the review, `github_proxy.py` serves GitHub in the `github` sidecar. Also `prompt.md` and `opencode.json`. Standard-library Python, tested in `tooling`'s CI. `report` and the sidecar run their own fresh copies, never the volume's |
 | Image | `octomaton`: `images/reviewer/`, pipelines `reviewer-image` and `reviewer-image-check` | opencode's image plus the model's tools, published to Artifact Registry as `ci-octomaton-release` |
 | Octomaton | `octomaton` | The `review_request` trigger; `pipelineRun` in another repository; `secrets` a pipeline may mount; `githubToken.repositories: all`; remote Tekton references refused; organization pipelines |
 | Tenant objects | `delivery`: the `ci-tenants` base | ServiceAccount `reviewer`, NetworkPolicy `sandbox`, ExternalSecrets `reviewer-deepseek-api-key` and `reviewer-github-pat` in every `ci-<repository>` namespace |
@@ -304,15 +306,14 @@ pull request: …").
 - Check `findings.json` with the pipeline's own checker (`python3 ../.review/findings.py check ...`), not one of its
   own (42% of reviews wrote one), and fix what it names.
 - Stay on the review. The transcripts of 496 reviews (2026-10-04 to 13) showed a fifth of the model's time on side
-  trips, each now ruled out: `pr.json`, `pr.diff` and `pr.log` are complete, so never fetch the pull request again
-  from the API (30% of reviews did); the image has no node, go, npm, helm, kubectl or terraform, so never look for
-  them or try to build, test or render (63%); read `pr.json` by key with `jq`, never whole (94%); clone only the
-  repositories the change touches, not all five (65%); read `hub/reference.md`'s relevant sections, not the whole
-  file (55%); read a whole file once rather than sizing it and slicing it (every review) or reading it again; find
-  with `rg`, not by listing trees (46%); leave the repository's other branches and pull requests alone (63%); never
-  read `.review/`, `/tekton` or the reviewer's own design and scripts, which hold no expected answer (16%); fetch
-  what a claim about an upstream tool needs from the web in one command; and read `findings.json` back by eye rather
-  than writing a checker (60%), since the pipeline checks it.
+  trips, each now ruled out: the brief carries `pr.json`, `pr.diff` and `pr.log`, complete, so never read them again nor
+  fetch the pull request from the API (30% of reviews did); the image has no node, go, npm, helm, kubectl or terraform,
+  so never look for them or try to build, test or render (63%); clone only the repositories the change touches, not all
+  five (65%); read `hub/reference.md`'s relevant sections, not the whole file (55%); read a whole file once rather than
+  sizing it and slicing it (every review) or reading it again; find with `rg`, not by listing trees (46%); leave the
+  repository's other branches and pull requests alone (63%); never read `.review/`, `/tekton` or the reviewer's own
+  design and scripts, which hold no expected answer (16%); fetch what a claim about an upstream tool needs from the web
+  in one command; and never write a checker of its own (60%), since it runs the pipeline's.
 - Write `findings.json`, and nothing else: the repositories are read-only.
 
 The code guidelines (reuse over duplication, refactoring over scaffolding, the right thing over the easy one, and the
