@@ -12,9 +12,9 @@ kubectl can't reach the cluster from a session. The cluster answers only on its 
 
 ```mermaid
 flowchart LR
-  S[Claude Code session] -->|MCP server gke, read tools only| P[Session proxy]
-  P -->|adds claude-code@'s credential| M[container.googleapis.com/mcp]
-  M -->|claude-code@'s IAM| K[GKE cluster hub]
+  S[Claude Code session] -->|"MCP server gke, read tools only"| P[Session proxy]
+  P -->|"adds claude-code@'s credential"| M["container.googleapis.com/mcp"]
+  M -->|"claude-code@'s IAM"| K[GKE cluster hub]
 ```
 
 | Piece | Value |
