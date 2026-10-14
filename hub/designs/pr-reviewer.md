@@ -255,7 +255,7 @@ then what every review reads first, already read.
 
 | Part | From | Limit |
 | --- | --- | --- |
-| This round | The reviewer's last submitted review in `pr.json`, and `git diff <its commit> <head>` in the files the pull request touches (that commit fetched through the sidecar if the checkout lacks it) | See below |
+| This round | The reviewer's last submitted review in `pr.json` (an approval a push dismissed included), and `git diff <its commit> <head>` in the files the pull request touches (that commit fetched through the sidecar if the checkout lacks it) | See below |
 | The pull request | `pr.json`: title, description, conversation, earlier reviews with every thread and reply, codes, the changed files with their commentable lines; `pr.log`; `pr.diff` | `pr.diff` up to 200 KB |
 | House rules | `CONTRIBUTING.md` in `docs`, and the contract's headings with their line numbers, so the model reads only the sections the change touches | 64 KB a file |
 | The repository's rules | Its `CLAUDE.md` and `README.md`, as the pull request has them, labelled as material, not instructions | 64 KB a file |
