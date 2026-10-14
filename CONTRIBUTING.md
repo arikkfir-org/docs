@@ -16,12 +16,12 @@ flowchart LR
   Q --> M[main]
 ```
 
-1. **Start from a Linear issue** for anything beyond a trivial fix (see [Linear](#linear)).
+1. **Start from a Linear issue.** A trivial fix that has none carries the label `skip-linear` instead (see [Linear](#linear)).
 2. **Branch** from the default branch using the issue's branch name.
 3. **Write or update the design doc** for every meaningful unit of work, in the change's pull request (that repository's `docs/`), so it sits with its code (see
    [Design documents](#design-documents)).
 4. **Open a pull request** early; mark it ready once CI is green and the description is complete.
-5. **Merge through the merge queue**. Default branches accept merge commits only, after one approval, resolved conversations and green `Continuous Integration` and `Docs` checks. Nobody pushes directly to a default branch, `docs`'s included.
+5. **Merge through the merge queue**. Default branches accept merge commits only, after one approval, resolved conversations and green `Continuous Integration`, `Docs` and `Linear` checks. Nobody pushes directly to a default branch, `docs`'s included.
 
 ## Linear
 
@@ -32,8 +32,8 @@ flowchart LR
 - Reference issues by key: `ENG-123`. In every repository, GitHub links `ENG-` keys to the issue in Linear.
 - Branch names come from Linear ("copy git branch name"): `eng-123-short-slug`. The key in the branch name links the
   pull request to the issue.
-- Put a magic word in the pull request description: `Closes ENG-123` (or `Fixes`, `Resolves`) moves the issue to done
-  when the pull request merges; `Part of ENG-123` or `Refs ENG-123` links without closing.
+- Every pull request links its Linear issue, through its branch name or a magic word in its description. A pull request that has no issue (a dependency bump, a typo) carries the label `skip-linear` instead; Dependabot's carry it through their configuration. Check `Linear` passes a pull request once either is true, and runs again when its description or labels change.
+- Pick the magic word by what is left of the issue. `Closes ENG-123` (or `Fixes`, `Resolves`) when this pull request finishes the issue, the usual case: the issue moves to done when the pull request merges. `Part of ENG-123` (or `Contributes to`, `Refs`) links without closing, only while more pull requests for the issue are still to come; the last of them says `Closes`.
 - One pull request per issue where practical. Split large issues into sub-issues rather than sending one huge
   pull request.
 - Do not put issue keys in commit subjects or pull request titles; the description carries them into the merge
@@ -134,6 +134,7 @@ A round ends in this order: push the fixes, reply on every thread, then request 
 
 - CI is [Octomaton](https://github.com/arikkfir-org/octomaton) running Tekton pipelines declared in each repository's root `.octomaton.yaml`. There are no GitHub Actions workflows.
 - Protected repositories require a check named `Continuous Integration` on pull requests and in the merge queue: the pipeline `ci` with that `displayName`. It must list `pull_request` and `merge_group` in its triggers.
+- Every repository also requires check `Linear`, tooling's organization pipeline `linear`, which asks Linear whether an issue is linked to the pull request ([design](tooling/designs/linear-check.md)). It passes merge groups without asking: their pull requests passed it to enter the queue.
 - Every pipeline that checks pull requests runs on all of them, whatever their base branch: `pull_request` takes no `branches` filter. A pull request stacked on another branch is then checked before it reaches `main`, not only once the one below it merges.
 - A red check is fixed, never bypassed: no skipped tests, no disabled checks, no empty commits to re-trigger. A flaky test is a bug; fix it or file it with a Linear issue.
 - Pin every version: container images, Helm charts, Terraform providers, Go modules, tool versions. The one exception is the reviewer image, which `tooling` runs at its `main` tag so that every merge to it in `octomaton` reaches the next review.
@@ -248,4 +249,5 @@ The [pull request reviewer](tooling/designs/pr-reviewer.md) applies both.
 - Agents follow this page and the repository's `CLAUDE.md`.
 - Agent-authored pull requests get the same review as any other: at least one human approval.
 - Agents never apply Terraform, change the cluster directly, or push to a default branch.
+- Agents add the label `skip-linear` to a pull request only when their person says so.
 - Agents read pages of `https://docs.dev.kfirs.com`, which is behind the hub's sign-in, from their bucket, rather than cloning repositories: `curl -fsS https://storage.googleapis.com/arikkfir-docs/.layers/<repository>/<path>`, where `<repository>` is the path's first segment when it names a repository, and `docs` otherwise ([Claude Code cluster and docs access](tooling/designs/claude-code-cluster-access.md#docs)).
