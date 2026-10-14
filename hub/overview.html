@@ -60,7 +60,7 @@ code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; fo
 <h1>arikkfir-org hub</h1>
 <p class="lede">A personal development hub on one private GKE cluster in <code>me-west1</code>. Terraform provisions it,
 Argo CD runs it from Git, Octomaton turns GitHub events into Tekton pipelines, and everything internal sits behind a
-single sign-in. Facts and names: <a href="reference.md.html">reference</a>. Bring-up: <a href="../infra/runbooks/bootstrap.md.html">runbook</a>.</p>
+single sign-in. Names: infra's <a href="../infra/terraform/gcp.md.html">GCP root</a> and delivery's <a href="../delivery/platform.md.html">platform</a>. Bring-up: <a href="../infra/runbooks/bootstrap.md.html">runbook</a>.</p>
 
 <figure>
 <svg viewBox="0 0 1200 700" role="img" aria-labelledby="map-title">
@@ -142,7 +142,7 @@ single sign-in. Facts and names: <a href="reference.md.html">reference</a>. Brin
   <text class="t" x="266" y="471">Platform services</text>
   <text class="s" x="266" y="497">External Secrets · cert-manager · Gateway API · KEDA · NATS + NACK · Reloader</text>
 
-  <!-- Each pool is tainted so that only its own workloads run there (reference, GKE). -->
+  <!-- Each pool is tainted so that only its own workloads run there (infra's root gcp, node pools). -->
   <rect class="box" x="250" y="546" width="207" height="94" rx="8"/>
   <text class="t" x="266" y="571">system node pool</text>
   <text class="s" x="266" y="594">e2-standard-4 · on-demand</text>

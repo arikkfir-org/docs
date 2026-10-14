@@ -1,14 +1,17 @@
 # docs
 
-The hub-wide part of the `arikkfir-org` knowledge base: conventions, the hub reference, and the designs and runbooks
-that are about no one repository. Every repository keeps the pages about it in its own `docs/<repository>/`, and the
-pages here that belong to one are moving there ([docs ownership](hub/designs/docs-ownership.md)). Every meaningful unit
+The hub-wide part of the `arikkfir-org` knowledge base: conventions, and the designs and runbooks that are about no one
+repository. Every repository keeps the pages about it in its own `docs/<repository>/`, the names it creates included
+([docs ownership](hub/designs/docs-ownership.md)). Every meaningful unit
 of work gets a visual design document in the repository it changes.
 
 ## Start here
 
 - [Hub overview](hub/overview.html): the whole platform on one page
-- [Hub reference](hub/reference.md): every name, address, identity and permission (the contract between repositories)
+- The hub's names, addresses, identities and permissions, each in the pages of the repository that creates it: infra's
+  [GCP](infra/terraform/gcp.md), [GitHub](infra/terraform/github.md) and [Keycloak](infra/terraform/keycloak.md)
+  roots, delivery's [platform](delivery/platform.md), Octomaton's [deployment](octomaton/designs/deployment.md) and
+  Fin's [environments](fin/designs/environments.md)
 - [Bootstrap runbook](infra/runbooks/bootstrap.md): bringing the hub up from nothing
 - [Octomaton rename runbook](octomaton/runbooks/rename.md): the one-off move from Octomatron to Octomaton
 - [Contributing](CONTRIBUTING.md): commits, pull requests, Linear, design docs

@@ -45,7 +45,7 @@ URLs are `https://docs.dev.kfirs.com/<path>`, behind the hub's sign-in. Agents r
 | HTML allowed as-is | AI-generated architecture pages are often richer than Markdown | Forcing everything through Markdown |
 | Serve the Markdown source next to the HTML | The source is one click from its page | HTML only |
 | Private bucket served at `docs.dev.kfirs.com` behind the hub's sign-in; direct links only, no navigation | Same access control as every other hub tool; navigation can come later | Public bucket; static-site generator with menus and search |
-| `hub/reference.md` as the single source of facts | Five repositories must agree on names, identities and addresses | Repeating values in every design |
+| Each name, address, identity and permission documented by the repository that creates it ([docs ownership](docs-ownership.md)) | Five repositories must agree on them: the one that creates a name documents it with its code, and the others link that page | Repeating values in every design; one page of every fact, `hub/reference.md` until October 2026, which repeated its owners' pages and drifted from them |
 
 ## Organization README
 

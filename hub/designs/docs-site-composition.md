@@ -56,7 +56,8 @@ answered from the first layer that has the path.
   browser. The template reads the Markdown with `readFile`, which never executes it as a template, so a `{{ … }}` in a
   document stays text.
 - Hidden paths and directories answer 404. A missing `X.html` redirects to `X.md.html`.
-- `/reports/…`, where CI reports were until ENG-122, redirects to the same path on `tests.dev.kfirs.com`.
+- `/reports/…`, where CI reports were until ENG-122, redirects (`301`) to the same path on `tests.dev.kfirs.com`, so
+  their old links keep working. A layer's own files under `reports/` would never be served.
 
 The page template and the Caddyfile live in `delivery` (`platform/docs`, [the docs and tests servers](../../delivery/designs/docs-and-tests-servers.md)), and the list of layers there is the overlay
 order. A repository that isn't listed publishes its layer, but nothing of it is served.
@@ -99,10 +100,10 @@ pipeline or render scripts of its own, and nothing pushes to its `main` directly
 
 - Put a repository's docs under its `docs/<repository>/` directory. `docs/` appears at the site root, so
   `docs/infra/guide.md` in `infra` is at `/infra/guide.md.html`.
-- Link with relative paths against the composed site. A link from `docs/infra/x.md` in `infra` to `../hub/reference.md`
+- Link with relative paths against the composed site. A link from `docs/infra/x.md` in `infra` to `../CONTRIBUTING.md`
   resolves on the site, though not on GitHub. Outside the site (a README, a `CLAUDE.md`, a code comment), link the page's
   URL, `https://docs.dev.kfirs.com/<path>.md`, never "file X in repository Y".
-- Hub-wide pages, such as the reference, stay in `docs`. Every other page lives in the repository it describes, under `docs/<repository>/` there, and a design ships with its change; one that spans repositories is split into a part per repository, or, when it can't be, goes in the leading one ([Design documents](../../CONTRIBUTING.md#design-documents), [docs ownership](docs-ownership.md)).
+- Hub-wide pages, such as the house rules, stay in `docs`. Every other page lives in the repository it describes, under `docs/<repository>/` there, and a design ships with its change; one that spans repositories is split into a part per repository, or, when it can't be, goes in the leading one ([Design documents](../../CONTRIBUTING.md#design-documents), [docs ownership](docs-ownership.md)).
 
 ## Decisions
 
@@ -124,7 +125,7 @@ pipeline or render scripts of its own, and nothing pushes to its `main` directly
 - **Pull requests:** the `Docs` check runs as `docs-reader`, which can list the bucket's object names but can't read or
   write objects. That is all this design gives a branch other than `main`. Access that other pull request pipelines
   already have, such as `infra`'s `ci-infra-plan`, is unchanged
-  ([GCP identities](../reference.md#gcp-identities-and-permissions)).
+  (infra's [IAM](../../infra/terraform/gcp.md#iam)).
 - **Rendering:** documents can contain raw HTML, which is rendered as written, as pandoc did. The site stays behind the
   hub's sign-in, and only organization repositories publish.
 - **Public exception:** `legal.kfirs.com`, on the public gateway, serves only the exact paths `/privacy.html`,
