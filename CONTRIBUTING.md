@@ -41,7 +41,7 @@ flowchart LR
 
 ### Projects
 
-A task too large for one issue, such as a feature delivered in several pull requests or a change across repositories, gets a Linear project.
+A task too large for one issue, such as a feature delivered in several pull requests or a change across repositories, gets a Linear project ([design](hub/designs/linear-projects.md)).
 
 - **Suggest a project** for a large task. Agents propose one to their person, with its slices, and create it only once they agree.
 - **One issue per slice**, in the project. Prefer slices that are self-contained and deployable on their own: each merges, releases and runs without waiting for the next, and leaves the default branch working.
