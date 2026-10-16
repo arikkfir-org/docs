@@ -35,9 +35,17 @@ flowchart LR
 - Every pull request links its Linear issue, through its branch name or a magic word in its description. A pull request that has no issue (a dependency bump, a typo) carries the label `skip-linear` instead; Dependabot's carry it through their configuration. Check `Linear` passes a pull request once either is true, and runs again when its description or labels change.
 - Pick the magic word by what is left of the issue. `Closes ENG-123` (or `Fixes`, `Resolves`) when this pull request finishes the issue, the usual case: the issue moves to done when the pull request merges. `Part of ENG-123` (or `Contributes to`, `Refs`) links without closing, only while more pull requests for the issue are still to come; the last of them says `Closes`.
 - One pull request per issue where practical. Split large issues into sub-issues rather than sending one huge
-  pull request.
+  pull request; a task too large for one issue gets a project (see [Projects](#projects)).
 - Do not put issue keys in commit subjects or pull request titles; the description carries them into the merge
   commit.
+
+### Projects
+
+A task too large for one issue, such as a feature delivered in several pull requests or a change across repositories, gets a Linear project.
+
+- **Suggest a project** for a large task. Agents propose one to their person, with its slices, and create it only once they agree.
+- **One issue per slice**, in the project. Prefer slices that are self-contained and deployable on their own: each merges, releases and runs without waiting for the next, and leaves the default branch working.
+- **Keep the project's status current** as its slices land, and post a project update for each milestone or significant change: what shipped, what is next and what is at risk, with the project's health (on track, at risk or off track).
 
 ### Writing an issue
 
