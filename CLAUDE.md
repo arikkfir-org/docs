@@ -16,6 +16,7 @@ Knowledge base of the `arikkfir-org` hub, served with every other repository's `
 - Lead with the decision; facts in tables; flows as diagrams; no filler.
 - Link a page by its place on the site, never as "file X in repository Y": a relative link inside a page, `https://docs.dev.kfirs.com/<path>.md` anywhere else.
 - Read another repository's page from the site's bucket rather than cloning it: `curl -fsS https://storage.googleapis.com/arikkfir-docs/.layers/<repository>/<path>`, where `<repository>` is the path's first segment when it names a repository (`infra/terraform/gcp.md` is `infra`'s) and `docs` otherwise.
+- Large tasks run as Linear projects (`CONTRIBUTING.md`, "Projects"): suggest one to your person and create it once they agree; one issue per slice, however many pull requests it takes; slices preferably self-contained and deployable on their own; keep the project's status current, with an update at each milestone or significant change.
 
 ## Site mechanics
 
