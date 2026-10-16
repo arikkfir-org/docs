@@ -1,6 +1,6 @@
 # No attribution
 
-**Decision**: coding agents add no attribution to anything they write: no header naming who asked, no "Generated with Claude Code" footer, no session link, no `Co-Authored-By: Claude` or `Claude-Session:` trailer, in commits, pull requests, comments, Linear or Slack. The rule is in [CONTRIBUTING.md](../../CONTRIBUTING.md) ("Coding agents") and in every repository's `CLAUDE.md`. Ticket: [ENG-172](https://linear.app/arikkfir/issue/ENG-172).
+**Decision**: coding agents add no attribution to anything they write: no header naming who asked, no "Generated with Claude Code" footer, no session link, no `Co-Authored-By: Claude` or `Claude-Session:` trailer, in commits, pull requests, comments, Linear or Slack. The rule is in [CONTRIBUTING.md](../../CONTRIBUTING.md) ("Coding agents") and in every repository's `CLAUDE.md`. Ticket: [ENG-172](https://linear.app/arikkfir/issue/ENG-172). Pull request: [docs#65](https://github.com/arikkfir-org/docs/pull/65).
 
 ## Context
 
