@@ -14,21 +14,21 @@ flowchart LR
   T[Large task] -->|agent suggests| A{Person agrees?}
   A -->|yes| P[Linear project]
   A -->|no| I[One issue,<br/>sub-issues if needed]
-  P --> S1[Issue: slice 1] --> PR1[Pull request] --> M[main, deployed]
-  P --> S2[Issue: slice 2] --> PR2[Pull request] --> M
+  P --> S1[Issue: slice 1] --> PR1[Pull requests:<br/>Part of, then Closes] --> M[main, deployed]
+  P --> S2[Issue: slice 2] --> PR2[Pull requests] --> M
   M -->|slice lands| U[Project status<br/>and update]
   U -.-> P
 ```
 
 ## Decisions
 
-| Decision                                                                                  | Why                                                                                                                         | Rejected                                                                                     |
-|-------------------------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|----------------------------------------------------------------------------------------------|
-| A task too large for one issue gets a project                                             | A project holds the goal, its slices and their progress in one place, across repositories and over many sessions            | One large issue with sub-issues: no status or updates of its own, and it reads as one change |
-| Agents suggest a project; they create it only once their person agrees                    | A project sets the plan its person will follow for weeks; they decide whether the task is that large and how to cut it      | Agents creating projects unasked: projects nobody planned would fill the workspace           |
-| One issue per slice                                                                       | Each pull request links its issue (check `Linear`), so a slice's issue closes when it merges and the project shows progress | Issues per repository or per layer: they finish without anything working                     |
-| Slices are preferably self-contained and deployable on their own                          | Every merge to `main` releases, so a slice that leaves `main` working can ship, be reviewed and be rolled back on its own   | Slices that only work together: half-done work sits on `main` or in long-lived branches      |
-| The project's status stays current; an update posts at milestones and significant changes | The person reads progress without opening each issue; a health of on track, at risk or off track says when to step in       | An update per pull request: noise that buries the milestones                                 |
+| Decision                                                                                  | Why                                                                                                                                                                            | Rejected                                                                                                                                                      |
+|-------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| A task too large for one issue gets a project                                             | A project holds the goal, its slices and their progress in one place, across repositories and over many sessions                                                               | One large issue with sub-issues: no status or updates of its own, and it reads as one change                                                                  |
+| Agents suggest a project; they create it only once their person agrees                    | A project sets the plan its person will follow for weeks; they decide whether the task is that large and how to cut it                                                         | Agents creating projects unasked: projects nobody planned would fill the workspace                                                                            |
+| One issue per slice, however many pull requests it takes                                  | A slice is one logical change, so its issue is the unit of progress: its pull requests say `Part of` it, the last `Closes` it, and the project shows the slice done when it is | An issue per pull request: it splits one change into issues that mean nothing alone. Issues per repository or per layer: they finish without anything working |
+| Slices are preferably self-contained and deployable on their own                          | Every merge to `main` releases, so a slice that stands on its own can ship, be reviewed and be rolled back on its own; each of its pull requests still leaves `main` working   | Slices that only work together: half-done work sits on `main` or in long-lived branches                                                                       |
+| The project's status stays current; an update posts at milestones and significant changes | The person reads progress without opening each issue; a health of on track, at risk or off track says when to step in                                                          | An update per pull request: noise that buries the milestones                                                                                                  |
 
 ## Failure modes
 
