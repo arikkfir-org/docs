@@ -13,7 +13,7 @@ of work gets a visual design document in the repository it changes.
   roots, delivery's [platform](delivery/platform.md), Octomaton's [deployment](octomaton/designs/deployment.md) and
   Fin's [environments](fin/designs/environments.md)
 - [Bootstrap runbook](infra/runbooks/bootstrap.md): bringing the hub up from nothing
-- [Octomaton rename runbook](octomaton/runbooks/rename.md): the one-off move from Octomatron to Octomaton
+- [Octomaton rename runbook](delivery/runbooks/octomaton-rename.md): the one-off move from Octomatron to Octomaton
 - [Contributing](CONTRIBUTING.md): commits, pull requests, Linear, design docs
 
 Designs:
