@@ -63,7 +63,7 @@ sequenceDiagram
 | `hub/designs/octomaton-github-retries.md` | [octomaton/designs/github-retries.md](../../octomaton/designs/github-retries.md) | arikkfir-org/octomaton#30 |
 | `hub/designs/octomaton-dev.md` | [octomaton/designs/octomaton-dev.md](../../octomaton/designs/octomaton-dev.md) | arikkfir-org/octomaton#30 |
 | `hub/designs/check-run-redaction.md` | [octomaton/designs/check-run-redaction.md](../../octomaton/designs/check-run-redaction.md) | arikkfir-org/octomaton#30 |
-| `hub/runbooks/octomaton-rename.md` | [delivery/runbooks/octomaton-rename.md](../../delivery/runbooks/octomaton-rename.md) | arikkfir-org/octomaton#30 |
+| `hub/runbooks/octomaton-rename.md` | [delivery/runbooks/octomaton-rename.md](../../delivery/runbooks/octomaton-rename.md) | arikkfir-org/delivery#76 |
 | `hub/designs/phase-3-ingress-and-auth.md` | [delivery/designs/phase-3-ingress-and-auth.md](../../delivery/designs/phase-3-ingress-and-auth.md) | arikkfir-org/delivery#58 |
 | `hub/designs/phase-5-tooling.md` | [tooling/designs/phase-5-tooling.md](../../tooling/designs/phase-5-tooling.md) | arikkfir-org/tooling#36 |
 | `hub/designs/ci-reports.md` | Split, as the reports moved to their own server (ENG-122): [fin/designs/ci-reports.md](../../fin/designs/ci-reports.md), how Fin's are made and opened, and [delivery/designs/docs-and-tests-servers.md](../../delivery/designs/docs-and-tests-servers.md), how both servers serve | arikkfir-org/fin#139, arikkfir-org/delivery#59 |
