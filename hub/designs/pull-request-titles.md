@@ -12,7 +12,7 @@
   80d2dc1 docs(hub): drop fin's admin bypass from the contract
   ```
 
-- Nothing reads a title's type: the one changelog tooling, Octomaton's release notes, reads the types of a pull request's commits, not its title ([Releases](../../CONTRIBUTING.md#releases)), and no pipeline or ruleset checks titles. `arikkfir-reviewer` applies the title rule from `CONTRIBUTING.md` like the rest of it.
+- Nothing reads a title's type: Octomaton's release notes are GitHub's generated ones, which show pull request titles as they are ([Releases](../../CONTRIBUTING.md#releases)), and no pipeline or ruleset checks titles. `arikkfir-reviewer` applies the title rule from `CONTRIBUTING.md` like the rest of it.
 - `weesp-ai`, another GitHub organization the owner works in, also merges with merge commits and forbids the prefix on titles.
 
 ## Design
