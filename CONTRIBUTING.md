@@ -251,7 +251,7 @@ The [pull request reviewer](tooling/designs/pr-reviewer.md) applies both.
 
 - Every push to an application's default branch releases it: the push publishes the application's image, tagged with the commit's short SHA, which is also the version the application reports. A release's notes are its merge commit: the pull request's title and description.
 - A product other clusters host also has versions: a GitHub release, tag `v<version>` on a commit of the default branch, title `<version>`, GitHub's generated release notes (the pull requests since the previous version, with their authors) and a link to its installation guide at that tag. Publishing the release creates the tag, which publishes the images tagged with the version; a draft has no tag and no effect. Octomaton is the one so far ([versioned releases](octomaton/designs/releases.md)); a person drafts and publishes the release on GitHub.
-- Deploying a release is a pull request to `arikkfir-org/delivery` that bumps the pinned image tag. Octomaton and Fin are the exceptions: Argo CD deploys their `main` with the image of the commit it syncs (see [Octomaton's deployment](octomaton/designs/deployment.md) and [Fin's environments](fin/designs/environments.md)).
+- Deploying a release is a pull request to `arikkfir-org/delivery` that bumps the pinned image tag. Octomaton's is a version: the bump sets its tag as both the manifests' revision and the images' tag ([hosting Octomaton](delivery/designs/octomaton.md)). Fin is the exception: Argo CD deploys its `main` with the image of the commit it syncs ([Fin's environments](fin/designs/environments.md)).
 
 ## Coding agents
 
