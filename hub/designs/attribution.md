@@ -1,6 +1,6 @@
 # Attribution
 
-**Decision**: coding agents may add attribution to what they write: the header naming who asked, the "Generated with Claude Code" footer, the session link, the `Co-Authored-By: Claude` and `Claude-Session:` trailers. Nothing in [CONTRIBUTING.md](../../CONTRIBUTING.md) ("Coding agents") or any repository's `CLAUDE.md` forbids them. This reverses the no-attribution rule of [ENG-172](https://linear.app/arikkfir/issue/ENG-172) ([docs#65](https://github.com/arikkfir-org/docs/pull/65)). Ticket: [ENG-183](https://linear.app/arikkfir/issue/ENG-183).
+**Decision**: coding agents may add attribution to what they write: the header naming who asked, the "Generated with Claude Code" footer, the session link, the `Co-Authored-By: Claude` and `Claude-Session:` trailers. Once this change and its companions merge, nothing in [CONTRIBUTING.md](../../CONTRIBUTING.md) ("Coding agents") or any repository's `CLAUDE.md` forbids them. This reverses the no-attribution rule of [ENG-172](https://linear.app/arikkfir/issue/ENG-172) ([docs#65](https://github.com/arikkfir-org/docs/pull/65)). Ticket: [ENG-183](https://linear.app/arikkfir/issue/ENG-183). Pull request: [docs#69](https://github.com/arikkfir-org/docs/pull/69).
 
 ## Context
 
@@ -33,6 +33,16 @@ flowchart LR
 | Allowed, not required                            | The environment adds the lines anyway; the house rules need not repeat its instructions            | Requiring it: a rule that only restates the environment's defaults                        |
 | `Co-authored-by` for people and agents alike     | It credits whoever co-wrote the change                                                             | Keeping it for people only                                                                |
 
+## Failure modes
+
+| Failure                                                                            | Effect                                                                                                                                      |
+|------------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------|
+| A repository's `CLAUDE.md` still carries the old rule                              | Its rules win there: agents keep omitting attribution and `arikkfir-reviewer` keeps flagging it until that repository's pull request merges |
+| Attribution lands in a pull request description, and so in its merge commit's body | It stays in `git log` on `main` for good                                                                                                    |
+| A session or project-thread link reaches a public repository                       | Anyone can see the link, but it opens only for the account that owns the session or project                                                 |
+
+Security: most of the hub's repositories are public, so the lines are visible to anyone. They name the person who asked (display name and GitHub login) and link Claude pages that open only for their owner; none holds a secret or a credential.
+
 ## Rollout
 
-None: guidance only, from the next session that reads the rules. `arikkfir-reviewer` reads the house rules and the repository's `CLAUDE.md` on every review, so it stops flagging attribution once both are merged.
+Guidance only, from the next session that reads the rules. `docs#69` merges first; then each repository's `CLAUDE.md` drops the rule in its own pull request: [tooling#55](https://github.com/arikkfir-org/tooling/pull/55), [octomaton#53](https://github.com/arikkfir-org/octomaton/pull/53), [infra#87](https://github.com/arikkfir-org/infra/pull/87), [delivery#82](https://github.com/arikkfir-org/delivery/pull/82), [fin#178](https://github.com/arikkfir-org/fin/pull/178). `arikkfir-reviewer` reads the house rules and the repository's `CLAUDE.md` from `main` on every review, so it stops flagging attribution in a repository once both are merged.
