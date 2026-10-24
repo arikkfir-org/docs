@@ -234,7 +234,7 @@ single sign-in. Names: infra's <a href="../infra/terraform/gcp.md.html">GCP root
     <h3>Release and deploy</h3>
     <ol class="steps">
       <li>merge to <code>main</code></li><li>Octomaton <code>release</code></li><li>image tagged with the short SHA</li>
-      <li>pull request to delivery (none for Octomaton, which follows <code>main</code>)</li><li>Argo CD syncs</li>
+      <li>pull request to delivery that bumps the tag (none for Fin, which follows <code>main</code>)</li><li>Argo CD syncs</li>
     </ol>
   </section>
   <section class="flow">
