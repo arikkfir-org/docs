@@ -126,4 +126,4 @@ None: the last two pages moved in the third round, and the hub reference was spl
 
 ## Open questions
 
-- Root-cause write-ups and walkthroughs: their templates put a public repository's in `docs`. By this design, a write-up would live in the repository it is about and a walkthrough in the pull request it explains, but a write-up that ships no fix would be a pull request of documentation alone.
+- Walkthroughs: their template puts a public repository's in `docs`. By this design, a walkthrough would live in the pull request it explains. Root-cause write-ups settled the same question their way: in the repository at fault ([ENG-189](https://linear.app/arikkfir/issue/ENG-189), [investigations and walkthroughs](investigations-and-walkthroughs.md)).
