@@ -51,7 +51,7 @@ sequenceDiagram
 - The new home's pull request also points that repository's own README and comments at the page, and merges first. `docs` drops the old copy and points its own pages at the new path once every new home of its round has merged, so its links resolve.
 - The `Docs` check reads only the links of the repository under test. A repository that still links an old path fails its next check once `docs` drops it, so a round updates every repository's links to the pages it moves.
 - Two pages that move to two repositories in one round and link each other can't both link the other's new path: neither is published before the other merges. One of them moves in a later round, once the other is published. That is why `go-import-pages.md` moved two rounds after `octomaton-dev.md`.
-- A move is the one pull request of documentation alone (`CONTRIBUTING.md`, "Pull requests"): it documents no change of its own.
+- A move is a pull request of documentation alone, one of the exceptions `CONTRIBUTING.md` lists ("Pull requests"): it documents no change of its own.
 
 ### Moved
 
