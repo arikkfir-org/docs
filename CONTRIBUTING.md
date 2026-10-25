@@ -122,7 +122,7 @@ Closes ENG-123
 ```
 
 - Keep pull requests small and focused; one concern per pull request.
-- No pull request of documentation alone: documentation ships in the pull request whose changes it documents. The exceptions: `docs`'s own pull requests, whose changes are its pages, and a pull request that moves a page into the repository it describes, which documents no change of its own.
+- No pull request of documentation alone: documentation ships in the pull request whose changes it documents. The exceptions: `docs`'s own pull requests, whose changes are its pages, a pull request that moves a page into the repository it describes, which documents no change of its own, and a root-cause write-up that ships no fix, which describes what is.
 - Draft while incomplete; ready for review only when CI is green.
 - Every review conversation ends resolved: fixed, or answered with the reason it stays, then resolved by the reviewer (see [Answering a review](#answering-a-review)).
 - Re-request review after addressing changes; stale approvals are dismissed on push.
