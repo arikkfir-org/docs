@@ -5,6 +5,7 @@ Knowledge base of the `arikkfir-org` hub, served with every other repository's `
 ## Rules
 
 - Changes go through pull requests and the merge queue, like every repository's (`CONTRIBUTING.md`).
+- Claude Code sessions read the house rules from the copy in `tooling`'s bundle, not from `CONTRIBUTING.md`: once a change to `CONTRIBUTING.md` merges, open a pull request in `tooling` that copies in the page of its merge commit with `scripts/house_rules.py`, never the docs site's copy, which `docs-publish` updates only later ([design](tooling/designs/phase-5-tooling.md#house-rules)).
 - A name, address, identity or permission is documented by the repository that creates it, in its pages under `docs/<repository>/`, and changes there with its code; a page here links that page rather than repeat it ([design](hub/designs/docs-ownership.md)).
 - Every meaningful unit of work gets a visual design doc under `<area>/designs/` (see `CONTRIBUTING.md`).
 - Tekton files stay short and composed (`CONTRIBUTING.md`, "Continuous integration"): a PipelineRun's Pipeline (`pipelineRef`) or its inline `pipelineSpec`'s Tasks (`taskRef`) are files beside it (`<name>.pipeline.yaml`, `<name>.task.yaml`), referenced by name, and a step names a command or runs a script file rather than an inline script of more than a few lines.
