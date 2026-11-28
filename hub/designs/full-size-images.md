@@ -1,6 +1,6 @@
 # Images open at full size
 
-**Decision**: an image of large content, such as a screenshot or a wide capture, opens at full size when clicked, wherever it is shown: a design, a write-up, a walkthrough, an Artifact, a pull request's side-by-side screens. Markdown links the image to itself; an HTML page or Artifact pastes the [writing toolkit](../templates/toolkit.md#images)'s click-to-enlarge snippet. The rule is in [CONTRIBUTING.md](../../CONTRIBUTING.md) ("Design documents", "Images at full size"). Ticket: [ENG-316](https://linear.app/arikkfir/issue/ENG-316).
+**Decision**: every screenshot, and any other image of large content such as a wide capture, opens at full size when clicked, wherever it is shown: a design, a write-up, a walkthrough, an Artifact, a pull request. Markdown links the image to itself; an HTML page or Artifact pastes the [writing toolkit](../templates/toolkit.md#images)'s click-to-enlarge snippet. The rule is in [CONTRIBUTING.md](../../CONTRIBUTING.md) ("Design documents", "Images at full size"). Ticket: [ENG-316](https://linear.app/arikkfir/issue/ENG-316).
 
 ## Context
 
@@ -28,7 +28,7 @@ The snippet marks only images shown smaller than their own size, so icons and im
 
 | Decision                                                      | Why                                                                                                      | Rejected                                                                                         |
 |---------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|
-| A rule for every page and Artifact, not only one kind of page | Screenshots appear in designs, write-ups, walkthroughs and review Artifacts alike                        | A rule for walkthroughs only: the image that prompted it was in a review Artifact                |
+| Every screenshot, on every page and Artifact                  | Screenshots appear in designs, write-ups, walkthroughs and review Artifacts alike                        | A rule for walkthroughs only: the image that prompted it was in a review Artifact                |
 | Click to enlarge, not larger images on the page               | Side by side is how two screens are compared; full width for each would end the comparison               | One image per row at full width                                                                  |
 | A `<dialog>` in the page, not a link to the image             | An Artifact's `data:` images can't open in a tab of their own, and a dialog keeps the reader on the page | `<a href="data:…" target="_blank">`: browsers block it                                           |
 | Fitted to the window first, its own pixels on a second click  | A 2× screenshot at its own pixels is twice the screen's width; fitted, it already reads                  | Only its own pixels, which scroll both ways; only fitted, which loses the detail of a 2× capture |

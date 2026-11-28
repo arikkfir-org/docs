@@ -76,7 +76,7 @@ Evidence that would turn a section into a wall goes in a `<details>` block, whic
 
 ## Images
 
-A screenshot or any other image of large content opens at full size when clicked. Shrunk to a column, often beside another, its text can't be read.
+Every screenshot, and any other image of large content, opens at full size when clicked. Shrunk to fit a page, its text can't be read.
 
 | Where                    | How                                                                                       |
 |--------------------------|-------------------------------------------------------------------------------------------|
