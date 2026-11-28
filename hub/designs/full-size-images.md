@@ -1,6 +1,6 @@
 # Images open at full size
 
-**Decision**: every screenshot, and any other image of large content such as a wide capture, opens at full size when clicked, wherever it is shown: a design, a write-up, a walkthrough, an Artifact, a pull request. Markdown links the image to itself; an HTML page or Artifact pastes the [writing toolkit](../templates/toolkit.md#images)'s click-to-enlarge snippet. The rule is in [CONTRIBUTING.md](../../CONTRIBUTING.md) ("Design documents", "Images at full size"). Ticket: [ENG-316](https://linear.app/arikkfir/issue/ENG-316).
+**Decision**: every screenshot, and any other image of large content such as a wide capture, opens at full size when clicked, wherever it is shown: a design, a write-up, a walkthrough, an Artifact, a pull request. Markdown links the image to itself; an HTML page or Artifact pastes the [writing toolkit](../templates/toolkit.md#images)'s click-to-enlarge snippet. The rule is in [CONTRIBUTING.md](../../CONTRIBUTING.md) ("Design documents", "Images at full size"). Ticket: [ENG-316](https://linear.app/arikkfir/issue/ENG-316). Pull request: [docs#82](https://github.com/arikkfir-org/docs/pull/82).
 
 ## Context
 
@@ -26,14 +26,29 @@ The snippet marks only images shown smaller than their own size, so icons and im
 
 ## Decisions
 
-| Decision                                                      | Why                                                                                                      | Rejected                                                                                         |
-|---------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|
-| Every screenshot, on every page and Artifact                  | Screenshots appear in designs, write-ups, walkthroughs and review Artifacts alike                        | A rule for walkthroughs only: the image that prompted it was in a review Artifact                |
-| Click to enlarge, not larger images on the page               | Side by side is how two screens are compared; full width for each would end the comparison               | One image per row at full width                                                                  |
-| A `<dialog>` in the page, not a link to the image             | An Artifact's `data:` images can't open in a tab of their own, and a dialog keeps the reader on the page | `<a href="data:…" target="_blank">`: browsers block it                                           |
-| Fitted to the window first, its own pixels on a second click  | A 2× screenshot at its own pixels is twice the screen's width; fitted, it already reads                  | Only its own pixels, which scroll both ways; only fitted, which loses the detail of a 2× capture |
-| Images shown smaller than their size only                     | Icons and images already at full size have nothing to show                                               | Every image, which puts a zoom cursor on icons                                                   |
-| Markdown links the image to itself                            | It works on GitHub and on the docs site with nothing to load, and GitHub strips scripts                  | The snippet in Markdown: GitHub strips it                                                        |
+| Decision                                                     | Why                                                                                                      | Rejected                                                                                         |
+|--------------------------------------------------------------|----------------------------------------------------------------------------------------------------------|--------------------------------------------------------------------------------------------------|
+| Every screenshot, on every page and Artifact                 | Screenshots appear in designs, write-ups, walkthroughs and review Artifacts alike                        | A rule for walkthroughs only: the image that prompted it was in a review Artifact                |
+| Click to enlarge, not larger images on the page              | Side by side is how two screens are compared; full width for each would end the comparison               | One image per row at full width                                                                  |
+| A `<dialog>` in the page, not a link to the image            | An Artifact's `data:` images can't open in a tab of their own, and a dialog keeps the reader on the page | `<a href="data:…" target="_blank">`: browsers block it                                           |
+| Fitted to the window first, its own pixels on a second click | A 2× screenshot at its own pixels is twice the screen's width; fitted, it already reads                  | Only its own pixels, which scroll both ways; only fitted, which loses the detail of a 2× capture |
+| Images shown smaller than their size only                    | Icons and images already at full size have nothing to show                                               | Every image, which puts a zoom cursor on icons                                                   |
+| Markdown links the image to itself                           | It works on GitHub and on the docs site with nothing to load, and GitHub strips scripts                  | The snippet in Markdown: GitHub strips it                                                        |
+
+## Failure modes
+
+| When                                                                  | What the reader gets                                                  |
+|-----------------------------------------------------------------------|-----------------------------------------------------------------------|
+| JavaScript is off, or a Content-Security-Policy blocks inline scripts | The page as before: images shrunk, no zoom cursor                     |
+| The browser has no `<dialog>` (none current)                          | A click does nothing; the page still reads                            |
+| An image loads before the snippet runs                                | It is marked anyway: the snippet checks every image it finds complete |
+| A Markdown image's file is missing beside the page                    | A broken link, the same as the broken image above it                  |
+
+Every failure leaves the page as it was before the rule: the snippet adds behaviour and changes no layout.
+
+## Security
+
+The snippet reads nothing outside the page and sends nothing: it copies an image the page already shows into a dialog of the same page.
 
 ## Rollout
 
