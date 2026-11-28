@@ -70,7 +70,7 @@ Each language keeps its own casing: `sourceCount` in Go and JavaScript, `source_
 
 ## Rollout
 
-1. This rule merges, then a pull request to `tooling` copies the page into the Claude Code bundle, from when sessions and `arikkfir-reviewer` apply it to new code.
+1. This rule merges. `arikkfir-reviewer` reads `CONTRIBUTING.md` from `main`, so it applies the rule to new code from that merge. Claude Code sessions apply it once a pull request to `tooling` has copied the page into their bundle.
 2. Existing names are renamed by Linear project "Names say what they hold", cheapest first:
 
    | Wave | What                                                                                                                              | Risk                                                                                         |
