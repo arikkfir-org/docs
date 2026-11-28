@@ -74,8 +74,54 @@ Evidence that would turn a section into a wall goes in a `<details>` block, whic
 </details>
 ```
 
+## Images
+
+Every screenshot, and any other image of large content, opens at full size when clicked. Shrunk to fit a page, its text can't be read.
+
+| Where                    | How                                                                                       |
+|--------------------------|-------------------------------------------------------------------------------------------|
+| Markdown (GitHub, docs)  | Link the image to itself: `[![Branches tab, dark](branches-dark.png)](branches-dark.png)` |
+| An HTML page or Artifact | Paste the snippet below once, at the end of `<body>`                                      |
+
+The snippet marks every image shown smaller than its own size. A click opens it in a dialog, fitted to the window's width; a click on it shows its own pixels; Esc or a click outside closes it. Images inside a link keep the link. It works with `data:` images, which a browser refuses to open in a tab of their own.
+
+<details>
+<summary>🔎 Click-to-enlarge snippet for HTML pages and Artifacts</summary>
+
+```html
+<style>
+img.zoomable { cursor: zoom-in; }
+dialog.zoom { box-sizing: border-box; width: 100vw; height: 100vh; max-width: none; max-height: none; margin: 0; padding: 24px; border: 0; background: rgb(0 0 0 / .88); overflow: auto; }
+dialog.zoom img { display: block; margin: auto; width: min(100%, var(--width)); height: auto; cursor: zoom-in; }
+dialog.zoom.actual img { width: var(--width); max-width: none; cursor: zoom-out; }
+</style>
+<script>
+// Opens a shrunk image at full size: click it, click again for its own pixels, Esc or click outside to close.
+(() => {
+  const mark = img => img.classList.toggle("zoomable", !img.closest("a, dialog") && img.naturalWidth > img.clientWidth + 1);
+  document.addEventListener("load", e => { if (e.target.tagName === "IMG") mark(e.target); }, true);
+  document.querySelectorAll("img").forEach(img => { if (img.complete) mark(img); });
+  addEventListener("click", e => {
+    const img = e.target.closest("img.zoomable");
+    if (!img) return;
+    const dialog = document.createElement("dialog"), copy = img.cloneNode();
+    copy.removeAttribute("class"); copy.removeAttribute("style"); copy.removeAttribute("width"); copy.removeAttribute("height");
+    dialog.className = "zoom";
+    dialog.style.setProperty("--width", img.naturalWidth + "px");
+    dialog.append(copy);
+    dialog.addEventListener("click", ev => { if (ev.target === copy) dialog.classList.toggle("actual"); else dialog.close(); });
+    dialog.addEventListener("close", () => dialog.remove());
+    document.body.append(dialog);
+    dialog.showModal();
+  });
+})();
+</script>
+```
+
+</details>
+
 ## Constraints
 
 - GitHub-flavoured Markdown with one `#` heading and relative links to other `.md` files, like every page here.
-- No inline styles, scripts or images from other hosts: GitHub strips the first two, and the docs site sits behind sign-in.
+- No inline styles, scripts or images from other hosts: GitHub strips the first two, and the docs site sits behind sign-in. The click-to-enlarge snippet is for HTML pages and Artifacts, not Markdown.
 - Accuracy over polish: a wrong diagram is worse than none.

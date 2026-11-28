@@ -12,6 +12,7 @@ Knowledge base of the `arikkfir-org` hub, served with every other repository's `
 - A page about one repository belongs in that repository, under `docs/<repository>/`; a page about several is split into a part per repository, or kept whole in the leading one only when it loses its value in parts. This repository keeps only what is about no one repository, and its other pages move out ([design](hub/designs/docs-ownership.md)): never add one here.
 - Test application code only, in every repository: never write tests for CI/CD code or scripts, Kustomize, Helm, shell scripts, infrastructure code or developer-experience scripts (`CONTRIBUTING.md`, "Code and configuration").
 - Markdown: one `#` heading per file (it becomes the page title), GitHub-flavoured Markdown, Mermaid code blocks for diagrams, relative links to other `.md` files (the site links them to their `.md.html` pages), kebab-case file names.
+- Every screenshot, and any other image of large content, opens at full size when clicked: in Markdown, link it to itself (`CONTRIBUTING.md`, "Design documents"; [toolkit](hub/templates/toolkit.md#images)).
 - Never name a file `*.md.html`: that name belongs to a rendered page, and the `Docs` check refuses it.
 - No navigation, menus or generated index pages. Pages are reached by direct links.
 - Hidden paths (any file or directory name starting with `.`) are never published.
