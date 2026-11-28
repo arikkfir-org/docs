@@ -85,7 +85,7 @@ sequenceDiagram
 | Page | Why |
 | --- | --- |
 | `CONTRIBUTING.md`, `README.md`, `hub/templates/` | The house rules and their templates, for every repository |
-| [Service conventions](service-conventions.md), [pull request titles](pull-request-titles.md), [writing issues](writing-issues.md), [investigations and walkthroughs](investigations-and-walkthroughs.md) | The designs of `CONTRIBUTING.md`'s rules, which live here |
+| [Service conventions](service-conventions.md), [pull request titles](pull-request-titles.md), [writing issues](writing-issues.md), [investigations and walkthroughs](investigations-and-walkthroughs.md), [names](names.md) | The designs of `CONTRIBUTING.md`'s rules, which live here |
 | [Phase 0](phase-0-documentation.md), [phase 4](phase-4-docs-site.md), [docs site composition](docs-site-composition.md) | This repository's own designs: the knowledge base, how it first published, and the site it is served on |
 | [Hub overview](../overview.html) | The whole hub on one page |
 | `privacy.md`, `tos.md` | `legal.kfirs.com` serves them from this layer, which the site overlays first, so no other repository can replace them |
